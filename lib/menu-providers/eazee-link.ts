@@ -96,52 +96,78 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
 
   const data: EazeeMenuResponse = await response.json();
 
-  // Build category lookup for grouping context
+  // Build category lookup with parent→child hierarchy
   const categoryMap = new Map<number, EazeeCategory>();
   for (const cat of data.categories) {
     categoryMap.set(cat.categoryId, cat);
   }
 
-  // Convert eazee-link products to our DishResponse format
-  const dishes: DishResponse[] = data.products
-    .filter((p) => p.status === 'ENABLED')
-    .map((product) => {
-      // Get the best price (first non-null)
-      const price = product.price1 ?? product.price2 ?? product.price3 ?? null;
-      const priceLabel = product.price1Label ?? '';
-      const priceStr = price ? `${price}€${priceLabel ? ` (${priceLabel})` : ''}` : null;
+  // Resolve category + subcategory from parent/child hierarchy
+  function resolveCategory(categoryId: number): { category: string | null; subcategory: string | null } {
+    const cat = categoryMap.get(categoryId);
+    if (!cat) return { category: null, subcategory: null };
 
-      // Map allergen IDs to enum values
-      const allergens = product.allergens
-        .map((id) => ALLERGEN_MAP[id])
-        .filter((a): a is Allergen => !!a);
-
-      // Get category name for context
-      const category = categoryMap.get(product.categoryId);
-
+    if (cat.parentId) {
+      const parent = categoryMap.get(cat.parentId);
       return {
-        name_original: product.label,
-        name_translations: {
-          fr: product.label,
-          en: product.label,
-          tr: product.label,
-          de: product.label,
-        },
-        description_original: product.description ?? null,
-        description_translations: product.description
-          ? {
-              fr: product.description,
-              en: product.description,
-              tr: product.description,
-              de: product.description,
-            }
-          : null,
-        price: priceStr,
-        allergens: allergens.length > 0 ? allergens : [],
-        dietary_tags: [],
-        trust_signal: 'verified' as const,
+        category: parent?.label ?? cat.label,
+        subcategory: cat.label,
       };
-    });
+    }
+    return { category: cat.label, subcategory: null };
+  }
+
+  // Build category sort order: parent order * 1000 + child order
+  function categorySort(categoryId: number): number {
+    const cat = categoryMap.get(categoryId);
+    if (!cat) return 999000;
+    if (cat.parentId) {
+      const parent = categoryMap.get(cat.parentId);
+      return (parent?.order ?? 999) * 1000 + cat.order;
+    }
+    return cat.order * 1000;
+  }
+
+  // Convert and sort by category hierarchy
+  const enabledProducts = data.products.filter((p) => p.status === 'ENABLED');
+  enabledProducts.sort((a, b) => categorySort(a.categoryId) - categorySort(b.categoryId));
+
+  const dishes: DishResponse[] = enabledProducts.map((product) => {
+    const price = product.price1 ?? product.price2 ?? product.price3 ?? null;
+    const priceLabel = product.price1Label ?? '';
+    const priceStr = price ? `${price}€${priceLabel ? ` (${priceLabel})` : ''}` : null;
+
+    const allergens = product.allergens
+      .map((id) => ALLERGEN_MAP[id])
+      .filter((a): a is Allergen => !!a);
+
+    const { category, subcategory } = resolveCategory(product.categoryId);
+
+    return {
+      name_original: product.label,
+      name_translations: {
+        fr: product.label,
+        en: product.label,
+        tr: product.label,
+        de: product.label,
+      },
+      description_original: product.description ?? null,
+      description_translations: product.description
+        ? {
+            fr: product.description,
+            en: product.description,
+            tr: product.description,
+            de: product.description,
+          }
+        : null,
+      price: priceStr,
+      allergens: allergens.length > 0 ? allergens : [],
+      dietary_tags: [],
+      trust_signal: 'verified' as const,
+      category,
+      subcategory,
+    };
+  });
 
   // Build a text summary for cache storage
   const rawText = data.products

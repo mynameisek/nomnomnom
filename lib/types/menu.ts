@@ -79,6 +79,8 @@ export interface MenuItem {
   allergens: Allergen[];
   dietary_tags: DietaryTag[];
   trust_signal: TrustSignal;
+  category: string | null;    // top-level category (e.g. "Entrées", "Boissons")
+  subcategory: string | null; // sub-category (e.g. "Bières", "Cocktails")
   sort_order: number;         // preserves original menu order
   created_at: string;         // timestamptz as ISO string
 }

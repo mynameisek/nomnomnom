@@ -128,6 +128,39 @@ function SourceBadge({ sourceType }: { sourceType: string | null }) {
   );
 }
 
+// ─── Category grouping ───────────────────────────────────────────────────────
+
+interface CategoryGroup {
+  key: string;
+  category: string | null;
+  subcategory: string | null;
+  items: MenuItem[];
+}
+
+function groupByCategory(items: MenuItem[]): CategoryGroup[] {
+  const groups: CategoryGroup[] = [];
+  let currentKey = '';
+
+  for (const item of items) {
+    const cat = item.category ?? '';
+    const sub = item.subcategory ?? '';
+    const key = `${cat}|||${sub}`;
+
+    if (key !== currentKey) {
+      currentKey = key;
+      groups.push({
+        key,
+        category: item.category,
+        subcategory: item.subcategory,
+        items: [],
+      });
+    }
+    groups[groups.length - 1].items.push(item);
+  }
+
+  return groups;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function MenuPage({ params }: PageProps) {
@@ -166,14 +199,33 @@ export default async function MenuPage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Dish list */}
+        {/* Dish list — grouped by category/subcategory */}
         {dishes.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {dishes
-              .sort((a, b) => a.sort_order - b.sort_order)
-              .map((item) => (
-                <DishCard key={item.id} item={item} />
-              ))}
+          <div className="flex flex-col gap-6">
+            {groupByCategory(dishes.sort((a, b) => a.sort_order - b.sort_order)).map(
+              (group) => (
+                <section key={group.key}>
+                  {group.category && (
+                    <h2 className="text-lg font-bold text-brand-white mb-1 px-1">
+                      {group.category}
+                    </h2>
+                  )}
+                  {group.subcategory && (
+                    <h3 className="text-sm font-medium text-brand-muted mb-3 px-1">
+                      {group.subcategory}
+                    </h3>
+                  )}
+                  {!group.category && !group.subcategory && (
+                    <div className="mb-3" />
+                  )}
+                  <div className="flex flex-col gap-3">
+                    {group.items.map((item) => (
+                      <DishCard key={item.id} item={item} />
+                    ))}
+                  </div>
+                </section>
+              )
+            )}
           </div>
         ) : (
           <div className="text-center py-16 text-brand-muted">

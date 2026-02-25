@@ -60,6 +60,8 @@ export const dishResponseSchema = z.object({
   allergens: z.array(allergenEnum),
   dietary_tags: z.array(z.enum(['vegetarian', 'vegan', 'halal'])),
   trust_signal: z.enum(['verified', 'inferred']),
+  category: z.string().nullable(),       // top-level category (e.g. "Entrées", "Boissons")
+  subcategory: z.string().nullable(),    // sub-category (e.g. "Bières", "Cocktails")
 });
 
 /**

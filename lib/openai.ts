@@ -51,6 +51,8 @@ For each dish found in the menu text, you must:
    - "verified": information is directly stated in the menu text
    - "inferred": information was inferred or derived by you (e.g. allergens deduced from ingredients, translations)
 
+8. CATEGORY: If the menu is organized into sections (e.g. "Entrées", "Plats", "Desserts", "Boissons"), set the category field to the section name. If there are sub-sections (e.g. "Bières" under "Boissons"), set subcategory. If the menu has no clear sections, set both to null.
+
 Parse every dish you can identify in the menu. Do not omit dishes. If the menu has sections (starters, mains, desserts), process all of them.`;
 
 // =============================================================================

@@ -66,6 +66,8 @@ create table menu_items (
   allergens                allergen_type[]  not null default '{}',
   dietary_tags             text[]           not null default '{}',  -- ['vegetarian','vegan','halal'] — text[] not enum (list may grow)
   trust_signal             trust_signal_type not null default 'inferred',
+  category                 text,                                 -- top-level category (e.g. "Entrées", "Boissons")
+  subcategory              text,                                 -- sub-category (e.g. "Bières", "Cocktails")
   sort_order               integer          not null default 0,  -- preserves original menu order
   created_at               timestamptz      default now()
 );
