@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 7 of 7 (Navigation and Admin — IN PROGRESS)
-Plan: 1 of 2 in current phase (07-01 complete — Btn next/link, Hero CTA /scan, ScanPageShell animation, stats migration)
-Status: Phase 7 plan 1 complete — ready for Phase 7 plan 2 (admin dashboard)
-Last activity: 2026-02-25 — 07-01 complete (Btn next/link, Hero CTA /scan, ScanPageShell fade animation, migration-07-stats.sql, cache timing)
+Phase: 7 of 7 (Navigation and Admin — COMPLETE)
+Plan: 2 of 2 in current phase (07-02 complete — admin session auth, login API, admin dashboard, model selector, stats)
+Status: Phase 7 complete — all plans done. At checkpoint:human-verify (Task 3) for end-to-end verification.
+Last activity: 2026-02-25 — 07-02 complete (admin auth cookie, /admin page gate, AdminLogin, AdminDashboard, saveAdminModel Server Action)
 
-Progress: [██████████████████░░] 90% (6/7 phases complete + 1/2 plans in phase 7)
+Progress: [████████████████████] 100% (7/7 phases complete — 2/2 plans in phase 7)
 
 ## Performance Metrics
 
@@ -37,6 +37,7 @@ Progress: [██████████████████░░] 90% (6/
 | 6. Dish Cards and Filters (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
 | 6. Dish Cards and Filters (v1.1) — plan 2/2 | 1 | ~110 min | ~110 min |
 | 7. Navigation and Admin (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
+| 7. Navigation and Admin (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
 
 *Updated after each plan completion*
 
@@ -76,6 +77,8 @@ Progress: [██████████████████░░] 90% (6/
 - [Phase 07-navigation-and-admin]: ScanPageShell 'use client' wrapper pattern — thin client wrapper for motion animation while keeping page.tsx as Server Component
 - [Phase 07-navigation-and-admin]: hit_count increment is fire-and-forget (.then(() => {})) — avoids adding latency to cache hit response path
 - [Phase 07-navigation-and-admin]: parse_time_ms null when preParseResult supplied — no LLM call was made so no timing to record
+- [Phase 07]: SHA-256 derived token in admin cookie — raw ADMIN_SECRET never stored, prevents secret recovery from cookie
+- [Phase 07]: ALLOWED_MODELS exported from app/actions/admin.ts — dashboard dropdown uses same constant, single source of truth for model allowlist
 
 ### Pending Todos
 
@@ -92,5 +95,5 @@ Progress: [██████████████████░░] 90% (6/
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 07-01-PLAN.md — Btn next/link, Hero CTA /scan, ScanPageShell animation, migration-07-stats.sql, cache timing instrumentation. Ready for Phase 7 plan 2 (admin dashboard).
+Stopped at: Completed 07-02-PLAN.md — admin session auth, login API, admin page gate, AdminLogin, AdminDashboard, saveAdminModel Server Action. Phase 7 plan 2 at checkpoint:human-verify Task 3 (end-to-end /admin verification).
 Resume file: None
