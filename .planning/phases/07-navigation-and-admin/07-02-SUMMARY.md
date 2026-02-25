@@ -46,9 +46,10 @@ key-files:
 key-decisions:
   - "SHA-256 derived token (not raw password) stored in cookie — even if cookie is readable, ADMIN_SECRET cannot be recovered"
   - "window.location.reload() after successful login — simplest way to trigger Server Component re-render with new cookie"
-  - "ALLOWED_MODELS exported from app/actions/admin.ts — dashboard uses the same constant for dropdown options, no duplication"
+  - "ALLOWED_MODELS defined locally in AdminDashboard (client component) — Next.js 16 rejects non-async exports from 'use server' files"
   - "useTransition wraps saveAdminModel call — isPending disables save button during flight, prevents double submit"
   - "force-dynamic on /admin page — cookie reads and Supabase fetches must always be fresh, never cached"
+  - "POST /api/admin/logout route + Déconnexion button in dashboard header — explicit logout clears session cookie"
 
 patterns-established:
   - "Admin gate pattern: async Server Component reads cookie, renders login or authenticated view — no redirect, no middleware"
@@ -67,11 +68,11 @@ completed: 2026-02-25
 
 ## Performance
 
-- **Duration:** ~4 min
+- **Duration:** ~4 min (execution) + human checkpoint verification
 - **Started:** 2026-02-25T21:31:51Z
-- **Completed:** 2026-02-25T21:35:xx Z
-- **Tasks:** 2 (Task 3 is human-verify checkpoint)
-- **Files modified:** 7
+- **Completed:** 2026-02-25T22:49:09Z
+- **Tasks:** 3 (Tasks 1-2 automated, Task 3 human-verify — APPROVED)
+- **Files modified:** 10
 
 ## Accomplishments
 - lib/admin-session.ts: server-only SHA-256 token auth — isAdminAuthenticated, setAdminCookie, clearAdminCookie
@@ -88,7 +89,9 @@ Each task was committed atomically:
 1. **Task 1: Admin session library + login Route Handler + admin page gate** - `6028c50` (feat)
 2. **Task 2: Admin dashboard — model selector + stats + recent scans** - `bfe1e44` (feat)
 
-*Task 3 is a human-verify checkpoint — no code changes, user verification of end-to-end flow.*
+*Task 3 is a human-verify checkpoint — user verified end-to-end flow and APPROVED.*
+
+**Post-checkpoint fix:** `04c5643` — fix(07-02): server action export + add logout route
 
 ## Files Created/Modified
 - `lib/admin-session.ts` - server-only cookie auth: SHA-256 token derivation, isAdminAuthenticated, setAdminCookie, clearAdminCookie
@@ -96,15 +99,18 @@ Each task was committed atomically:
 - `app/admin/page.tsx` - Server Component gate: force-dynamic, reads cookie, renders AdminLogin or AdminDashboard with live data
 - `components/admin/AdminLogin.tsx` - Password form with inline error, window.location.reload() on success
 - `components/admin/AdminDashboard.tsx` - Model dropdown + Enregistrer + success toast, 3 stat cards, recent scans table
-- `app/actions/admin.ts` - saveAdminModel Server Action with ALLOWED_MODELS, auth check, revalidatePath
+- `app/actions/admin.ts` - saveAdminModel Server Action with auth check, ALLOWED_MODELS validation, revalidatePath (ALLOWED_MODELS removed from export after post-checkpoint fix)
 - `.env.example` - Added ADMIN_SECRET documentation
+- `app/api/admin/logout/route.ts` - POST logout endpoint that clears the admin session cookie (added post-checkpoint)
+- `components/admin/AdminDashboard.tsx` - Updated: ALLOWED_MODELS defined locally, Déconnexion button added in header (post-checkpoint)
 
 ## Decisions Made
 - SHA-256 derived token stored in cookie (not raw ADMIN_SECRET) — cookie interception cannot reveal the plaintext password
 - window.location.reload() after successful login — simplest mechanism to make Server Component re-read the new cookie state
-- ALLOWED_MODELS exported from app/actions/admin.ts — dashboard dropdown uses the same constant, single source of truth
+- ALLOWED_MODELS moved from server action export to local constant in AdminDashboard (client component) — Next.js 16 rejects non-async exports from 'use server' files
 - useTransition wraps saveAdminModel — isPending state disables button during Server Action flight
 - force-dynamic on /admin — cookie reads and Supabase fetches must always be live data
+- POST /api/admin/logout route added with Déconnexion button — explicit logout completes the auth lifecycle
 
 ## Deviations from Plan
 
@@ -118,13 +124,30 @@ Each task was committed atomically:
 - **Verification:** Build passed after fix
 - **Committed in:** bfe1e44 (Task 2 commit)
 
+**2. [Rule 1 - Bug] Removed non-async ALLOWED_MODELS export from 'use server' file**
+- **Found during:** Task 3 human-verify (post-checkpoint fix)
+- **Issue:** Next.js 16 rejects non-async exports from `'use server'` files — ALLOWED_MODELS was a const export
+- **Fix:** Removed export from app/actions/admin.ts; defined ALLOWED_MODELS locally in AdminDashboard client component
+- **Files modified:** app/actions/admin.ts, components/admin/AdminDashboard.tsx
+- **Verification:** Dev server ran without errors after fix
+- **Committed in:** 04c5643 (post-checkpoint fix commit)
+
+**3. [Rule 2 - Missing Critical] Added logout route and Déconnexion button**
+- **Found during:** Task 3 human-verify (post-checkpoint fix)
+- **Issue:** Admin could set a session cookie but had no way to explicitly log out — missing auth lifecycle completion
+- **Fix:** Created app/api/admin/logout/route.ts (POST, clears cookie); added Déconnexion button to AdminDashboard header
+- **Files modified:** app/api/admin/logout/route.ts (new), components/admin/AdminDashboard.tsx
+- **Verification:** Déconnexion button clears session and redirects to /admin login form
+- **Committed in:** 04c5643 (post-checkpoint fix commit)
+
 ---
 
-**Total deviations:** 1 auto-fixed (1 bug — syntax error)
-**Impact on plan:** Minor fix, no scope change. Build would not have compiled without it.
+**Total deviations:** 3 auto-fixed (2 bugs, 1 missing critical)
+**Impact on plan:** All fixes necessary for correctness and operational completeness. No scope creep.
 
 ## Issues Encountered
 - Apostrophe in French string literal caused Turbopack parse error — fixed inline, one-line change
+- Next.js 16 rejects non-async exports from 'use server' files — ALLOWED_MODELS had to be moved to client component after checkpoint approval
 
 ## User Setup Required
 - Add `ADMIN_SECRET=your-admin-secret-here` to `.env.local` before testing /admin
@@ -142,12 +165,14 @@ All created files verified on disk. All task commits verified in git history.
 
 - lib/admin-session.ts: FOUND
 - app/api/admin/login/route.ts: FOUND
+- app/api/admin/logout/route.ts: FOUND
 - app/admin/page.tsx: FOUND
 - components/admin/AdminLogin.tsx: FOUND
 - components/admin/AdminDashboard.tsx: FOUND
 - app/actions/admin.ts: FOUND
 - Commit 6028c50: FOUND
 - Commit bfe1e44: FOUND
+- Commit 04c5643: FOUND
 
 ---
 *Phase: 07-navigation-and-admin*

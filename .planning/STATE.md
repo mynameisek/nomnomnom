@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 Phase: 7 of 7 (Navigation and Admin — COMPLETE)
 Plan: 2 of 2 in current phase (07-02 complete — admin session auth, login API, admin dashboard, model selector, stats)
-Status: Phase 7 complete — all plans done. At checkpoint:human-verify (Task 3) for end-to-end verification.
-Last activity: 2026-02-25 — 07-02 complete (admin auth cookie, /admin page gate, AdminLogin, AdminDashboard, saveAdminModel Server Action)
+Status: Phase 7 complete — all plans done. Checkpoint Task 3 human-verify APPROVED by user.
+Last activity: 2026-02-25 — 07-02 fully complete (admin auth, /admin page gate, AdminLogin, AdminDashboard, saveAdminModel, logout route)
 
 Progress: [████████████████████] 100% (7/7 phases complete — 2/2 plans in phase 7)
 
@@ -78,7 +78,9 @@ Progress: [████████████████████] 100% (7
 - [Phase 07-navigation-and-admin]: hit_count increment is fire-and-forget (.then(() => {})) — avoids adding latency to cache hit response path
 - [Phase 07-navigation-and-admin]: parse_time_ms null when preParseResult supplied — no LLM call was made so no timing to record
 - [Phase 07]: SHA-256 derived token in admin cookie — raw ADMIN_SECRET never stored, prevents secret recovery from cookie
-- [Phase 07]: ALLOWED_MODELS exported from app/actions/admin.ts — dashboard dropdown uses same constant, single source of truth for model allowlist
+- [Phase 07]: ALLOWED_MODELS defined locally in AdminDashboard (client component) — Next.js 16 rejects non-async exports from 'use server' files
+- [Phase 07]: POST /api/admin/logout route + Déconnexion button — explicit logout completes admin auth lifecycle
+- [Phase 07]: Server Component gate for /admin with force-dynamic — cookie reads and Supabase fetches always live, never cached
 
 ### Pending Todos
 
@@ -86,6 +88,7 @@ Progress: [████████████████████] 100% (7
 - **Run `supabase/schema.sql`** in Supabase SQL Editor before v1.1 features can be tested (menus, menu_items, admin_config tables)
 - **Add `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `SCREENSHOTONE_ACCESS_KEY`, `SCREENSHOTONE_SECRET_KEY` to `.env.local`** before Phase 5 can be tested end-to-end
 - Create Screenshotone free account at https://screenshotone.com (100 screenshots/month free tier)
+- **URL normalization in cache layer** — same menu (e.g. E7FNRP0ET3) gets cached multiple times with different URL formats (`/?id=X`, `/menu?o=q&id=X`, `/?id=X&o=q`). Normalize URL before hashing (sort query params, strip irrelevant params) to avoid duplicate LLM calls. v1.2 candidate.
 
 ### Blockers/Concerns
 
@@ -95,5 +98,5 @@ Progress: [████████████████████] 100% (7
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 07-02-PLAN.md — admin session auth, login API, admin page gate, AdminLogin, AdminDashboard, saveAdminModel Server Action. Phase 7 plan 2 at checkpoint:human-verify Task 3 (end-to-end /admin verification).
+Stopped at: Completed 07-02-PLAN.md fully — checkpoint Task 3 approved, post-checkpoint fixes applied (ALLOWED_MODELS moved to client, logout route added). All 7 phases complete.
 Resume file: None
