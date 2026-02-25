@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useLanguage } from '@/lib/i18n';
 import type { FilterState } from '@/hooks/useFilteredDishes';
 import type { DietaryTag, Allergen } from '@/lib/types/menu';
@@ -26,12 +26,24 @@ const ALLERGEN_EXCLUSIONS: Allergen[] = [
 export default function FilterBar({ filters, onChange, categories }: FilterBarProps) {
   const { t } = useLanguage();
   const [allergensOpen, setAllergensOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   function updateFilter(partial: Partial<FilterState>) {
     onChange({ ...filters, ...partial });
   }
 
-  function toggleDietary(tag: DietaryTag) {
+  // Auto-scroll clicked chip into view (centered)
+  const scrollIntoView = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const btn = e.currentTarget;
+    const container = scrollRef.current;
+    if (!container) return;
+    const btnCenter = btn.offsetLeft + btn.offsetWidth / 2;
+    const containerCenter = container.offsetWidth / 2;
+    container.scrollTo({ left: btnCenter - containerCenter, behavior: 'smooth' });
+  }, []);
+
+  function toggleDietary(tag: DietaryTag, e: React.MouseEvent<HTMLButtonElement>) {
+    scrollIntoView(e);
     const active = filters.dietaryTags.includes(tag);
     updateFilter({
       dietaryTags: active
@@ -65,11 +77,11 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
       </div>
 
       {/* Row 2: Category chips + dietary chips */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-2 items-center">
+      <div ref={scrollRef} className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-2 items-center">
         {/* Category: All */}
         <button
           type="button"
-          onClick={() => updateFilter({ categoryFilter: null })}
+          onClick={(e) => { scrollIntoView(e); updateFilter({ categoryFilter: null }); }}
           className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
             filters.categoryFilter === null
               ? 'bg-brand-orange/15 border-brand-orange/30 text-brand-orange'
@@ -84,9 +96,10 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
           <button
             key={cat}
             type="button"
-            onClick={() =>
-              updateFilter({ categoryFilter: filters.categoryFilter === cat ? null : cat })
-            }
+            onClick={(e) => {
+              scrollIntoView(e);
+              updateFilter({ categoryFilter: filters.categoryFilter === cat ? null : cat });
+            }}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
               filters.categoryFilter === cat
                 ? 'bg-brand-orange/15 border-brand-orange/30 text-brand-orange'
@@ -107,7 +120,7 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
             <button
               key={tag}
               type="button"
-              onClick={() => toggleDietary(tag)}
+              onClick={(e) => toggleDietary(tag, e)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 isActive
                   ? 'bg-brand-orange/15 border-brand-orange/30 text-brand-orange'
@@ -118,11 +131,10 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
             </button>
           );
         })}
+      </div>
 
-        {/* Divider */}
-        <div className="flex-shrink-0 w-px h-5 bg-white/10 mx-1" />
-
-        {/* Allergens expandable toggle */}
+      {/* Row 3: Allergen toggle — always visible as its own row */}
+      <div className="flex gap-2 px-4 pb-2 items-center">
         <button
           type="button"
           onClick={() => setAllergensOpen(!allergensOpen)}
@@ -150,7 +162,7 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
         </button>
       </div>
 
-      {/* Row 3: Allergen exclusion chips (expandable) */}
+      {/* Row 4: Allergen exclusion chips (expandable) */}
       {allergensOpen && (
         <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 pb-3 items-center">
           {ALLERGEN_EXCLUSIONS.map((allergen) => {
