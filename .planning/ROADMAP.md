@@ -78,7 +78,10 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. Visiting `/admin` without the correct secret returns a 403 or redirect — the page is not accessible publicly
   3. Admin can switch the active LLM model (GPT-4o / GPT-4o-mini / GPT-4.1-mini) and the next scan uses the newly selected model
   4. Admin dashboard shows total scans, cached vs fresh ratio, and average parse time pulled from live Supabase data
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 07-01-PLAN.md — Landing CTA → /scan navigation + schema migration for stats
+- [ ] 07-02-PLAN.md — Protected admin page with model selector and scan statistics
 
 ## Progress
 
