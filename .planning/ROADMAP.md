@@ -37,7 +37,9 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   1. Supabase `menus`, `menu_items`, and `admin_config` tables exist with correct columns, indexes on `url_hash`, and RLS policies applied
   2. A curl call to `lib/openai.ts` wrapper functions returns Zod-validated structured JSON matching the TypeScript types (no raw LLM string output)
   3. A repeated URL parse returns the cached result from Supabase without triggering an OpenAI API call (confirmed via Supabase logs)
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 04-01-PLAN.md — Schema, TypeScript types, Zod validation, service role client
+- [ ] 04-02-PLAN.md — OpenAI wrapper (AI SDK 6), URL hash cache layer
 
 ### Phase 5: Scan Pipeline
 **Goal**: Users can scan a restaurant menu via QR code, URL paste, or photo — and land on a valid `/menu/[id]` page with parsed dish data
@@ -83,7 +85,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 1. Foundation | v1.0 | 1/1 | Complete | 2026-02-25 |
 | 2. Content Sections | v1.0 | 2/2 | Complete | 2026-02-25 |
 | 3. Waitlist + Ship | v1.0 | 2/2 | Complete | 2026-02-25 |
-| 4. Infrastructure Foundation | v1.1 | 0/TBD | Not started | - |
+| 4. Infrastructure Foundation | v1.1 | 0/2 | Not started | - |
 | 5. Scan Pipeline | v1.1 | 0/TBD | Not started | - |
 | 6. Dish Cards and Filters | v1.1 | 0/TBD | Not started | - |
 | 7. Navigation and Admin | v1.1 | 0/TBD | Not started | - |
