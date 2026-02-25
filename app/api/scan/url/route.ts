@@ -1,9 +1,10 @@
 // =============================================================================
 // POST /api/scan/url — URL scan Route Handler
 // =============================================================================
-// Extracts menu content from a URL via Screenshotone (handles JS SPAs).
-// Primary path: markdown text → LLM text parse → cache.
-// Fallback path: PNG screenshot → Vision OCR → cache (when markdown is garbage).
+// Strategy:
+// 1. Known providers (eazee-link.com) → direct API call, no screenshot/LLM
+// 2. Other URLs → Screenshotone markdown extraction → LLM parse
+// 3. Fallback → Screenshotone PNG screenshot → Vision OCR
 // =============================================================================
 
 import 'server-only';
@@ -15,8 +16,9 @@ import { dishResponseSchema } from '@/lib/types/llm';
 import { getOrParseMenu, getAdminConfig } from '@/lib/cache';
 import { extractMenuContent } from '@/lib/screenshotone';
 import { MENU_PARSE_SYSTEM_PROMPT } from '@/lib/openai';
+import { getEazeeLinkStickerId, fetchEazeeLinkMenu } from '@/lib/menu-providers/eazee-link';
 
-// Vercel Pro plan: Screenshotone + LLM pipeline can take 6–15s total
+// Vercel Pro plan: pipeline can take 6–15s total
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
@@ -46,17 +48,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Step 3: Run scan pipeline
   try {
+    // ─── Path A: Known provider (eazee-link.com) ───
+    const eazeeStickerId = getEazeeLinkStickerId(url);
+    if (eazeeStickerId) {
+      const { dishes, rawText } = await fetchEazeeLinkMenu(eazeeStickerId);
+      const menu = await getOrParseMenu(url, 'url', rawText, { dishes });
+      return NextResponse.json({ menuId: menu.id });
+    }
+
+    // ─── Path B: Generic URL → Screenshotone extraction ───
     const result = await extractMenuContent(url);
 
     if (result.type === 'text') {
-      // Primary path: clean markdown → text-based LLM parse
+      // Clean markdown → text-based LLM parse
       const menu = await getOrParseMenu(url, 'url', result.content);
       return NextResponse.json({ menuId: menu.id });
     }
 
-    // Fallback path: screenshot image → Vision OCR
+    // ─── Path C: Fallback → screenshot + Vision OCR ───
     const config = await getAdminConfig();
     const { experimental_output: output } = await generateText({
       model: openai(config.llm_model),
