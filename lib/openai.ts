@@ -41,12 +41,12 @@ For each dish found in the menu text, you must:
    Only include: gluten, dairy, nuts, peanuts, soy, eggs, fish, shellfish, celery, mustard, sesame, sulphites, lupin, molluscs.
    Do NOT guess — only include allergens you are highly confident about.
 
-6. DIETARY TAGS: Tag with dietary categories only when clearly indicated:
-   - vegetarian: no meat or fish (dairy and eggs allowed)
-   - vegan: no animal products at all
-   - halal: prepared according to Islamic dietary law
-   - spicy: the dish is notably spicy or contains hot peppers/chili
-   Do NOT tag unless you are confident. Leave the array empty if unsure.
+6. DIETARY TAGS: Tag with dietary categories when indicated by the dish name, description, or ingredients:
+   - vegetarian: no meat or fish (dairy and eggs allowed). Tag if the dish name contains "végétarien", "vegetarian", "veggie", or if ingredients clearly contain no meat/fish.
+   - vegan: no animal products at all. Tag if the dish name contains "végan", "vegan", or if ingredients clearly contain no animal products.
+   - halal: prepared according to Islamic dietary law. Tag only if explicitly stated.
+   - spicy: the dish is notably spicy or contains hot peppers/chili. Tag if the name or description mentions spicy, piquant, épicé, or chili.
+   Be proactive: if a dish name or description clearly signals a dietary category, tag it. Only leave empty when genuinely uncertain.
 
 7. TRUST SIGNAL: Set the trust_signal field:
    - "verified": information is directly stated in the menu text
