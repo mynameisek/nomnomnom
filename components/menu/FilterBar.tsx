@@ -68,9 +68,16 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
       {/* Row 1: Search */}
       <div className="px-4 pt-3 pb-2">
         <input
-          type="text"
+          type="search"
+          enterKeyHint="search"
           value={filters.searchQuery}
           onChange={(e) => updateFilter({ searchQuery: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
           placeholder={t('search_placeholder')}
           className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-brand-white text-sm placeholder:text-brand-muted/50 focus:outline-none focus:border-brand-orange/30 transition-colors"
         />
