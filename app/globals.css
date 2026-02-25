@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #09090B;
+  --color-brand-orange: #FF6B35;
+  --color-brand-red: #E8453C;
+  --color-brand-green: #42D392;
+  --color-brand-white: #FAFAFA;
+  --color-brand-muted: #71717A;
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --max-width-content: 1200px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
