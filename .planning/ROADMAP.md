@@ -51,7 +51,9 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   3. User takes a photo of a physical menu and dishes are extracted (GPT-4o Vision, no Tesseract.js)
   4. A loading indicator with progress feedback is visible during parsing — user is never looking at a blank page
   5. Scanning the same URL a second time returns instantly from cache (no spinner, no LLM call)
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 05-01-PLAN.md — Backend: Screenshotone wrapper, URL + photo API Route Handlers, cache adaptation
+- [ ] 05-02-PLAN.md — Frontend: /scan page (QR/URL/Photo tabs), progress indicator, /menu/[id] stub page
 
 ### Phase 6: Dish Cards and Filters
 **Goal**: Every dish is presented as a clear, translated card with trust signal and allergen info — and users can filter the full list instantly
