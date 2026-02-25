@@ -85,11 +85,11 @@ function WaitlistForm() {
             {/* Status message */}
             {state.status === 'success' ? (
               <p className="text-green-400 font-semibold mb-4">
-                Parfait\u00a0! On te pr\u00e9vient d\u00e8s que c\u2019est pr\u00eat.
+                {"Parfait\u00a0! On te pr\u00e9vient d\u00e8s que c\u2019est pr\u00eat."}
               </p>
             ) : (
               <p className="text-orange-400 font-semibold mb-4">
-                Tu es d\u00e9j\u00e0 inscrit(e)\u00a0!
+                {"Tu es d\u00e9j\u00e0 inscrit(e)\u00a0!"}
               </p>
             )}
 
