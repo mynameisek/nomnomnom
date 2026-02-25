@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 6 of 7 (Dish Cards and Filters — COMPLETE)
-Plan: 2 of 2 in current phase (06-02 complete — dish cards, filter bar, language switcher, allergen banner)
-Status: Phase 6 complete — ready for Phase 7 (Polish)
-Last activity: 2026-02-25 — 06-02 complete (DishCard, AllergenBanner, LangSwitcher, FilterBar, MenuShell + UX polish)
+Phase: 7 of 7 (Navigation and Admin — IN PROGRESS)
+Plan: 1 of 2 in current phase (07-01 complete — Btn next/link, Hero CTA /scan, ScanPageShell animation, stats migration)
+Status: Phase 7 plan 1 complete — ready for Phase 7 plan 2 (admin dashboard)
+Last activity: 2026-02-25 — 07-01 complete (Btn next/link, Hero CTA /scan, ScanPageShell fade animation, migration-07-stats.sql, cache timing)
 
-Progress: [█████████████████░░░] 85% (6/7 phases complete — phase 6 both plans done)
+Progress: [██████████████████░░] 90% (6/7 phases complete + 1/2 plans in phase 7)
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [█████████████████░░░] 85% (6/
 | 5. Scan Pipeline (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
 | 6. Dish Cards and Filters (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
 | 6. Dish Cards and Filters (v1.1) — plan 2/2 | 1 | ~110 min | ~110 min |
+| 7. Navigation and Admin (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
 
 *Updated after each plan completion*
 
@@ -71,6 +72,10 @@ Progress: [█████████████████░░░] 85% (6/
 - [Phase 06-dish-cards-and-filters]: FilterBar redesigned post-checkpoint: search bar at top, allergen chips hidden behind toggle row to reduce mobile visual noise
 - [Phase 06-dish-cards-and-filters]: Allergen chips removed from DishCard — redundant with FilterBar allergen exclusion chips; reduces card density
 - [Phase 06-dish-cards-and-filters]: Accent-insensitive search via normalize('NFD') — 'vege' matches 'végétarien'
+- [Phase 07-navigation-and-admin]: Btn.tsx uses href.startsWith('/') for next/link — hash anchors remain as <a> (non-breaking)
+- [Phase 07-navigation-and-admin]: ScanPageShell 'use client' wrapper pattern — thin client wrapper for motion animation while keeping page.tsx as Server Component
+- [Phase 07-navigation-and-admin]: hit_count increment is fire-and-forget (.then(() => {})) — avoids adding latency to cache hit response path
+- [Phase 07-navigation-and-admin]: parse_time_ms null when preParseResult supplied — no LLM call was made so no timing to record
 
 ### Pending Todos
 
@@ -87,5 +92,5 @@ Progress: [█████████████████░░░] 85% (6/
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 06-02-PLAN.md — dish cards, filter bar, language switcher, allergen banner. Phase 6 complete. Ready for Phase 7 (Polish).
+Stopped at: Completed 07-01-PLAN.md — Btn next/link, Hero CTA /scan, ScanPageShell animation, migration-07-stats.sql, cache timing instrumentation. Ready for Phase 7 plan 2 (admin dashboard).
 Resume file: None
