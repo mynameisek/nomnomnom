@@ -28,10 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Outfit font renders on all text elements with no fallback flash
   4. The fixed nav bar remains visible while scrolling on mobile (320px) and desktop
   5. Supabase environment variables are set and secured in Vercel; no secrets in the repo
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: Scaffold Next.js 16 + Tailwind v4 + motion/react project, configure brand tokens and fonts, set up CI/CD to Vercel
+- [ ] 01-01-PLAN.md — Scaffold project, configure brand design system (tokens, Outfit font, Nav, Footer), deploy shell to Vercel
 
 ### Phase 2: Content Sections
 **Goal**: Every visible section of the landing page is rendered with correct copy, interactions, and animations matching the v5 reference design
