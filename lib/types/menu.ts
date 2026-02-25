@@ -1,0 +1,90 @@
+// =============================================================================
+// Menu domain TypeScript types — mirrors the Supabase DB schema exactly
+// =============================================================================
+
+/**
+ * Flat translation map for dish names and descriptions.
+ * Languages: French, English, Turkish, German (v1.1 scope).
+ * Stored as JSONB in Supabase — direct key access: name_translations->>'fr'
+ */
+export type TranslationMap = {
+  fr: string;
+  en: string;
+  tr: string;
+  de: string;
+};
+
+/**
+ * EU 14 mandatory allergens (legally defined, stable).
+ * Stored as allergen_type[] enum array in PostgreSQL.
+ * Note: Supabase client returns enum arrays as plain strings — cast via this type.
+ */
+export type Allergen =
+  | 'gluten'
+  | 'dairy'
+  | 'nuts'
+  | 'peanuts'
+  | 'soy'
+  | 'eggs'
+  | 'fish'
+  | 'shellfish'
+  | 'celery'
+  | 'mustard'
+  | 'sesame'
+  | 'sulphites'
+  | 'lupin'
+  | 'molluscs';
+
+/**
+ * Dietary tags — stored as text[] (not enum) because list may grow in v1.2+.
+ * Current v1.1 values: vegetarian, vegan, halal.
+ */
+export type DietaryTag = 'vegetarian' | 'vegan' | 'halal';
+
+/**
+ * Trust signal for allergen/ingredient information.
+ * 'verified' — extracted directly from menu text.
+ * 'inferred' — inferred by LLM based on dish name and context.
+ */
+export type TrustSignal = 'verified' | 'inferred';
+
+/**
+ * Menu — one row per unique URL (cache entry).
+ * Mirrors the `menus` table in Supabase.
+ */
+export interface Menu {
+  id: string;
+  url: string;
+  url_hash: string;           // SHA-256 hex (64 chars), cache key
+  restaurant_name: string | null;
+  source_type: string | null; // 'url' | 'photo' | 'qr'
+  raw_text: string | null;    // original scraped/OCR text for debugging
+  parsed_at: string;          // timestamptz as ISO string
+  expires_at: string;         // timestamptz as ISO string
+  created_at: string;         // timestamptz as ISO string
+}
+
+/**
+ * MenuItem — one row per dish.
+ * Mirrors the `menu_items` table in Supabase.
+ */
+export interface MenuItem {
+  id: string;
+  menu_id: string;
+  name_original: string;
+  name_translations: TranslationMap;
+  description_original: string | null;
+  description_translations: TranslationMap | null;
+  price: string | null;       // e.g. "12€", "8.50 TL", null if not on menu
+  allergens: Allergen[];
+  dietary_tags: DietaryTag[];
+  trust_signal: TrustSignal;
+  sort_order: number;         // preserves original menu order
+  created_at: string;         // timestamptz as ISO string
+}
+
+/**
+ * MenuWithItems — menu row joined with its items.
+ * Shape returned by: SELECT *, menu_items(*) FROM menus
+ */
+export type MenuWithItems = Menu & { menu_items: MenuItem[] };
