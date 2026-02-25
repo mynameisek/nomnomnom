@@ -1,7 +1,14 @@
 'use client';
+// =============================================================================
+// MenuAccordion — category/subcategory accordion for unfiltered menu view
+// =============================================================================
+// Used by MenuShell when no filters are active.
+// Dish cards are rendered via the imported DishCard component (not inline).
+// =============================================================================
 
 import { useState } from 'react';
-import type { MenuItem, TrustSignal } from '@/lib/types/menu';
+import type { MenuItem } from '@/lib/types/menu';
+import DishCard from '@/components/menu/DishCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,65 +67,7 @@ function buildSections(items: MenuItem[]): Section[] {
   return sections;
 }
 
-// ─── Trust signal badge ──────────────────────────────────────────────────────
-
-function TrustBadge({ signal }: { signal: TrustSignal }) {
-  if (signal === 'verified') {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-green/10 text-brand-green text-xs font-medium border border-brand-green/20">
-        ✓ Verified
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange text-xs font-medium border border-brand-orange/20">
-      ~ Inferred
-    </span>
-  );
-}
-
-// ─── Dish card ───────────────────────────────────────────────────────────────
-
-function DishCard({ item }: { item: MenuItem }) {
-  return (
-    <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/8">
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-brand-white font-semibold text-sm leading-snug flex-1">
-          {item.name_original}
-        </h3>
-        {item.price && (
-          <span className="text-brand-orange font-semibold text-sm flex-shrink-0">
-            {item.price}
-          </span>
-        )}
-      </div>
-
-      {item.description_original && (
-        <p className="text-brand-muted text-xs leading-relaxed">
-          {item.description_original}
-        </p>
-      )}
-
-      {(item.allergens.length > 0 || item.dietary_tags.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-          <TrustBadge signal={item.trust_signal} />
-          {item.allergens.map((a) => (
-            <span key={a} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-brand-muted text-xs">
-              {a}
-            </span>
-          ))}
-          {item.dietary_tags.map((t) => (
-            <span key={t} className="px-2 py-0.5 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green text-xs">
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Chevron icon ────────────────────────────────────────────────────────────
+// ─── Chevron icon ─────────────────────────────────────────────────────────────
 
 function ChevronDown({ open, className }: { open: boolean; className?: string }) {
   return (
