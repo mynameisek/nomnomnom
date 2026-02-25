@@ -12,7 +12,7 @@ Build and deploy the NŌM waitlist landing page in three phases: scaffold the Ne
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Next.js 16 project scaffolded, deployed to Vercel, brand tokens applied
+- [x] **Phase 1: Foundation** - Next.js 16 project scaffolded, deployed to Vercel, brand tokens applied (completed 2026-02-25)
 - [ ] **Phase 2: Content Sections** - All visible page sections rendered with animations
 - [ ] **Phase 3: Waitlist + Ship** - Supabase waitlist, referral system, SEO, performance, go-live
 
@@ -72,6 +72,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/1 | Not started | - |
+| 1. Foundation | 0/1 | Complete    | 2026-02-25 |
 | 2. Content Sections | 0/2 | Not started | - |
 | 3. Waitlist + Ship | 0/2 | Not started | - |
