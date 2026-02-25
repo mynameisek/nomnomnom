@@ -24,7 +24,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 - [ ] **Phase 4: Infrastructure Foundation** - Database schema, TypeScript types, and OpenAI/cache wiring
 - [ ] **Phase 5: Scan Pipeline** - All three scan methods (QR/URL/photo) through the LLM pipeline to a menu ID
-- [ ] **Phase 6: Dish Cards and Filters** - Full menu display surface with translations, trust badges, allergens, and client-side filters
+- [x] **Phase 6: Dish Cards and Filters** - Full menu display surface with translations, trust badges, allergens, and client-side filters (completed 2026-02-25)
 - [ ] **Phase 7: Navigation and Admin** - Landing CTA wired to /scan, protected admin config panel
 
 ## Phase Details
@@ -91,5 +91,5 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 3. Waitlist + Ship | v1.0 | 2/2 | Complete | 2026-02-25 |
 | 4. Infrastructure Foundation | v1.1 | 0/2 | Not started | - |
 | 5. Scan Pipeline | v1.1 | 0/TBD | Not started | - |
-| 6. Dish Cards and Filters | v1.1 | 0/TBD | Not started | - |
+| 6. Dish Cards and Filters | v1.1 | Complete    | 2026-02-25 | - |
 | 7. Navigation and Admin | v1.1 | 0/TBD | Not started | - |
