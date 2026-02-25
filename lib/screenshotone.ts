@@ -1,10 +1,9 @@
 // =============================================================================
-// Screenshotone wrapper — server-only, SPA text extraction via markdown format
+// Screenshotone wrapper — server-only, SPA text extraction with Vision fallback
 // =============================================================================
-// Uses Screenshotone SDK to capture JS-rendered SPAs as markdown text.
-// format=markdown is supported by the API but not listed in SDK type docs —
-// the SDK's format() method accepts any string, so this works correctly.
-// See: Phase 5 Research — eazee-link.com confirmed JS SPA (Cheerio insufficient)
+// Primary: format=markdown for clean text extraction.
+// Fallback: format=png screenshot when markdown returns CSS garbage (SPAs like
+// eazee-link.com render CSS instead of menu content via markdown extraction).
 //
 // Client is lazily initialized to avoid module-level crash when env vars
 // are absent during Next.js build-time page data collection.
@@ -16,7 +15,7 @@ import * as screenshotone from 'screenshotone-api-sdk';
 // Vercel Pro plan: Screenshotone + LLM pipeline can take 6–15s total
 export const maxDuration = 60;
 
-// Lazy singleton — created on first call to extractMenuText
+// Lazy singleton — created on first call
 let _client: screenshotone.Client | null = null;
 
 function getClient(): screenshotone.Client {
@@ -36,46 +35,72 @@ function getClient(): screenshotone.Client {
   return _client;
 }
 
+// CSS/garbage patterns that indicate markdown extraction failed
+const GARBAGE_PATTERNS = [
+  /\.[\w-]+\s*\{[^}]*\}/,          // CSS rules: .class { ... }
+  /position:\s*relative/,
+  /webkit-touch-callout/,
+  /transform-component/,
+  /moz-fit-content/,
+  /pointer-events:\s*none/,
+];
+
+function isGarbageMarkdown(text: string): boolean {
+  const matches = GARBAGE_PATTERNS.filter(p => p.test(text));
+  return matches.length >= 2; // 2+ CSS patterns = garbage
+}
+
 // =============================================================================
-// extractMenuText — fetch SPA menu as markdown text
+// extractMenuText — try markdown first, fallback to screenshot
 // =============================================================================
+
+export type ExtractionResult =
+  | { type: 'text'; content: string }
+  | { type: 'image'; buffer: ArrayBuffer };
 
 /**
- * Captures a URL via Screenshotone and returns the page content as markdown text.
- * Uses format=markdown which renders the JS SPA and returns structured text
- * instead of an image — ideal for LLM menu parsing.
- *
- * @param url - The menu URL to capture (must be publicly accessible)
- * @returns The markdown text of the rendered page
- * @throws Error if Screenshotone returns a non-OK status or empty content
+ * Extracts menu content from a URL. Tries markdown extraction first.
+ * If markdown returns CSS garbage (common with JS SPAs), falls back to
+ * a PNG screenshot for Vision OCR processing.
  */
-export async function extractMenuText(url: string): Promise<string> {
+export async function extractMenuContent(url: string): Promise<ExtractionResult> {
   const client = getClient();
 
-  const options = screenshotone.TakeOptions.url(url)
-    .format('markdown')           // text extraction mode (not an image format)
-    .waitUntil('networkidle2')    // wait until JS SPA is fully rendered
-    .fullPage(true)               // capture entire page, not just viewport
-    .delay(2);                    // extra 2s buffer for slow SPA JS execution
+  // Attempt 1: markdown extraction
+  const mdOptions = screenshotone.TakeOptions.url(url)
+    .format('markdown')
+    .waitUntil('networkidle2')
+    .fullPage(true)
+    .delay(2);
 
-  const signedUrl = await client.generateSignedTakeURL(options);
+  const mdSignedUrl = await client.generateSignedTakeURL(mdOptions);
+  const mdResponse = await fetch(mdSignedUrl);
 
-  const response = await fetch(signedUrl);
+  if (mdResponse.ok) {
+    const text = await mdResponse.text();
+    if (text.trim().length >= 50 && !isGarbageMarkdown(text)) {
+      return { type: 'text', content: text };
+    }
+    console.log('[screenshotone] Markdown extraction returned garbage, falling back to screenshot');
+  }
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '(no body)');
+  // Attempt 2: PNG screenshot for Vision OCR
+  const imgOptions = screenshotone.TakeOptions.url(url)
+    .format('png')
+    .waitUntil('networkidle2')
+    .fullPage(true)
+    .delay(2);
+
+  const imgSignedUrl = await client.generateSignedTakeURL(imgOptions);
+  const imgResponse = await fetch(imgSignedUrl);
+
+  if (!imgResponse.ok) {
+    const errorText = await imgResponse.text().catch(() => '(no body)');
     throw new Error(
-      `[extractMenuText] Screenshotone request failed: HTTP ${response.status} — ${errorText}`
+      `[screenshotone] Screenshot request failed: HTTP ${imgResponse.status} — ${errorText}`
     );
   }
 
-  const text = await response.text();
-
-  if (text.trim().length < 50) {
-    throw new Error(
-      `[extractMenuText] Screenshotone returned empty or near-empty content for URL: ${url} (${text.trim().length} chars)`
-    );
-  }
-
-  return text;
+  const buffer = await imgResponse.arrayBuffer();
+  return { type: 'image', buffer };
 }
