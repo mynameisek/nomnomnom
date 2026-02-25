@@ -5,35 +5,29 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** v1.0 complete — planning next milestone
+**Current focus:** v1.1 MVP App
 
 ## Current Position
 
-Milestone: v1.0 Landing Page — SHIPPED
-Status: All 3 phases complete, archived to .planning/milestones/
-Last activity: 2026-02-25 — Milestone v1.0 completed and archived
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-25 — Milestone v1.1 started
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Total execution time: ~3 hours (single session)
-
-**By Phase:**
-
-| Phase | Plans | Avg/Plan |
-|-------|-------|----------|
-| 01-foundation | 1 | ~40 min |
-| 02-content-sections | 2 | ~40 min |
-| 03-waitlist-ship | 2 | ~20 min |
+- Total plans completed: 5 (v1.0)
+- Total execution time: ~3 hours (v1.0, single session)
 
 ## Accumulated Context
 
 ### Decisions
 
-All decisions archived in PROJECT.md Key Decisions table.
+- Web app Next.js (pas native) — QR → navigateur = zéro friction
+- OpenAI par défaut, modèles configurables admin
+- Parser menu générique (heuristiques + LLM)
+- Test menu de référence: https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q
 
 ### Pending Todos
 
@@ -46,5 +40,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Milestone v1.0 complete and archived
-Next: `/gsd:new-milestone` when ready for MVP app development
+Stopped at: Defining v1.1 requirements
+Next: Complete requirements → roadmap

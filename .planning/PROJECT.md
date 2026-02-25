@@ -22,17 +22,19 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 
 ### Active
 
-#### Milestone 2+ — MVP App (Phase 1 du doc v1.2)
+#### Current Milestone: v1.1 MVP App
 
-- [ ] Scan QR + URL → parse menu → fiches plats
-- [ ] Traduction FR/EN/TR/DE + explications culturelles
-- [ ] Filtres : végé, épicé, budget, allergènes (probables)
-- [ ] Assistant Top 3 (3x/jour gratuit)
-- [ ] Recherche inversée basique
-- [ ] Scan OCR photo (fallback caméra)
+- [ ] Scan QR code → détection menu → fiches plats
+- [ ] Scan URL/lien → parse menu web → fiches plats (parser générique)
+- [ ] Scan photo OCR (fallback caméra) → extraction menu → fiches plats
+- [ ] Traduction FR/EN/TR/DE + explications culturelles par plat
+- [ ] Filtres alimentaires : végé, épicé, budget, allergènes (probables)
+- [ ] Assistant IA Top 3 (3x/jour gratuit, OpenAI par défaut, modèles configurables admin)
+- [ ] Recherche inversée basique ("j'ai envie de X" → plats correspondants)
 - [ ] Badges de confiance (✅ Menu / ⚠ Inféré)
-- [ ] Phrases allergènes multilingues
+- [ ] Phrases allergènes multilingues (jamais "garanti", toujours phrase serveur)
 - [ ] Pas de compte requis pour le scan
+- [ ] Cache menu : chaque scan enrichit la base pour les suivants
 
 ### Out of Scope
 
@@ -93,8 +95,10 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 - **Cache everything** : Chaque scan enrichit la base pour les suivants (coût OCR ~0.10€ vs URL parse ~0.01€)
 - **No placeholders** : Pas de code "pour plus tard" dans le MVP (MVP scope lock strict)
 - **Déploiement** : Vercel, domaine par défaut en attendant un nom de domaine dédié
-- **Langue** : Landing en FR seulement pour le milestone 1
+- **Langue** : Landing en FR seulement pour le milestone 1. App : interface FR/EN, traductions TR/DE/ES/IT
 - **Budget IA** : APIs LLM = poste de coût principal, cache vital
+- **LLM** : OpenAI par défaut (coût), modèles configurables côté admin
+- **Platform** : Web app Next.js (mobile-first), pas de native — QR ouvre le navigateur = zéro friction
 
 ## Key Decisions
 
@@ -111,6 +115,24 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 | Server Components by default, use client only for interactive | Minimize client JS bundle | ✓ Good — only 6/14 components need client |
 | useActionState for waitlist form | React 19 pattern, no useState/useEffect boilerplate | ✓ Good |
 | Referral system: position = raw - (referrals × 5) | Simple linear queue, no complex tier system | — Pending validation |
+| Web app (pas native) pour le MVP | QR code → navigateur = zéro friction. Native = download obligatoire = abandon au resto | — Pending |
+| OpenAI par défaut, modèles configurables | Meilleur rapport coût/vitesse pour parsing menu + reco. Admin peut switcher | — Pending |
+| Parser menu générique | Heuristiques + LLM pour n'importe quel format web, pas de scraper resto-spécifique | — Pending |
+
+## Current Milestone: v1.1 MVP App
+
+**Goal:** Transformer NŌM d'une landing page en app fonctionnelle — scanner un menu (QR/URL/photo), voir les fiches plats traduites, utiliser les filtres et l'assistant IA Top 3.
+
+**Target features:**
+- 3 méthodes de scan (QR, URL, photo OCR)
+- Parser menu générique (heuristiques + LLM)
+- Fiches plats avec traduction, badges, allergènes
+- Filtres alimentaires (végé, épicé, budget, allergènes)
+- Assistant IA Top 3 (OpenAI, configurable)
+- Recherche inversée
+- Cache menu (enrichissement progressif)
+
+**Test reference:** `https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q`
 
 ## Current State
 
@@ -128,4 +150,4 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 **Pre-launch action needed:** Run Supabase SQL to create `waitlist` table + RLS policies (documented in .planning/phases/03-waitlist-ship/03-01-SUMMARY.md).
 
 ---
-*Last updated: 2026-02-25 after v1.0 milestone*
+*Last updated: 2026-02-25 after v1.1 milestone started*
