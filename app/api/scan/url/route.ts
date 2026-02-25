@@ -46,9 +46,10 @@ export async function POST(req: NextRequest) {
     const menu = await getOrParseMenu(url, 'url', menuText);
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
-    console.error('[POST /api/scan/url] Pipeline error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[POST /api/scan/url] Pipeline error:', message);
     return NextResponse.json(
-      { error: 'Failed to parse menu. Please try again.' },
+      { error: 'Failed to parse menu. Please try again.', detail: message },
       { status: 500 }
     );
   }
