@@ -88,35 +88,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAN-01 | — | Pending |
-| SCAN-02 | — | Pending |
-| SCAN-03 | — | Pending |
-| SCAN-04 | — | Pending |
-| SCAN-05 | — | Pending |
-| DISH-01 | — | Pending |
-| DISH-02 | — | Pending |
-| DISH-03 | — | Pending |
-| DISH-04 | — | Pending |
-| DISH-05 | — | Pending |
-| DISH-06 | — | Pending |
-| FILT-01 | — | Pending |
-| FILT-02 | — | Pending |
-| FILT-03 | — | Pending |
-| FILT-04 | — | Pending |
-| ADMN-01 | — | Pending |
-| ADMN-02 | — | Pending |
-| ADMN-03 | — | Pending |
-| INFR-01 | — | Pending |
-| INFR-02 | — | Pending |
-| INFR-03 | — | Pending |
-| INFR-04 | — | Pending |
-| INFR-05 | — | Pending |
+| SCAN-01 | Phase 5 | Pending |
+| SCAN-02 | Phase 5 | Pending |
+| SCAN-03 | Phase 5 | Pending |
+| SCAN-04 | Phase 5 | Pending |
+| SCAN-05 | Phase 5 | Pending |
+| DISH-01 | Phase 6 | Pending |
+| DISH-02 | Phase 6 | Pending |
+| DISH-03 | Phase 6 | Pending |
+| DISH-04 | Phase 6 | Pending |
+| DISH-05 | Phase 6 | Pending |
+| DISH-06 | Phase 6 | Pending |
+| FILT-01 | Phase 6 | Pending |
+| FILT-02 | Phase 6 | Pending |
+| FILT-03 | Phase 6 | Pending |
+| FILT-04 | Phase 6 | Pending |
+| ADMN-01 | Phase 7 | Pending |
+| ADMN-02 | Phase 7 | Pending |
+| ADMN-03 | Phase 7 | Pending |
+| INFR-01 | Phase 4 | Pending |
+| INFR-02 | Phase 4 | Pending |
+| INFR-03 | Phase 4 | Pending |
+| INFR-04 | Phase 5 | Pending |
+| INFR-05 | Phase 7 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after initial definition*
+*Last updated: 2026-02-25 — traceability filled after roadmap creation*
