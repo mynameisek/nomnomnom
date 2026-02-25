@@ -59,11 +59,11 @@ Plans:
   3. The user can see their current waitlist position and how many friends they have referred
   4. The page scores above 80 on Lighthouse performance on a simulated 3G connection; all images lazy-load with gradient+emoji fallbacks
   5. OG image, Twitter card, meta title, and description are set; semantic HTML headings and landmarks pass an accessibility tree check
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Implement Supabase waitlist table, email form with validation, success state, referral link generation, position tracking, referral dashboard (WAIT-01 through WAIT-06)
-- [ ] 03-02: Add SEO meta tags and OG image, validate semantic HTML, run Lighthouse audit and fix performance issues, final QA across breakpoints (PERF-01, PERF-02, PERF-03, SEO-01, SEO-02)
+- [ ] 03-01-PLAN.md — Supabase waitlist backend, email form with validation, referral system, inline dashboard (WAIT-01 through WAIT-06)
+- [ ] 03-02-PLAN.md — SEO meta tags, OG/Twitter images, semantic HTML audit, Lighthouse performance validation (PERF-01, PERF-02, PERF-03, SEO-01, SEO-02)
 
 ## Progress
 
