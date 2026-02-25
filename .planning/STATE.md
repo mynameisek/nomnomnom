@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** Phase 5 — Scan Pipeline (v1.1)
+**Current focus:** Phase 6 — Dish Cards and Filters (v1.1)
 
 ## Current Position
 
-Phase: 5 of 7 (Scan Pipeline)
-Plan: 2 of 2 in current phase (05-02 tasks 1-2 complete — client scan UI + /menu/[id] page built; paused at Task 3 checkpoint:human-verify)
-Status: In progress — awaiting human verification
-Last activity: 2026-02-25 — 05-02 tasks 1-2 complete (/scan page with QR/URL/Photo tabs, ScanProgress, /menu/[id] Supabase stub)
+Phase: 6 of 7 (Dish Cards and Filters)
+Plan: 1 of 2 in current phase (06-01 complete — i18n system, useFilteredDishes hook, spicy dietary tag)
+Status: In progress — 06-01 complete, ready for 06-02
+Last activity: 2026-02-25 — 06-01 complete (lib/i18n system, hooks/useFilteredDishes, spicy in DietaryTag/Zod/LLM)
 
-Progress: [███████░░░░░░░░░░░░░] 33% (4/7 phases complete + 2/2 plans in phase 5 built, pending final verification)
+Progress: [████████░░░░░░░░░░░░] 38% (4/7 phases complete + phase 6 plan 1/2 complete)
 
 ## Performance Metrics
 
@@ -34,6 +34,7 @@ Progress: [███████░░░░░░░░░░░░░] 33% (4/
 | 4. Infrastructure Foundation (v1.1) — plan 2/2 | 1 | ~3 min | ~3 min |
 | 5. Scan Pipeline (v1.1) — plan 1/2 | 1 | ~9 min | ~9 min |
 | 5. Scan Pipeline (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
+| 6. Dish Cards and Filters (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
 
 *Updated after each plan completion*
 
@@ -62,6 +63,10 @@ Progress: [███████░░░░░░░░░░░░░] 33% (4/
 - Custom window event (qr-decoded) for QR->URL handoff — avoids prop drilling when QR tab unmounts on tab switch
 - dynamic import('qr-scanner') in useEffect — browser-only library; SSR-safe via Next.js dynamic with ssr: false
 - Timer-driven progress simulation (3s/step) with immediate jump on API resolve — acceptable UX for 6-15s opaque background tasks
+- lib/i18n/index.tsx uses .tsx extension (not .ts) — JSX syntax in LanguageProvider return requires .tsx
+- SSR-safe i18n: useState('fr') default, never read localStorage in initializer — useEffect corrects client-side only (hydration safety)
+- useMemo retained in useFilteredDishes despite React 19 compiler — explicit intent for potentially large array filter operations
+- DietaryTag 'spicy' added as non-breaking text[] change — no DB migration needed (column accepts any strings)
 
 ### Pending Todos
 
@@ -78,5 +83,5 @@ Progress: [███████░░░░░░░░░░░░░] 33% (4/
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: 05-02 Task 3 checkpoint:human-verify — complete scan pipeline built, awaiting end-to-end verification (URL/QR/Photo scan, cache hit, loading UX). Resume with "approved" signal.
+Stopped at: Completed 06-01-PLAN.md — i18n system, useFilteredDishes hook, spicy dietary tag. Ready for 06-02.
 Resume file: None
