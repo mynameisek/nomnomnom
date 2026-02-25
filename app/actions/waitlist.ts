@@ -65,6 +65,7 @@ export async function joinWaitlist(
   prevState: WaitlistState,
   formData: FormData,
 ): Promise<WaitlistState> {
+  try {
   const rawEmail = formData.get('email');
   const rawRef = formData.get('ref');
 
@@ -119,4 +120,10 @@ export async function joinWaitlist(
   // Success
   const dashboard = await getDashboard(refCode);
   return { status: 'success', ...dashboard };
+  } catch {
+    return {
+      status: 'error',
+      message: 'Erreur réseau. Réessaie dans quelques secondes.',
+    };
+  }
 }
