@@ -17,6 +17,10 @@ import type { MenuItem, DietaryTag, Allergen } from '@/lib/types/menu';
 
 /** Active filter state — passed to useFilteredDishes */
 export type FilterState = {
+  /** Free-text search across dish names (original + translations) */
+  searchQuery: string;
+  /** Category filter — null means all categories */
+  categoryFilter: string | null;
   /** Dietary tags the dish must ALL have (AND logic) — e.g. ['vegetarian'] */
   dietaryTags: DietaryTag[];
   /** Allergens the dish must NOT contain ANY of (OR exclusion) — e.g. ['gluten', 'dairy'] */
@@ -33,7 +37,28 @@ export type FilterState = {
  */
 export function useFilteredDishes(items: MenuItem[], filters: FilterState): MenuItem[] {
   return useMemo(() => {
+    const query = filters.searchQuery.trim().toLowerCase();
+
     return items.filter((item) => {
+      // Search filter: match against original name + all translations
+      if (query) {
+        const searchable = [
+          item.name_original,
+          ...Object.values(item.name_translations),
+          item.description_original,
+          ...(item.description_translations ? Object.values(item.description_translations) : []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!searchable.includes(query)) return false;
+      }
+
+      // Category filter: exact match on category
+      if (filters.categoryFilter && item.category !== filters.categoryFilter) {
+        return false;
+      }
+
       // Dietary filter: item must have every active dietary tag (AND logic)
       if (filters.dietaryTags.length > 0) {
         const hasAll = filters.dietaryTags.every((tag) =>

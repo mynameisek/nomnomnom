@@ -1,20 +1,6 @@
 'use client';
-// =============================================================================
-// MenuShell — client coordinator: language + filter state
-// =============================================================================
-// Wraps everything in LanguageProvider. Holds FilterState, passes to FilterBar.
-// Delegates filtered item computation to useFilteredDishes hook.
-// Renders:
-//   - Header (restaurant name, source badge, dish count, LangSwitcher)
-//   - AllergenBanner (always visible)
-//   - FilterBar (sticky)
-//   - Conditional content:
-//       - No active filters → MenuAccordion (section accordion view)
-//       - Filters active + results → flat animated list (AnimatePresence + motion)
-//       - Filters active + no results → empty state + clear-filters button
-// =============================================================================
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { LanguageProvider, useLanguage } from '@/lib/i18n';
 import { useFilteredDishes } from '@/hooks/useFilteredDishes';
@@ -25,8 +11,6 @@ import FilterBar from '@/components/menu/FilterBar';
 import DishCard from '@/components/menu/DishCard';
 import LangSwitcher from '@/components/menu/LangSwitcher';
 import MenuAccordion from '@/components/menu/MenuAccordion';
-
-// ─── Source badge ─────────────────────────────────────────────────────────────
 
 function SourceBadge({ sourceType }: { sourceType: string | null }) {
   const labels: Record<string, string> = {
@@ -42,25 +26,46 @@ function SourceBadge({ sourceType }: { sourceType: string | null }) {
   );
 }
 
-// ─── Inner content (must be inside LanguageProvider to use useLanguage) ───────
-
 interface MenuContentProps {
   menu: MenuWithItems;
   filters: FilterState;
   onFiltersChange: (f: FilterState) => void;
 }
 
-const EMPTY_FILTERS: FilterState = { dietaryTags: [], excludeAllergens: [] };
+const EMPTY_FILTERS: FilterState = {
+  searchQuery: '',
+  categoryFilter: null,
+  dietaryTags: [],
+  excludeAllergens: [],
+};
 
 function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
   const { t } = useLanguage();
 
   const filteredItems = useFilteredDishes(menu.menu_items, filters);
   const hasActiveFilters =
-    filters.dietaryTags.length > 0 || filters.excludeAllergens.length > 0;
+    filters.searchQuery.trim() !== '' ||
+    filters.categoryFilter !== null ||
+    filters.dietaryTags.length > 0 ||
+    filters.excludeAllergens.length > 0;
+
+  const hasActiveAllergenFilters = filters.excludeAllergens.length > 0;
+
+  // Extract unique categories from menu items, preserving menu order
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    const cats: string[] = [];
+    for (const item of menu.menu_items) {
+      const cat = item.category ?? 'Autres';
+      if (!seen.has(cat)) {
+        seen.add(cat);
+        cats.push(cat);
+      }
+    }
+    return cats;
+  }, [menu.menu_items]);
 
   const restaurantName = menu.restaurant_name ?? 'Menu';
-  // Interpolate count into menu_header template
   const headerText = t('menu_header').replace('{count}', String(menu.menu_items.length));
 
   return (
@@ -77,26 +82,24 @@ function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
             </h1>
             <p className="text-brand-muted text-sm">{headerText}</p>
           </div>
-          {/* Language switcher — right-aligned in header */}
           <div className="flex-shrink-0 mt-1">
             <LangSwitcher />
           </div>
         </div>
       </div>
 
-      {/* Allergen disclaimer — always visible */}
+      {/* Allergen disclaimer */}
       <div className="px-4 pb-3">
         <AllergenBanner />
       </div>
 
-      {/* Sticky filter bar */}
-      <FilterBar filters={filters} onChange={onFiltersChange} />
+      {/* Filter bar with search + categories + dietary + allergens */}
+      <FilterBar filters={filters} onChange={onFiltersChange} categories={categories} />
 
       {/* Content area */}
       <div className="px-4 pt-4 pb-10">
         {hasActiveFilters ? (
           filteredItems.length === 0 ? (
-            /* Empty filter state */
             <div className="flex flex-col items-center py-16 gap-4 text-center">
               <p className="text-4xl">&#127869;</p>
               <p className="text-brand-muted text-sm">{t('empty_filters')}</p>
@@ -109,7 +112,6 @@ function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
               </button>
             </div>
           ) : (
-            /* Flat animated list when filters are active */
             <div className="flex flex-col gap-2">
               <AnimatePresence initial={false}>
                 {filteredItems.map((item) => (
@@ -121,27 +123,23 @@ function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
                   >
-                    <DishCard item={item} />
+                    <DishCard item={item} showAllergens={hasActiveAllergenFilters} />
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
           )
         ) : (
-          /* No active filters — full accordion */
           <MenuAccordion items={menu.menu_items} />
         )}
       </div>
 
-      {/* Footer */}
       <p className="text-brand-muted/40 text-xs text-center pb-8">
         Dish data parsed by NOM AI — translations may vary
       </p>
     </>
   );
 }
-
-// ─── Main export ─────────────────────────────────────────────────────────────
 
 interface MenuShellProps {
   menu: MenuWithItems;

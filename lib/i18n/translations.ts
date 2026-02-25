@@ -57,6 +57,14 @@ export const translations = {
     menu_header: '{count} plat(s) trouvé(s)',
     // Clear filters button
     clear_filters: 'Effacer les filtres',
+    // Search placeholder
+    search_placeholder: 'Rechercher un plat...',
+    // Category filter: all categories
+    category_all: 'Tout',
+    // Allergen toggle on filter bar
+    filter_allergens: 'Allergènes',
+    // Allergen toggle on dish card
+    card_allergens: 'Allergènes',
   },
   en: {
     allergen_disclaimer: 'Allergen information is indicative — please confirm with the server.',
@@ -97,6 +105,10 @@ export const translations = {
     lang_de: 'Deutsch',
     menu_header: '{count} dish(es) found',
     clear_filters: 'Clear filters',
+    search_placeholder: 'Search a dish...',
+    category_all: 'All',
+    filter_allergens: 'Allergens',
+    card_allergens: 'Allergens',
   },
   tr: {
     allergen_disclaimer: 'Alerjen bilgileri gösterge niteliğindedir — lütfen garsonla teyit edin.',
@@ -137,6 +149,10 @@ export const translations = {
     lang_de: 'Deutsch',
     menu_header: '{count} yemek bulundu',
     clear_filters: 'Filtreleri temizle',
+    search_placeholder: 'Yemek ara...',
+    category_all: 'Tümü',
+    filter_allergens: 'Alerjenler',
+    card_allergens: 'Alerjenler',
   },
   de: {
     allergen_disclaimer: 'Allergeninformationen sind indikativ — bitte beim Personal bestätigen.',
@@ -177,6 +193,10 @@ export const translations = {
     lang_de: 'Deutsch',
     menu_header: '{count} Gericht(e) gefunden',
     clear_filters: 'Filter zurücksetzen',
+    search_placeholder: 'Gericht suchen...',
+    category_all: 'Alle',
+    filter_allergens: 'Allergene',
+    card_allergens: 'Allergene',
   },
 } as const;
 
