@@ -1,277 +1,250 @@
 # Feature Research
 
-**Domain:** Pre-launch waitlist landing page + food-tech mobile app (menu scanning, translation, AI dish recommendation)
+**Domain:** Food-tech mobile web app — menu scanning, dish card generation, translation, AI recommendation, allergen filtering
 **Researched:** 2026-02-25
-**Confidence:** MEDIUM — landing page patterns are HIGH confidence (well-documented); food-tech feature landscape is MEDIUM (competitors verified, gamification specifics LOW from single sources)
+**Confidence:** MEDIUM-HIGH — core scanning/translation patterns are HIGH (verified via MenuGuide, FoodieLens, Yelp Menu Vision, Veryfi OCR); AI recommendation patterns MEDIUM (market-verified, implementation details LOW); allergen UX HIGH (regulatory-backed, well-documented)
 
 ---
 
-## Part 1: Landing Page Features
-
-The landing page is the first deliverable. It must do two jobs simultaneously: convert visitors to waitlist signups AND demonstrate enough of the app to justify that signup.
-
-### Table Stakes (Users Expect These)
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Hero section with clear value proposition | First thing visitors see; unclear headline = instant bounce | LOW | "What is this and why should I care" answered in 5 seconds |
-| Single-field email signup form | Standard for waitlist pages; extra fields kill conversion | LOW | Ask for email only. Name field optional but reduces conversion. Position above the fold |
-| Animated app demo / phone mockup | Users need to see the product before they believe it | MEDIUM | The nom-landing-v5.jsx already plans this: QR scan → parse → dish cards → AI Top 3. Critical for NOM since the concept (menu scanning) is unfamiliar |
-| Mobile-responsive layout | 60%+ web traffic is mobile; target audience likely discovers via phone | LOW | Ironic requirement for a mobile app landing page — easy to skip, fatal to miss |
-| Feature breakdown section | Users need specifics after the hero hook | LOW | 3–5 features with benefit-oriented descriptions, not just feature names |
-| Pricing / tier preview | Sets expectations, filters qualified leads into waitlist | MEDIUM | Even pre-launch pricing anchors perceived value. Show Free / Pass / Pro tiers |
-| FAQ section | Reduces support burden, handles common objections | LOW | Focus on "when will it launch", "what cities", "how does the scan work" |
-| Privacy / minimal legal footer | GDPR requirement (France/EU), users expect it | LOW | Essential for email collection in France. Cookie consent banner required |
-
-### Differentiators (Competitive Advantage on the Landing Page Itself)
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Scroll-triggered animated phone demo | Makes the product feel alive before it exists; competitors use static screenshots | HIGH | The planned hero animation (QR → parse → dish cards → AI Top 3) is NOM's main hook. Must feel smooth and premium. Requires careful implementation to avoid jank on mobile |
-| Dish carousel with real restaurant content | Strasbourg-specific content makes it feel real and local, not generic | MEDIUM | Use actual Strasbourg restaurant dishes. Authenticity beats polish for local trust |
-| Waitlist position counter + referral loop | Creates urgency and social proof; position-based incentives outperform monetary rewards | MEDIUM | "You are #247 on the list. Refer 3 friends to jump 50 spots." Proven to 3-5x conversion rates (Robinhood, Superhuman case studies) |
-| Social/gamification section preview | Shows the depth of the app; competitors show screenshots, NOM can show leaderboard and Taste Profile previews | HIGH | Demonstrates NOM is a platform, not just a utility tool |
-| Reverse search interactive demo | Unique feature, no competitor does this — show it on the landing page | HIGH | Let users click a dish image and see what restaurants have it. Even a faked interactive demo drives signups |
-| Dark theme with orange accent | Aesthetic differentiation from clinical white food apps | LOW | Consistent with NOM brand. Dark UIs feel premium and tech-forward |
-| Strasbourg-specific copy and imagery | Local trust signal; "built for people like you in Strasbourg" | LOW | Use Strasbourg landmarks, local restaurant names in demos |
-
-### Anti-Features (Landing Page)
-
-| Anti-Feature | Why Requested | Why Problematic | Alternative |
-|--------------|---------------|-----------------|-------------|
-| Full user account creation at signup | "Capture more data upfront" | Friction kills conversion; violates minimum viable ask principle | Email only. Collect preferences after signup via follow-up email sequence |
-| Video autoplay with sound | Demonstrates product dynamically | Instantly annoying on mobile; triggers browser autoplay blocks | Animated mockup with user-triggered audio, or muted autoplay with caption |
-| Blog / content section | "SEO and thought leadership" | Pre-launch, zero indexed content helps; adds build complexity | Launch content post-launch. Landing page is conversion, not discovery |
-| Social media feed embed | Shows activity / community | Live-loaded embeds slow page, break on API changes, often feel empty pre-launch | Static screenshot of social proof with follower count. Update manually |
-| Real-time waitlist count that inflates | Creates FOMO | If it's obviously fake it destroys trust. Inflated counters are common and users notice | Show real count, even if small. "47 foodies in Strasbourg already joined" is more credible than "10,000 on the list" if you're a local app |
-| Multi-page navigation / full website | Gives users places to wander | Waitlist pages convert better without nav menus — every link is an exit | One-page scroll layout. Remove all outbound links except legal |
+> **Scope note:** This file covers only the NEW MVP features being added in this milestone. The landing page, waitlist, and referral system are already built and documented. Features below assume the Next.js + Supabase foundation exists.
 
 ---
 
-## Part 2: Mobile App Features
+## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
+Features users assume exist in any menu translation/scanning product. Missing these makes NOM feel incomplete compared to MenuGuide, FoodieLens, or Yelp Menu Vision.
+
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Menu photo scan (camera) | Core product promise. Missing = broken app | HIGH | OCR + AI pipeline. Camera permissions, image quality handling, dark/blurry photos must be handled gracefully |
-| Multi-language menu translation | Direct competitor AnyMenu does this free for 50+ languages. Not having it = inferior product | MEDIUM | 50+ languages is table stakes. NOM's translation must be faster or more contextually accurate to differentiate |
-| Dish description / explanation | Users scanning foreign menus need to understand what they're ordering | MEDIUM | "What is Flammekueche?" level explanations. Competitors: MenuGuide includes this in free tier |
-| Allergen / dietary flag display | EU regulation awareness + user safety expectation. Increasingly mandatory | MEDIUM | Flag: gluten, nuts, dairy, shellfish, pork minimum. Vegan/vegetarian markers expected |
-| Dish cards UI (image + name + description) | Visual format is how food is communicated in 2026. Text-only menus feel outdated | MEDIUM | NOM plans "dish cards" — this is the right format. Pinterest-style grid or swipe cards both work |
-| Free tier with meaningful limits | Users expect to try before paying. Hard paywall = uninstall | LOW | MenuGuide: 3 scans/day, 8 items free. NOM's credit model is appropriate |
-| Offline / cached results | Restaurant environments have poor signal. Scanned menus should persist | MEDIUM | Cache scan results locally. Users expect scanned menu to stay accessible during the meal |
-| App Store / Play Store presence | Distribution table stake; TestFlight is only valid for beta | LOW | Required for paid launch |
+| Camera/photo scan → menu parsing | Core product promise. Any competitor offers this. Missing = broken | HIGH | OCR pipeline: image → text extraction → dish segmentation. Must handle dark lighting, blurry, angled, handwritten menus. Veryfi and GPT-4o Vision both viable. GPT-4o is simpler to integrate but higher per-call cost |
+| QR code scan → URL → menu parsing | In 2025, most Strasbourg restaurants have QR codes linking to PDFs or menu pages. Users expect one tap | MEDIUM | Two sub-cases: (1) QR → PDF → OCR pipeline, (2) QR → HTML menu page → structured parsing. Both must be handled. jsQR or native camera API for QR detection |
+| URL/link menu parsing | Users find menus on Google before arriving. Paste a link, get dish cards | MEDIUM | Fetch page HTML, extract structured data (schema.org/Restaurant markup if available), fallback to AI extraction. Apify-style scraping or direct GPT-4o with HTML context. Handle: PDFs, dynamic JS-rendered menus, third-party platforms (TheFork, TripAdvisor menu tabs) |
+| Dish cards (image + name + translated description) | Visual format is the universal standard for food in 2026. Text-only menus feel like 2010 | MEDIUM | Each card: dish photo (real or AI-generated), translated name, 2-3 sentence description, dietary icons. FoodieLens confirmed this is the standard format. Swipe or grid layout both work |
+| Translation FR/EN + TR/DE/ES/IT | Strasbourg test market explicitly spans Turkish, German, French, Italian restaurants. Users from any of these backgrounds need their language | MEDIUM | GPT-4o handles all 6 languages with strong culinary context. Do not use Google Translate — lacks food-specific terminology. "Doner" should stay "Doner", not become "Donor" |
+| Dietary/allergen flags on dish cards | EU regulation awareness drives user expectation. Post-2024 French food law tightened allergen disclosure | MEDIUM | Minimum 14 EU allergens (gluten, crustaceans, eggs, fish, peanuts, soybeans, milk, tree nuts, celery, mustard, sesame, sulphites, lupin, molluscs). Vegetarian/vegan markers. Spicy indicator. Budget flag (price relative to menu average) |
+| Allergen disclaimer (never "guaranteed") | Legal and safety standard. Every verified allergen app uses this. Omitting creates liability | LOW | Standard wording: "Allergen info is inferred from dish descriptions. Ingredients may vary. Always inform your server of allergies before ordering." Must appear on every dish card with allergen flags. Non-negotiable |
+| Scan result caching (per restaurant) | Restaurant Wi-Fi is unreliable. Users expect scanned menu to persist during the meal | MEDIUM | Cache in localStorage + Supabase. TTL: 24h for user session, 7 days in shared DB. Each scan contributes to shared menu cache for future users |
+| Trust badges (Verified vs Inferred) | Users need to know when data is confirmed vs AI-guessed. Competitors do not do this — NOM must, per product rules | LOW | Two states: "✅ Menu Verified" (data comes from official restaurant source) vs "⚠ AI Inferred" (extracted/generated by AI). Show on dish card and on scan result header |
+| No account required to scan | Expectation from the product rules. Friction-free first scan is table stakes in 2026 | LOW | Anonymous scanning with session-based credit tracking. Device fingerprint or session cookie for free tier limits. Account creation unlocks history |
 
 ### Differentiators (Competitive Advantage)
 
+Features NOM's competitors (MenuGuide, FoodieLens, AnyMenu) do not offer. These are where NOM competes.
+
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| AI Top 3 recommendation ("AI Picks") | No competitor offers personalized AI-ranked dish recommendations from a scanned menu. MenuGuide and AnyMenu translate — they don't recommend | HIGH | This is NOM's primary differentiator. Must account for user preferences, dietary filters, and meal context (lunch vs dinner, solo vs group) |
-| Taste Profile | Builds a persistent preference model that improves over time. Users become invested in the product | HIGH | Requires onboarding questions + iterative learning from dish ratings. The more meals tracked, the more accurate the recommendations |
-| Match Score per dish | "88% match for you" on each dish card creates a personal, gamified experience | HIGH | Depends on Taste Profile. Drives engagement because users want to see scores change |
-| Reverse search ("What restaurant has this?") | Unique: user finds a dish photo online and discovers Strasbourg restaurants serving it | HIGH | Technically complex (image embeddings + restaurant database) but highly viral/shareable. No competitor has this |
-| "Stories" for dishes | Adds cultural context (history, origin, pairing suggestions) to dishes | MEDIUM | Differentiates from pure utility apps. Makes NOM educational and shareable |
-| NOM Wrapped (annual review) | Yearly "Your food year in review" drives massive social sharing. Inspired by Spotify Wrapped | HIGH | Requires 12 months of data to be meaningful. Build data collection from day 1, ship Wrapped later |
-| Leaderboard / social layer | Community element: see who explored the most dishes, top raters in Strasbourg | HIGH | Local leaderboard ("Top 10 foodies in Strasbourg this month") is more engaging than global. Requires critical mass to feel alive |
-| QR code scan (restaurant-provided) | Restaurants can provide NOM-optimized QR codes for their menus | HIGH | Requires B2B restaurant onboarding. Powerful network effect but separate product line. Defer unless restaurants request it |
-| Credits system with top-ups | Transparent, fair monetization that users can control | MEDIUM | Better than hard paywall. Users tolerate credit limits if the free tier is genuinely useful |
-| Strasbourg-first local database | Hyperlocal data: every restaurant in Strasbourg indexed, with photos and dish-level data | HIGH | Extremely valuable for launch differentiation. Building this database is a major pre-launch task |
+| AI Top 3 assistant ("Ask NOM") | No competitor recommends from scanned menu. They all translate — none suggest. "What should I order?" answered in one tap | HIGH | GPT-4o with context: full parsed menu + user dietary filters + request criteria (diversity, clarity, match). Returns exactly 3 dishes with rationale. 3x/day free, then paywall. The paywall hits after value is demonstrated — correct timing |
+| Reverse search ("I want X") | "I want something vegetarian and not too heavy" → highlighted dishes from scanned menu. Natural language input → dish filter. No competitor does this | HIGH | Client-side: filter scanned dish list by tags/properties. Server-side for nuanced queries: send query + dish list to GPT-4o, get ranked subset back. Simpler than building embeddings — start with GPT-4o ranking |
+| Multilingual allergen phrases | Per product rule: allergen warnings appear in the user's language, always with "ask server" phrasing | MEDIUM | Pre-translated disclaimer phrases for all 6 supported languages. Never AI-generated on the fly for safety text — use fixed, reviewed translations. Store as locale strings |
+| Menu caching as DB enrichment | Each user scan feeds shared restaurant menu database. Second user scanning same restaurant gets instant results | MEDIUM | On scan: check Supabase `menus` table by restaurant_id or URL hash. If fresh (<7 days): return cached, skip AI call. If stale/missing: run pipeline, store result. Network effect compounds value |
+| Photo OCR fallback (camera) | For handwritten menus, chalk boards, paper menus with no QR code. Handles the real-world Strasbourg restaurant that hasn't digitised | HIGH | Harder than PDF OCR. GPT-4o Vision is the current best approach for arbitrary menu photos. Pre-process: straighten, enhance contrast before sending. Set user expectation: "Handwritten menus may have lower accuracy" |
+| Dietary filter UX on dish cards | Most apps show allergen text. NOM filters the card grid in real time — tap "vegetarian" and irrelevant cards grey out or hide | LOW | Client-side filter on dish tag array. Tags set during AI parsing. Instant, no server round-trip |
+| Top 3 criteria transparency | Show WHY each dish was picked: "Diverse — not all meat", "Clear description — no guessing", "Matches your no-gluten filter". Builds trust in the AI | MEDIUM | Include brief rationale string in Top 3 API response. Render as subtitle under each recommended dish card |
 
-### Anti-Features (Mobile App)
+### Anti-Features (Commonly Requested, Often Problematic)
 
 | Anti-Feature | Why Requested | Why Problematic | Alternative |
 |--------------|---------------|-----------------|-------------|
-| Food delivery integration | "Users can order directly" | Entirely different product. Requires restaurant partnerships, payment rails, logistics. Scope explosion | Surface "Order via Uber Eats" deep link instead. No commission, no complexity |
-| User-generated restaurant reviews | "More content, more engagement" | Competes with Google Maps and TripAdvisor where users already have history. Won't win | Dish-level ratings only (personal, not public by default). Different from restaurant reviews |
-| Nutrition tracking / calorie counting | "Health-conscious users" | Requires nutritional database for every dish in every restaurant. Enormous data problem. Yazio and MyFitnessPal own this space | Allergen flags cover the safety use case. Full nutrition is a different product |
-| Menu creation for restaurants | "Two-sided marketplace" | Restaurant-side product requires sales team, onboarding, and support. B2B is a different business | Stick to consumer side. Let restaurants discover NOM organically if it gains traction |
-| Real-time table availability / reservations | "One-stop dining app" | Requires restaurant integrations, reservation systems. Resy/OpenTable own this | Deep link to existing reservation tools |
-| Multi-city launch simultaneously | "Maximize TAM" | Dilutes the local database quality. No leaderboard feels alive. No social proof | Strasbourg-first. Dense local data beats thin global data. Expand city by city |
-| Social feed / following system | "Community building" | Heavy moderation burden, cold start problem, competes with Instagram food content | Leaderboard + Wrapped are lightweight social proof without a full social graph |
+| Guaranteed allergen accuracy | Users with severe allergies want certainty | NOM parses menus written by restaurants that are often incomplete. Guaranteeing accuracy creates liability and false safety. Fatal if wrong | Always show "⚠ AI Inferred" badge and "ask server" disclaimer. Never remove this warning, even when confidence is high |
+| Full menu translation for all 100+ languages | "Be global from day 1" | The Strasbourg market is FR/EN/TR/DE/ES/IT. Supporting 100 languages spreads QA surface area, increases prompt complexity, and adds untestable edge cases at launch | Ship 6 languages, validate quality. Add languages based on user demand signals post-launch |
+| Nutrition tracking (calories, macros) | Health-conscious users request it | Requires per-dish nutritional database that restaurants don't maintain. AI-estimated calories are unreliable and create health risk if acted on. Yazio/MyFitnessPal own this space | Allergen flags cover the safety use case. Explicitly out of scope in product rules |
+| User-editable dish descriptions | "Let users correct AI errors" | Opens moderation burden. Bad actors can poison menu data. Trust badge system collapses if community edits are mixed with AI-inferred data | Implement a "flag as incorrect" button instead. Human review before any edit goes live |
+| Real-time menu scraping on every page load | "Always up-to-date menus" | Restaurant websites block scrapers, rate-limit, and change structure constantly. This approach will break silently and frequently | Cache menus with TTL. Show "last updated" timestamp. Manual refresh button for users who want fresh data |
+| AI-generated dish photos for all dishes | "Every dish should have a visual" | AI food photos are visually appealing but misleading — the actual dish will look different. Creates disappointment and trust issues at the table | Use real photos from web search when available (Yelp, Google Images via API). Show AI-generated as last resort with "Illustrative image" label |
+| "Feed" of recent restaurant scans | "Social proof, show what others are scanning" | Violates the product rule: scan = home, never feed. A social feed changes the app's information architecture and creates a maintenance burden | Trust badges and cache-hit counts ("47 people scanned this menu") are sufficient social proof without a feed |
+| Infinite AI Top 3 calls for free | "Remove friction for best experience" | GPT-4o calls cost ~$0.01-0.03 per Top 3 request. At scale this is unsustainable. The paywall is the business model | 3 free/day is the proven freemium threshold (MenuGuide uses 3 scans/day free). Hitting the limit after value is demonstrated converts well |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Camera / OCR Scan]
-    └──requires──> [Menu Parsing Pipeline (AI)]
-                       └──requires──> [Dish Card Generation]
-                                          └──requires──> [Translation Layer]
-                                          └──requires──> [Allergen Detection]
-                                          └──enables──> [AI Top 3 Recommendation]
+[QR Code Scan]
+    └──requires──> [jsQR or native camera API]
+    └──outputs──> [URL]
+                    └──feeds──> [URL Menu Parser]
 
-[Taste Profile]
-    └──requires──> [Dish Rating / Feedback]
-    └──enables──> [Match Score per Dish]
-    └──enables──> [AI Top 3 Recommendation] (personalized)
-    └──enables──> [NOM Wrapped] (requires 3+ months of data)
+[URL Menu Parser]
+    └──requires──> [HTML fetch + extraction OR PDF download + OCR]
+    └──requires──> [GPT-4o or structured extraction API]
+    └──outputs──> [Raw dish list]
 
-[Strasbourg Restaurant Database]
-    └──requires──> [Data Collection / Ingestion Pipeline]
-    └──enables──> [Reverse Search]
-    └──enables──> [Leaderboard] (meaningful local rankings)
-    └──enables──> [Dish Stories] (curated local content)
+[Photo OCR (camera)]
+    └──requires──> [GPT-4o Vision]
+    └──requires──> [Image pre-processing (contrast, straighten)]
+    └──outputs──> [Raw dish list]
 
-[Waitlist Email Collection]
-    └──enables──> [Referral / Viral Loop]
-    └──enables──> [Pre-launch Beta Invites]
-    └──enables──> [Launch Email Campaign]
+[Raw dish list]
+    └──requires──> [Translation Layer (GPT-4o, 6 languages)]
+    └──requires──> [Allergen Detection (GPT-4o tagging)]
+    └──outputs──> [Structured dish objects: name, description, tags, price]
+                    └──feeds──> [Dish Card Generation]
+                    └──feeds──> [Menu Cache (Supabase)]
+                    └──feeds──> [AI Top 3]
+                    └──feeds──> [Reverse Search / Dietary Filter]
 
-[Credits System]
-    └──requires──> [Payment Rails (Stripe)]
-    └──enables──> [Free Tier Limits]
-    └──enables──> [Pass / Pro Subscription]
+[Dish Card Generation]
+    └──requires──> [Structured dish objects]
+    └──requires──> [Dish photo lookup (Yelp/Google API or AI generation)]
+    └──requires──> [Trust badge assignment (Verified vs Inferred)]
+    └──outputs──> [Rendered dish cards with badges + allergen disclaimers]
 
-[Leaderboard]
-    └──requires──> [User Accounts]
-    └──requires──> [Critical Mass of Strasbourg Users] (feels hollow < 50 active users)
+[AI Top 3 Assistant]
+    └──requires──> [Structured dish objects]
+    └──requires──> [User dietary filter preferences]
+    └──requires──> [GPT-4o with Top 3 prompt (diversity + clarity + match)]
+    └──requires──> [Daily usage counter (3x/day free gate)]
+    └──outputs──> [3 recommended dishes + rationale strings]
 
-[NOM Wrapped]
-    └──requires──> [12+ months of scan/rating data]
-    └──requires──> [User Accounts with history]
+[Dietary / Allergen Filter]
+    └──requires──> [Structured dish objects with allergen tags]
+    └──outputs──> [Filtered/greyed dish card grid]
+    (no server call required — pure client-side filter)
+
+[Menu Cache]
+    └──requires──> [Supabase menus table]
+    └──requires──> [Restaurant identifier (URL hash or place_id)]
+    └──enables──> [Cache hit = skip AI pipeline for returning scans]
+    └──enables──> [Trust badge: "Verified" when cache is confirmed from official source]
+
+[Reverse Search]
+    └──requires──> [Structured dish objects already parsed]
+    └──requires──> [Natural language query from user]
+    └──requires──> [Client filter OR GPT-4o ranking call (for nuanced queries)]
+    (enhances but does not require AI Top 3)
+
+[Multilingual Allergen Disclaimers]
+    └──requires──> [Static locale string files (pre-translated, NOT AI-generated)]
+    └──enhances──> [Dish Card Generation]
+    └──conflicts──> [AI-generated safety text — never do this]
 ```
 
 ### Dependency Notes
 
-- **AI Top 3 requires Taste Profile to be personalized:** Without Taste Profile, AI Top 3 can still work as a generic "popular choices" recommendation, but loses the "for you" value proposition. Build generic first, personalize in v1.x.
-- **Reverse Search requires the Strasbourg database:** This is the hardest feature to build because it requires pre-indexing dish images and associating them with restaurants. Cannot ship without database.
-- **Leaderboard has a cold-start problem:** Below ~50 active users it feels hollow and embarrassing. Do not show publicly until critical mass is reached. Consider showing "you are #4 in Strasbourg" privately instead.
-- **NOM Wrapped conflicts with early launch timing:** If launched in Q1, the first Wrapped can't ship until Jan next year. Start collecting data immediately, defer the feature.
+- **Translation must happen before dish card generation:** Cards cannot render without translated names and descriptions. The AI parsing + translation step is the critical path — everything downstream depends on it.
+- **Allergen detection is a parallel step to translation, not sequential:** The same GPT-4o call can handle both. Request: "translate this dish list to [language] AND tag each with EU allergens present." This halves the API calls.
+- **Menu cache lookup must happen BEFORE the AI pipeline:** Cache hit = instant result, no API cost. Only call AI if cache is cold or stale. This is the cost-control mechanism.
+- **AI Top 3 requires dietary filters to be set first:** Without filters, Top 3 defaults to generic "popular/interesting" mode. With filters, it becomes personalised. Filters should be captured at session start (no account needed — store in sessionStorage).
+- **Reverse search has two modes:** (1) Client-side tag filter (fast, free, covers simple cases: "vegetarian", "no nuts"). (2) GPT-4o ranked query (handles nuanced: "something light but filling"). Start with client-side only for v1.
+- **Trust badges depend on data source, not AI confidence:** "Verified" = data came from official restaurant menu page or PDF. "Inferred" = AI extracted from ambiguous source. This is a source metadata flag, not an accuracy score.
+- **Allergen disclaimer text must be static locale strings:** Never generate safety disclaimers with AI. Pre-translate all 6 languages, store as constants, render from locale file.
 
 ---
 
 ## MVP Definition
 
-### Landing Page Launch With (v1)
+### Launch With (v1)
 
-- [x] Hero with animated phone demo (QR scan → dish cards → AI Top 3) — the hook
-- [x] Email waitlist signup form (single field, prominent) — the conversion
-- [x] Waitlist position + referral link post-signup — the viral loop
-- [x] Feature cards (scan, translation, AI assistant, Taste Profile) — the proof
-- [x] Pricing tier preview (Free / Pass 9.99€ / Pro 3.99€/mo) — the value anchor
-- [x] Dish carousel with Strasbourg content — local credibility
-- [x] FAQ section — objection handling
-- [x] GDPR-compliant email collection + cookie consent — legal requirement (France/EU)
+Core scan-to-cards loop. Everything else is additive.
 
-### Landing Page Add After Validation (v1.x)
+- [ ] QR code scan → URL detection → menu extraction — the fastest path to dish cards
+- [ ] URL/link paste → menu parsing — for users who find menus on Google first
+- [ ] Photo OCR (camera fallback) — essential for Strasbourg restaurants with paper/chalk menus
+- [ ] Translation in 6 languages (FR, EN, TR, DE, ES, IT) — covers Strasbourg test market
+- [ ] Dish cards with image, translated name, 2-sentence description, price
+- [ ] EU allergen tags on each dish card (14 mandatory allergens + vegan/vegetarian/spicy)
+- [ ] Allergen disclaimer in user's language (static locale strings, never AI-generated)
+- [ ] Trust badge per dish card (✅ Verified / ⚠ Inferred)
+- [ ] Dietary filter UI (tap to filter cards: vegetarian, vegan, gluten-free, no nuts)
+- [ ] AI Top 3 assistant — 3x/day free, paywall after — this is the "wow moment"
+- [ ] Menu caching in Supabase — cache each scan result, serve to next user scanning same restaurant
+- [ ] Session-based credit counter (no account required, device fingerprint)
 
-- [ ] Reverse search interactive demo — add when the feature itself is built
-- [ ] Social section (Leaderboard preview, Wrapped teaser) — add when user count justifies it
-- [ ] Testimonials from beta users — add when beta runs
-- [ ] Live waitlist counter — add when count is large enough to be credible (>200)
+### Add After Validation (v1.x)
 
-### App Launch With (v1)
+Add when core loop is stable and first 50 real scans have been done.
 
-- [x] Camera scan → OCR → menu parsing → dish cards
-- [x] Translation (50+ languages minimum)
-- [x] Dish description + allergen flags
-- [x] AI Top 3 recommendation (generic, not yet personalized)
-- [x] Free tier with credit limits (e.g., 5 full scans/day free)
-- [x] Pass + Pro subscription via in-app purchase
-- [x] Offline result caching
-- [x] Basic Taste Profile onboarding (dietary preferences, cuisine likes/dislikes)
-
-### App Add After Validation (v1.x)
-
-- [ ] Personalized Match Score — requires Taste Profile data accumulation
-- [ ] Dish Stories — content effort, add when core is stable
-- [ ] Leaderboard — when Strasbourg user count reaches meaningful threshold
-- [ ] Reverse search — technically complex, only after core loop is validated
+- [ ] Reverse search ("I want X") — client-side filter first, GPT-4o ranking second
+- [ ] Top 3 rationale display ("Why: high diversity + matches your no-gluten filter")
+- [ ] Real dish photo lookup via Yelp Fusion API or Google Places Photos
+- [ ] Budget filter (flag dishes relative to menu price average)
+- [ ] "Last scanned" timestamp + manual refresh button on cached menus
 
 ### Future Consideration (v2+)
 
-- [ ] NOM Wrapped — requires full year of data
-- [ ] Restaurant-provided QR codes (B2B layer) — separate product motion
-- [ ] Multi-city expansion — expand after Strasbourg density achieved
+Defer until product-market fit confirmed in Strasbourg.
+
+- [ ] Expanded language support beyond 6 (add based on user location data)
+- [ ] Account-linked scan history (requires auth flow)
+- [ ] B2B restaurant QR codes (NOM-optimised QR codes for restaurant tables)
+- [ ] Advanced personalisation (Taste Profile feeding Top 3)
+- [ ] Nutrition estimates (only if demand is clear and liability framework established)
 
 ---
 
 ## Feature Prioritization Matrix
 
-### Landing Page
-
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Hero + animated demo | HIGH | MEDIUM | P1 |
-| Email waitlist form | HIGH | LOW | P1 |
-| Referral / position counter | HIGH | MEDIUM | P1 |
-| Feature cards | HIGH | LOW | P1 |
-| Dish carousel | HIGH | LOW | P1 |
-| Pricing preview | MEDIUM | LOW | P1 |
-| FAQ | MEDIUM | LOW | P1 |
-| GDPR / cookie consent | HIGH (legal) | LOW | P1 |
-| Reverse search demo | HIGH | HIGH | P2 |
-| Social / gamification preview | MEDIUM | HIGH | P2 |
-| Live waitlist counter | MEDIUM | LOW | P2 |
-| Testimonials | MEDIUM | LOW | P2 (post-beta) |
-
-### Mobile App
-
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Camera scan + OCR pipeline | HIGH | HIGH | P1 |
-| Translation (50+ languages) | HIGH | MEDIUM | P1 |
-| Dish cards (image + description) | HIGH | MEDIUM | P1 |
-| Allergen flags | HIGH | MEDIUM | P1 |
-| AI Top 3 (generic) | HIGH | MEDIUM | P1 |
-| Free tier + credit system | HIGH | MEDIUM | P1 |
-| Pass / Pro subscription | HIGH | MEDIUM | P1 |
-| Offline caching | MEDIUM | MEDIUM | P1 |
-| Taste Profile onboarding | HIGH | MEDIUM | P1 |
-| Personalized Match Score | HIGH | HIGH | P2 |
-| Dish Stories | MEDIUM | MEDIUM | P2 |
-| Reverse search | HIGH | HIGH | P2 |
-| Leaderboard | MEDIUM | MEDIUM | P3 |
-| NOM Wrapped | HIGH | HIGH | P3 |
-| QR code B2B layer | MEDIUM | HIGH | P3 |
+| QR scan → URL → menu parse | HIGH | MEDIUM | P1 |
+| URL paste → menu parse | HIGH | MEDIUM | P1 |
+| Photo OCR camera fallback | HIGH | HIGH | P1 |
+| Translation (6 languages) | HIGH | MEDIUM | P1 |
+| Dish cards (image + name + description) | HIGH | MEDIUM | P1 |
+| EU allergen tags + dietary icons | HIGH | MEDIUM | P1 |
+| Allergen disclaimer (locale strings) | HIGH (legal) | LOW | P1 |
+| Trust badges (Verified / Inferred) | HIGH (trust) | LOW | P1 |
+| Dietary filter UI | HIGH | LOW | P1 |
+| AI Top 3 (free 3x/day) | HIGH | MEDIUM | P1 |
+| Menu cache (Supabase) | HIGH (cost + UX) | MEDIUM | P1 |
+| Session credit counter | MEDIUM | LOW | P1 |
+| Reverse search (client-side) | MEDIUM | LOW | P2 |
+| Top 3 rationale text | MEDIUM | LOW | P2 |
+| Real dish photo lookup (API) | MEDIUM | MEDIUM | P2 |
+| Budget flag on dish cards | LOW | LOW | P2 |
+| Reverse search (GPT-4o ranking) | MEDIUM | MEDIUM | P3 |
+| Account-linked history | MEDIUM | HIGH | P3 |
+| Expanded languages (beyond 6) | LOW | LOW | P3 |
 
 **Priority key:**
-- P1: Must have for launch
-- P2: Should have, add when core is validated
-- P3: Future consideration / requires data/scale
+- P1: Must have for milestone launch
+- P2: Add when P1 is stable
+- P3: Future milestone
 
 ---
 
 ## Competitor Feature Analysis
 
-| Feature | MenuGuide | AnyMenu | NOM (planned) |
-|---------|-----------|---------|---------------|
-| Menu photo scan | Yes (3/day free) | Yes (free) | Yes (credit-limited free) |
-| Translation | 100+ languages | 50+ languages | 50+ languages minimum |
-| Dish description | Yes | Yes (basic) | Yes + Stories (richer) |
-| Allergen detection | Yes | No | Yes |
-| AI dish recommendation | No | No | Yes — core differentiator |
-| Taste Profile / personalization | No | No | Yes |
-| Match Score | No | No | Yes |
-| Reverse search | No | No | Yes |
-| Gamification / leaderboard | No | No | Yes |
-| NOM Wrapped | No | No | Yes (v2) |
-| Offline caching | Unknown | Unknown | Yes |
-| Local city focus | Global | Global | Strasbourg-first (density advantage) |
-| Pricing model | Free + $4.99/wk | Free | Free + credits + Pass/Pro |
-| Revenue model | Subscription | Free (unclear) | Freemium + subscription |
+| Feature | MenuGuide | FoodieLens | Yelp Menu Vision | NOM (planned) |
+|---------|-----------|------------|-----------------|---------------|
+| QR scan | No (photo only) | No (photo only) | Yes (camera overlay) | Yes — camera + QR detection |
+| URL paste | No | No | No | Yes — unique input vector |
+| Photo OCR | Yes | Yes | Yes | Yes |
+| Translation languages | 100+ | 100+ | English output only | 6 (FR/EN/TR/DE/ES/IT) — quality over quantity |
+| Dish cards | Yes (image + text) | Yes (image + text) | Overlay on camera | Yes — structured card UI |
+| Allergen detection | Yes (basic) | No | No | Yes — EU 14-allergen standard |
+| Allergen disclaimer | Basic text | None | None | Yes — multilingual locale strings |
+| Trust badges | No | No | No | Yes — core product rule |
+| Dietary filter UI | Profile-based | No | No | Yes — real-time card filter |
+| AI recommendation (Top 3) | No | No | No | Yes — primary differentiator |
+| Reverse search | No | No | No | Yes |
+| Menu caching / DB enrichment | No | No | No | Yes — compounding network effect |
+| Free tier | 3 scans/day | Unknown | Free (in Yelp app) | 3 AI Top 3/day + unlimited scans (different gate) |
+| Paywall trigger | After 3 scans | Unknown | None | After 3 AI calls/day — paywall hits after value proven |
 
-**Takeaway:** MenuGuide and AnyMenu are pure translation utilities. NOM competes by turning a one-time translation tool into a recurring dining companion with memory, recommendations, and social features. The translation itself is not NOM's moat — the Taste Profile and AI recommendation layer on top of it is.
+**Takeaway:** MenuGuide and FoodieLens translate menus. Yelp Menu Vision overlays photos on a live camera view. None of them recommend. None use trust badges. None gate the paywall on the AI recommendation rather than the scan itself. NOM's model — unlimited free scans, paywall only on the AI "wow moment" — is structurally different and more likely to convert users who have already seen value.
 
 ---
 
 ## Sources
 
-- [MenuGuide official site](https://menuguide.app/) — feature and pricing verification (HIGH confidence)
-- [AnyMenu official site](https://anymenu.app/) — feature and pricing verification (HIGH confidence)
-- [Waitlister.me — Waitlist Landing Page Guide](https://waitlister.me/growth-hub/guides/waitlist-landing-page-optimization-guide) — landing page best practices (MEDIUM confidence)
-- [Moosend — Waitlist Landing Page Best Practices](https://moosend.com/blog/waitlist-landing-page/) — landing page features (MEDIUM confidence)
-- [Viral Loops — How to Build a Waitlist](https://viral-loops.com/blog/how-to-build-a-waitlist/) — referral/viral mechanics (MEDIUM confidence)
-- [Flowjam — Waitlist Landing Page Examples](https://www.flowjam.com/blog/waitlist-landing-page-examples-10-high-converting-pre-launch-designs-how-to-build-yours) — conversion patterns (MEDIUM confidence)
-- [Trophy.so — Food App Gamification Examples](https://trophy.so/blog/food-drink-gamification-examples) — gamification features (MEDIUM confidence)
-- [AI in Food Industry 2026](https://theninehertz.com/blog/ai-in-food-industry) — food tech feature landscape (LOW confidence — single source)
-- [RevenueCAT — App Monetization Trends 2025](https://www.revenuecat.com/blog/growth/2025-app-monetization-trends/) — credits/freemium strategy (MEDIUM confidence)
-- [Paire.io](https://paire.io/eating-with-ai/) — taste profile / restaurant recommendation competitor (MEDIUM confidence)
-- [AI-driven dining personalization 2025](https://dhhospitalitygroup.com/ai-driven-dining-personalization/) — personalization patterns (MEDIUM confidence)
+- [MenuGuide official site + pricing](https://menuguide.app/) — feature/pricing verification (HIGH confidence, verified Feb 2026)
+- [FoodieLens feature page](https://foodielens.app/) — competitor feature analysis (HIGH confidence, verified Feb 2026)
+- [TechCrunch: Yelp AI Menu Vision, Oct 2025](https://techcrunch.com/2025/10/21/yelps-ai-assistant-can-now-scan-restaurant-menus-to-show-you-what-dishes-look-like/) — industry direction (HIGH confidence)
+- [Yelp Blog: Fall Product Release 2025](https://blog.yelp.com/news/fall-product-release-2025/) — Menu Vision technical details (HIGH confidence)
+- [Veryfi Restaurant Menu OCR API](https://www.veryfi.com/restaurant-menu-ocr-api/) — OCR capability baseline (MEDIUM confidence)
+- [Klippa: Automatically Scan Menu Cards with OCR & ML](https://www.klippa.com/en/blog/information/automatically-scan-menu-cards-with-ocr-ml-for-market-research-and-competitor-analyses/) — OCR pipeline patterns (MEDIUM confidence)
+- [Medium: Building AI-Powered OCR for Restaurant Menus](https://medium.com/@zafarobad/from-fuzzy-photos-to-perfect-data-building-an-ai-powered-ocr-system-for-restaurant-menus-bb575b16db59) — implementation patterns (MEDIUM confidence)
+- [Allergic Living: Menu Platform Food Allergy Safety, 2025](https://www.allergicliving.com/2025/04/08/menu-platform-aims-to-transform-restaurant-food-allergy-safety/) — allergen UX standards (HIGH confidence)
+- [DineAware: Food Allergy Disclaimer Best Practices](https://www.dineaware.com/blog/whats-the-best-food-allergy-disclaimer) — disclaimer wording (MEDIUM confidence)
+- [Apify Restaurant Menu Scraper](https://apify.com/menus-r-us/restaurant-menu-scraper) — URL menu parsing approach (MEDIUM confidence)
+- [Scanova: Restaurant QR Code Guide 2026](https://scanova.io/blog/restaurant-qr-code/) — QR code menu landscape (MEDIUM confidence)
+- [OpenAI GPT-4o model](https://developers.openai.com/api/docs/models/gpt-4o) — translation and vision capabilities (HIGH confidence)
 
 ---
 
-*Feature research for: NOM — restaurant menu scanning + AI dish recommendation app*
+*Feature research for: NOM MVP — menu scanning, dish cards, translation, AI Top 3, allergen filtering*
 *Researched: 2026-02-25*
+*Milestone: MVP App Features (added to existing Next.js landing page)*

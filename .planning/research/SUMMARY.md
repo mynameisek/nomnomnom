@@ -1,19 +1,17 @@
 # Project Research Summary
 
-**Project:** NOM (nomnomnom) — Restaurant Menu Scanning + AI Dish Recommendation App
-**Domain:** Food-tech mobile app + animated waitlist landing page (pre-launch)
+**Project:** NOM — Restaurant Menu Scanning / AI Translation Web App (MVP Features)
+**Domain:** Food-tech mobile web app — menu scanning, OCR, LLM parsing, dish cards, AI recommendation
 **Researched:** 2026-02-25
 **Confidence:** MEDIUM-HIGH
 
----
-
 ## Executive Summary
 
-NOM is a food-tech product with two distinct surfaces: a pre-launch animated waitlist landing page and a consumer mobile app for scanning restaurant menus, translating them, and generating AI-powered dish recommendations. The product is Strasbourg-first, French-facing, and targets a market gap that existing competitors (MenuGuide, AnyMenu) leave wide open — they translate menus, but they do not recommend, personalize, or build a persistent user preference model. NOM's moat is not translation; it is the Taste Profile + AI recommendation layer that turns a one-time utility into a recurring dining companion.
+NOM is adding a functional app surface to an existing Next.js 16.1.6 App Router landing page. The product's core promise is scanning restaurant menus (via QR code, URL, or photo) and returning AI-structured dish cards with translation, allergen detection, and an AI "Top 3" recommendation — features no current competitor offers in combination. Research confirms the architecture is well-trodden: Server Component shells with Client Component islands for camera access, Route Handlers as server-side OpenAI proxies, and Supabase as both the database and cache layer. The scan-to-cards pipeline (fetch/OCR → LLM parse → Supabase cache → dish cards) is the entire critical path, and everything else — filters, recommendations, reverse search — is additive on top of it.
 
-The recommended approach is a sequential two-milestone strategy: ship the landing page first (Next.js 16 + Tailwind v4 + Motion + Supabase waitlist), use it to build a waitlist while the mobile MVP is built, then release the Expo SDK 54 app with the core OCR-to-dish-card pipeline and a generic AI Top 3 recommendation. The architecture is a Turborepo monorepo with two independent apps (landing and mobile) sharing only TypeScript types, with backend logic living in Supabase Edge Functions close to the Postgres database. The hardest architecture decision is the two-tier LLM caching layer (Redis exact-match + pgvector semantic cache), which must be designed into the schema from day one — retrofitting it later is a costly schema migration.
+The recommended approach is a strict layered build: schema and types first, then the LLM pipeline in isolation, then Route Handlers, then UI. The stack additions are minimal (7 new packages) and all are actively maintained and version-compatible with the existing Next.js 16 / React 19 / Tailwind 4 foundation. The two architectural decisions with the most downstream impact are: (1) using GPT-4o Vision directly for photo OCR instead of Tesseract.js client-side (Tesseract.js freezes mobile browsers for 15-30 seconds and gets killed by the OS on low-RAM devices), and (2) always checking the Supabase menu cache before any LLM call (otherwise OpenAI cost scales linearly with users rather than with unique restaurants).
 
-The critical risks are: (1) LLM hallucinating non-menu dish recommendations — mitigated by grounding all LLM calls with item IDs from the parsed menu and validating every returned ID before display; (2) allergen data being perceived as guaranteed rather than inferred — mitigated by mandatory "inféré" labels and server-phrase disclaimers enforced at the component level (EU Regulation 1169/2011 compliance); and (3) LLM cost explosion at scale — mitigated by caching at both the menu level and the dish-enrichment level from the first deployment. A Strasbourg-first launch strategy is strongly recommended over multi-city launch, as dense local restaurant data is what makes leaderboards, social proof, and reverse search feel real rather than empty.
+The highest-risk areas are not technical — they are legal and UX. Allergen inference without a mandatory, un-hideable disclaimer in the user's language is a liability in France. Storing raw IP addresses for rate limiting violates GDPR under French law per the 2025 CNIL clarification. Scraping TheFork or Zenchef URLs violates their ToS and is now subject to DSA/GDPR enforcement. Each pitfall has a clear mitigation: hardcoded `AllergenDisclaimer` component as mandatory wrapper, daily-rotated hashed IPs with 24-hour deletion, and robots.txt checking before any scrape. The strategy is to build these mitigations in during the relevant phase — not as retrofits.
 
 ---
 
@@ -21,253 +19,230 @@ The critical risks are: (1) LLM hallucinating non-menu dish recommendations — 
 
 ### Recommended Stack
 
-NOM requires two separate codebases with no runtime coupling. The landing page uses the current top-tier web stack: **Next.js 16** (App Router, Vercel-native), **Tailwind CSS v4** (zero-config, 5x faster builds), **motion/react v12** (replaces framer-motion, React 19 compatible), **shadcn/ui** (Tailwind v4 branch), **Resend + react-email** for waitlist confirmation, and **Supabase** for email storage. The mobile app uses **Expo SDK 54** (New Architecture on by default), **Expo Router 6**, **NativeWind v4** with **Tailwind CSS v3.4.17** (critical version pin — NativeWind does NOT support Tailwind v4), **React Native Vision Camera 4** + **react-native-mlkit-ocr** for scanning, **Vercel AI SDK v6** with **@ai-sdk/openai** for streaming AI calls, **Zustand 5** for client state, **TanStack Query 5** for server state, and **react-native-mmkv** for local caching (30x faster than AsyncStorage).
+The existing Next.js 16 + Supabase + Tailwind 4 + React 19 foundation requires only 7 new packages. The Vercel AI SDK (`ai` + `@ai-sdk/openai`) is the correct LLM integration layer — it handles streaming and Server Action integration without the boilerplate required by the raw OpenAI npm package. `next-intl` v4.8.3 handles UI string localization for the 6-language requirement, with one critical gotcha: Next.js 16 renamed `middleware.ts` to `proxy.ts`, which will silently break all tutorials written for older versions. The QR scanning library landscape has consolidated — `@yudiel/react-qr-scanner` is the only actively maintained option as of Feb 2026 and `html5-qrcode` (ubiquitous in tutorials) has been abandoned since 2022.
+
+The most impactful architectural choice in the stack is the photo OCR strategy. Research confirms Tesseract.js client-side is unsuitable for mobile menu scanning: 15-30 second UI freezes, WASM worker killed by OS on devices with less than 4GB RAM, and 15MB forced download per session. The correct path is GPT-4o-mini Vision for single-call OCR + structured extraction — faster, simpler, and more accurate for restaurant menu formats at a fraction of the cost of full GPT-4o. The two-tier URL parsing (Cheerio for static HTML, screenshot service API for JavaScript SPAs) handles the full range of restaurant menu page types without headless browsers, which cannot be deployed on Vercel (Chromium binary alone exceeds the 250MB function size limit).
 
 **Core technologies:**
-- **Next.js 16 + Tailwind v4 + motion/react**: Landing page — native Vercel deployment, React 19, best-in-class animation stack for 2025/2026
-- **Expo SDK 54 + Expo Router 6**: Mobile app — New Architecture stable, file-based routing, managed workflow eliminates native build complexity at launch
-- **NativeWind v4 + Tailwind CSS 3.4.17**: Mobile styling — CRITICAL version constraint; Tailwind v4 breaks NativeWind v4 silently
-- **Supabase (Postgres + Auth + Storage + Edge Functions)**: Backend — single platform covers DB, auth, serverless API, and file storage; eliminates separate infrastructure setup
-- **Vercel AI SDK v6 + GPT-4.1**: AI layer — streaming abstraction, never call OpenAI directly from the mobile client (API key exposure risk)
-- **react-native-mlkit-ocr**: On-device OCR — free, offline, covers Latin script (FR/EN/DE/TR); fallback to GPT-4.1 vision for low-confidence captures
-- **react-native-mmkv**: Local persistence — mandatory for cache-everything philosophy; synchronous reads, encryption support
-- **Zod 4**: Validation — validate AI and translation API responses at runtime to prevent undefined field crashes
+- `@yudiel/react-qr-scanner` ^2.5.1: camera QR detection — only actively maintained React QR library as of Feb 2026
+- `react-webcam` ^7.2.0: camera capture UI for photo mode — lightweight, requires `ssr: false`
+- `cheerio` ^1.2.0: server-side HTML parsing for static/SSR menus — server-only, never in client bundle
+- `ai` ^6.0.97 + `@ai-sdk/openai` ^3.0.31: Vercel AI SDK + OpenAI provider — streaming, typed, App Router native
+- `next-intl` ^4.8.3: UI string localization — purpose-built for App Router, Server Component support
+- `@supabase/supabase-js` (existing): menu cache + structured dish storage — no new package needed
 
-**Critical version constraints to enforce:**
-- NativeWind 4.2.2 requires Tailwind CSS 3.4.17 (not v4)
-- Reanimated 4.2.2: do NOT add babel-plugin-reanimated (worklets are built-in)
-- motion v12: import from `motion/react`, NOT `framer-motion`
-- Vercel AI SDK 6.x: use `expo/fetch`, not `global.fetch`, for streaming in Expo
+**Explicitly ruled out:** `html5-qrcode` (unmaintained), `playwright`/`puppeteer` (Vercel 250MB function limit), raw `openai` npm v6 (manual streaming), `next-i18next` (Pages Router only, App Router incompatible), `tesseract.js` on client (mobile performance), `@supabase/ssr` for cache queries (opts out of Next.js fetch cache).
 
 ### Expected Features
 
-The landing page must convert visitors while demonstrating the product concept (menu scanning is unfamiliar to most users, so showing it is essential). The mobile app's differentiation from competitors is entirely in the AI + personalization layer — translation alone is not a moat.
+The competitive landscape is clear: MenuGuide and FoodieLens translate menus but make no recommendations. Yelp Menu Vision overlays photos on a live camera but produces no structured data. NOM's primary differentiators are AI recommendation (Top 3 with rationale) and trust badges — no competitor does either. The paywall strategy is structurally superior: NOM gates the AI "wow moment" (Top 3) rather than the scan itself, meaning users see value before hitting friction.
 
-**Must have — Landing Page (v1):**
-- Hero with scroll-triggered animated phone demo (QR scan → dish cards → AI Top 3) — the primary conversion hook
-- Email-only waitlist form above the fold (single field; every additional field cuts conversion 10-20%)
-- Waitlist position counter + referral link post-signup (proven 3-5x conversion rate improvement)
-- Feature breakdown section with benefit-oriented copy
-- Pricing tier preview (Free / Pass 9.99€ / Pro 3.99€/mo) — anchors perceived value
-- Dish carousel with real Strasbourg restaurant content — local trust signal
-- FAQ section — handles "when does it launch" and "how does scanning work" objections
-- GDPR-compliant email collection + cookie consent — legal requirement for France/EU
+**Must have (table stakes) — v1:**
+- QR code scan → URL → menu extraction — fastest path to dish cards
+- URL paste → menu parsing — serves users who find menus on Google before arriving
+- Photo OCR via GPT-4o Vision — covers Strasbourg restaurants with paper/chalk menus
+- Translation in 6 languages (FR, EN, TR, DE, ES, IT) — full Strasbourg test market coverage
+- Dish cards with translated name, 2-sentence description, price
+- EU 14-allergen tags + dietary icons (vegetarian/vegan/spicy)
+- Allergen disclaimer in user's language — hardcoded locale strings, never AI-generated
+- Trust badges per card (Verified / Inferred) — core product rule, no competitor offers this
+- Dietary filter UI — real-time client-side card filter, zero API calls
+- AI Top 3 assistant — 3x/day free, paywall after — the primary differentiator
+- Menu cache in Supabase — hash URL, cache result, serve instantly to next user
+- Session-based credit counter (no account required, device fingerprint or localStorage UUID)
 
-**Must have — Mobile App (v1):**
-- Camera scan → OCR → AI menu parsing → dish cards
-- Translation (50+ languages minimum — table stakes; AnyMenu does 50+ for free)
-- Dish description + cultural explanation + allergen flags with mandatory "inféré" disclaimer
-- AI Top 3 recommendation (generic, before personalization data accumulates)
-- Credits system with free tier (5 scans/day) + Pass/Pro subscription via in-app purchase
-- Offline result caching (MMKV local + Supabase sync)
-- Basic Taste Profile onboarding (dietary preferences, cuisine likes/dislikes)
+**Should have (competitive differentiators) — v1.x:**
+- Reverse search ("I want something vegetarian and light") — client-side tag filter first
+- Top 3 rationale display ("Why: diverse, matches your no-gluten filter")
+- Real dish photo lookup via Yelp Fusion or Google Places Photos API
+- Budget flag (price relative to menu average)
+- Manual refresh button for cached menus with "last scanned" timestamp
 
-**Should have — after v1 validation:**
-- Personalized Match Score per dish card (requires accumulated Taste Profile data)
-- Dish Stories — cultural context, origin, pairing suggestions
-- Leaderboard (defer until Strasbourg active users exceed ~50; hollow below that threshold)
-- Reverse search (technically complex: image embeddings + restaurant database; no competitor has this)
+**Defer (v2+):**
+- Language support beyond 6 (add based on user location telemetry)
+- Account-linked scan history (requires full auth flow)
+- B2B restaurant QR codes (NOM-optimised for restaurant tables)
+- Advanced personalisation (Taste Profile feeding Top 3)
+- Nutrition estimates (only if demand is clear and liability framework is established)
 
-**Defer to v2+:**
-- NOM Wrapped — requires 12+ months of scan/rating data
-- Restaurant-provided QR codes (B2B layer — separate product motion)
-- Multi-city expansion — after Strasbourg density is achieved
-
-**Anti-features to avoid:**
-- Full account creation before first scan (60-80% drop-off; scan must work anonymously)
-- Food delivery integration (scope explosion; use deep links to Uber Eats instead)
-- Nutrition/calorie tracking (separate product; Yazio and MyFitnessPal own this)
-- Multi-city launch simultaneously (dilutes local database quality and social features)
-- Inflated fake waitlist counters (users notice; destroys trust)
+**Anti-features confirmed as out of scope:** guaranteed allergen accuracy, AI-generated dish photos presented as real, social feed of recent scans, real-time scraping on every page load, infinite free AI Top 3 calls.
 
 ### Architecture Approach
 
-The architecture is a Turborepo monorepo with two independent app deployments (landing on Vercel, mobile via EAS Build) sharing only a `packages/shared-types` package for TypeScript interfaces. Backend logic lives in **Supabase Edge Functions** (Deno TypeScript) co-located with the Postgres database for minimal round-trip latency. The LLM pipeline is: on-device OCR (ML Kit) → extract text → Supabase Edge Function → two-tier cache check (Redis exact match → pgvector semantic similarity) → LLM call only on full cache miss → store result in both cache tiers → return to client. Authentication uses a layered progressive model: anonymous session (device UUID) → magic link account → social auth, with anonymous data migrated on account creation via `supabase.auth.linkAnonymousUser()`.
+The architecture adds a functional app surface to the existing Next.js codebase without a separate framework or app. New routes live under `app/` alongside the existing landing page. The consistent pattern is Server Component shell (data fetching, static frame) with Client Component islands (camera, filter state, recommendation input). All LLM calls are server-only via Route Handlers — the OpenAI API key never reaches the browser. Supabase uses two separate clients: the existing anon key for browser-safe operations, and a new service-role client for server-side writes that bypass RLS.
+
+New files are organized under `components/app/` (all functional app components, separated from existing `components/sections/` to prevent accidental client bundle inflation) and `lib/` (server-only modules with `import 'server-only'` guards). No global state store is needed for MVP — URL is the primary state carrier (`/scan` → `/menu/[id]`).
 
 **Major components:**
-1. **Landing Page** (Next.js 16, Vercel) — marketing, waitlist capture, animated demo; talks only to Supabase waitlist table and Resend
-2. **Scan Screen** (Expo, Vision Camera, ML Kit) — QR decode, URL input, photo capture; client-side only, posts raw input to Edge Function
-3. **Ingestion Pipeline** (Supabase Edge Function) — URL fetch → JSON-LD → HTML fallback → LLM structured extraction → normalize to `ParsedMenu`; hashed for deduplication
-4. **LLM Orchestrator** (Supabase Edge Function) — item_id-grounded recommendations, per-locale translation, reverse search via pgvector; always uses two-tier cache
-5. **Dish Cards UI** (React Native) — progressive image hydration (gradient+emoji → web image → community photo); never blocks on image load
-6. **Taste Profile + Auth** (Supabase Postgres) — per-user preferences, scan history, anonymous-to-account migration
+1. `/api/scan` Route Handler — accepts URL or base64 photo, checks Supabase cache via SHA-256 hash, runs LLM pipeline, upserts menus + menu_items; the core ingest endpoint and cost control mechanism
+2. `lib/openai.ts` (server-only) — typed wrappers for parseMenuFromText, translateDishes, getRecommendations using Zod structured output; eliminates JSON parse failures and schema drift
+3. `lib/cache.ts` (server-only) — normalized URL hashing + cache read/write; all LLM calls gated behind cache miss
+4. `components/app/` — all functional app components (QrScanner, PhotoCapture, UrlInput, DishCard, DishList, FilterBar, RecommendPanel, ScanProgress)
+5. Supabase tables: `menus` + `menu_items` + `admin_config` — the cache IS the database; no Redis needed for MVP
+6. `/api/recommend` Route Handler — item_id-grounded Top 3 with UUID validation against actual menu; hallucination prevention by design
 
-**Build order enforced by architecture:**
-- Phase 1 (Landing) and Phase 2a (DB schema + auth) can run in parallel
-- Phase 2b (Ingestion) requires Phase 2a schema
-- Phase 2c (LLM Orchestration) requires Phase 2b normalized menu data
-- Phase 2d (Mobile UI) requires stable API contracts from 2b + 2c — do not build UI before APIs are stable
+**Key patterns:** Zod structured output for all LLM calls (eliminates JSON parse failures), item_id-grounded recommendations (LLM returns UUIDs not dish names — no hallucination), URL hash as idempotent cache key, `import 'server-only'` guards on all server modules.
+
+**Suggested build order from architecture research:** Step 1: DB schema + types → Step 2: `lib/openai.ts` + `lib/menu-extract.ts` → Step 3: `/api/scan` Route Handler (URL path) → Step 4: `/menu/[id]` + DishCard + DishList → Step 5: `/api/scan` photo OCR path → Step 6: `/scan` page + camera components → Step 7: FilterBar logic → Step 8: `/api/recommend` + RecommendPanel → Step 9: Admin config → Step 10: Nav integration.
 
 ### Critical Pitfalls
 
-1. **LLM hallucinating non-menu dish recommendations** — Ground every recommendation prompt with the full parsed `menu_items` list including IDs. Instruct LLM to return only item_id values. Validate every returned ID against the actual menu before display. This is a must-have before any user testing.
+1. **iOS Safari PWA camera silently fails in standalone mode** — WebKit bug #185448 breaks `getUserMedia` when app is launched from iPhone home screen bookmark. Prevention: test on physical iPhone before merge (not just desktop Chrome), detect `window.navigator.standalone` and show "open in Safari" banner, always use `playsInline`/`autoPlay`/`muted` on video elements, always release camera tracks via `stream.getTracks().forEach(t => t.stop())` after scan.
 
-2. **Allergen data presented as guaranteed** — Mandatory "inféré" label on every allergen badge at the component level (not just in ToS). Use warning-style UI (⚠ icon, muted color), never a green "safe" checkmark. Hardcoded server-phrase disclaimer in all 4 languages. Required before public beta — EU Regulation 1169/2011 creates legal exposure.
+2. **LLM vision token cost explosion from full-resolution photos** — A 3024x4032 phone photo generates ~20 vision tiles at ~3,400 tokens = ~$0.0085 per image in input alone. Prevention: resize photos client-side to 1024px max before upload (Canvas API or browser-image-compression), set `detail: "low"` for initial OCR passes, set hard `max_tokens` per call type, cache aggressively (popular restaurants pay LLM cost once regardless of scan volume).
 
-3. **LLM cost explosion without caching** — Design `parsed_menu` table with `(restaurant_url, menu_hash)` cache key and `dish_enrichment` table keyed by `(canonical_dish_name, language)` before writing any LLM integration code. Retrofitting caching is a schema migration. At 5000 MAU with 10 scans/month, uncached LLM calls cost ~5000€/month.
+3. **Allergen hallucination without mandatory disclaimer** — Peer-reviewed research (Frontiers in Nutrition, 2025) confirms LLMs make allergen inference errors. In France, absence of a visible disclaimer creates legal liability. Prevention: mandatory `AllergenDisclaimer` component as required wrapper around all allergen display (no dish card can render allergen data without it), hardcoded multilingual disclaimer strings in locale files never generated by AI, never display allergen absence as a positive "safe" indicator (no green checkmarks).
 
-4. **Menu parsing brittleness causing silent failures** — Implement a fallback cascade (JSON-LD → SPA state extraction → LLM structured extraction) with a parse confidence score surfaced in the UI. Test against 30+ diverse real restaurant URLs (TheFork, Wix, PDF menus, Google Doc QR codes) before public beta. Log parse failures with restaurant URL and failure mode from day one.
+4. **GDPR violation: raw IP addresses stored for rate limiting** — IP addresses are personal data under GDPR per French CNIL and the 2025 EU Digital Services Act. Fine risk up to €20M. Prevention: store only daily-rotated SHA-256 hash of IP (not linkable to user), delete records after 24 hours via pg_cron, document as legitimate interest in privacy policy. Alternative: localStorage UUID (no GDPR risk, bypassable by clearing storage).
 
-5. **API key exposure in mobile app bundle** — ALL LLM calls must go through Supabase Edge Functions. Never put OpenAI API key in the Expo app. Verify with `strings` on the IPA/APK before any TestFlight build.
+5. **Tesseract.js on mobile client destroys performance** — 15-30 second UI freeze on iPhone X and mid-range Android; WASM worker killed by OS on devices with less than 4GB RAM; 15MB forced download. Prevention: use GPT-4o-mini Vision for photo OCR instead (single call handles OCR + structuring), keep Tesseract.js out of the client bundle entirely.
+
+6. **`@supabase/ssr` opts out of Next.js fetch caching** — Using `@supabase/ssr` for menu cache lookups means every page render hits the database (documented in Supabase GitHub discussion #28157). Prevention: use plain `@supabase/supabase-js` for server-side cache queries (no cookies = Next.js can cache), reserve `@supabase/ssr` for auth operations only (NOM MVP has no user auth).
+
+7. **Web scraping TheFork/Zenchef violates ToS and GDPR** — France CNIL treats `robots.txt` disallow as a strong negative signal against legitimate interest under GDPR + DSA 2025. Prevention: check `robots.txt` before any scrape, never scrape third-party restaurant platform paths, prioritize user-submitted photo OCR as the universal fallback.
 
 ---
 
 ## Implications for Roadmap
 
-Based on the combined research — particularly the architecture dependency graph, feature prioritization matrix, and pitfall-to-phase mapping — the following phase structure is recommended:
+The dependency graph drives the phase order: schema before pipeline, pipeline before UI, UI before polish, legal compliance woven into the phase where the risk surface is created.
 
-### Phase 1: Waitlist Landing Page
+### Phase 1: Database Foundation and Types
 
-**Rationale:** Independent of mobile app (zero runtime coupling); ships value immediately while mobile app is built; builds waitlist that validates demand and seeds beta invites. Strasbourg launch means local trust signals matter — the landing page is how you establish them before having a product.
+**Rationale:** Every downstream phase depends on Supabase tables and TypeScript types existing. No UI is possible without schema. No LLM pipeline can persist results without a cache layer. Establishing this first with no UI risk prevents cascading schema migrations later. The schema must encode the caching strategy from day one.
 
-**Delivers:** Animated waitlist landing page deployed on Vercel; email collection with GDPR compliance; waitlist position + referral loop; pricing preview.
+**Delivers:** `menus`, `menu_items`, `admin_config` tables with correct indexes (especially on `url_hash`); `types/menu.ts` interfaces (`ParsedMenu`, `MenuItem`, `Allergen`, `DietaryTag`, `MenuCache`, `AdminConfig`); `lib/supabase-server.ts` service-role client; verified read/write from Supabase dashboard.
 
-**Addresses:**
-- All P1 landing page features from FEATURES.md
-- GDPR/EU legal requirement for French email collection
+**Addresses:** Menu caching (FEATURES.md), cache idempotency (ARCHITECTURE.md Pattern 5), Supabase SSR caching conflict prevention (PITFALLS.md Pitfall 5).
 
-**Avoids:**
-- Animation performance pitfall (test on mid-range Android with Chrome throttled CPU; animate only `transform` and `opacity`)
-- Waitlist form friction pitfall (email only, CTA above fold, automated confirmation email)
-- Multi-page navigation (single scroll page, no exit links)
+**Avoids:** Using `@supabase/ssr` for cache queries — enforce plain `supabase-js` on server from day one. No index on `url_hash` is a common omission that causes full table scans on every cache lookup.
 
-**Research flag:** Standard patterns — well-documented. Skip `research-phase` for this phase.
+**Research flag:** Standard patterns. Skip `/gsd:research-phase` — official Supabase docs are authoritative.
 
 ---
 
-### Phase 2: Data Foundation + Auth
+### Phase 2: LLM Pipeline (Server-Only, No UI)
 
-**Rationale:** The Supabase schema must be designed with cache keys before any LLM integration is written. All subsequent phases depend on this schema. This is also the moment to set up the monorepo structure and shared types package — changing these later is expensive.
+**Rationale:** The LLM pipeline is the core value engine. It must be built and validated in isolation — separate from UI, separate from camera, separate from Route Handlers. Testing `parseMenuFromText` with curl before wiring any UI catches prompt engineering issues and token cost problems early. This is the phase to establish allergen + translation in a single LLM call (halves API cost vs two separate calls).
 
-**Delivers:** Turborepo monorepo structure; PostgreSQL schema (restaurants, menus, menu_items, menu_item_translations, llm_cache, waitlist); Supabase Auth (anonymous + magic link); shared TypeScript types package; Upstash Redis connection.
+**Delivers:** `lib/openai.ts` with Zod-validated `parseMenuFromText`, `translateDishes`, `getRecommendations`; `lib/menu-extract.ts` for URL fetch + HTML stripping; `lib/cache.ts` for URL hash + cache read/write; verified structured output matching schema with real restaurant URLs.
 
-**Uses:** Supabase, Turborepo, Zod, TypeScript strict mode.
+**Uses:** `ai` + `@ai-sdk/openai`, `cheerio`, Zod (via OpenAI structured output API).
 
-**Implements:** Data Layer and Auth components from ARCHITECTURE.md.
+**Implements:** Architecture Pattern 4 (Zod structured output), Pattern 6 (item_id-grounded recommendations), Pattern 5 (URL hash as idempotent cache key).
 
-**Avoids:**
-- LLM cost explosion pitfall — `menu_hash` cache key in schema from day one
-- Anonymous session data loss — anonymous ID + `linkAnonymousUser()` migration path built in from start
-- Missing composite index on `(restaurant_id, language)` — add at schema creation time
+**Avoids:** Prompt injection via menu content — content delimiters (`<MENU_CONTENT_START>` / `<MENU_CONTENT_END>`) and input sanitization must be implemented here (PITFALLS.md Pitfall 9). Storing raw LLM output — only normalized structured data goes to Supabase.
 
-**Research flag:** Standard patterns for Supabase schema design. Skip `research-phase`. However, pgvector setup for reverse search semantic cache may need brief investigation if unfamiliar.
+**Research flag:** Needs `/gsd:research-phase` during planning for prompt engineering: allergen extraction accuracy with EU 14-allergen taxonomy, multi-language translation + allergen tagging in a single LLM call, token count benchmarks for large menus (50+ dishes), and screenshot service vendor evaluation for SPA menus (Screenshotone vs APIFlash vs Browserless).
 
 ---
 
-### Phase 3: Menu Ingestion Pipeline
+### Phase 3: Scan Route Handler (`/api/scan`)
 
-**Rationale:** The ingestion pipeline is the highest-risk backend component. Building it as a discrete phase (separate from the LLM orchestration and mobile UI) allows it to be tested against a corpus of real restaurant URLs before any UI depends on it. This is the component most likely to require iteration.
+**Rationale:** Connects the LLM pipeline to the web surface. The Route Handler is the server-side proxy that keeps the OpenAI key secure, enforces cache-first logic, and normalizes URL vs photo inputs into a unified output. Must exist and be verified via Postman/curl before any scanning UI is built.
 
-**Delivers:** Supabase Edge Function `/scan`; URL fetch → JSON-LD parser → HTML fallback → LLM structured extraction cascade; parse confidence score; Redis URL-hash deduplication; `ParsedMenu` normalized structure in Postgres; parse failure logging.
+**Delivers:** `app/api/scan/route.ts` handling URL and base64 photo inputs; cache check before any LLM call; Supabase upsert of parsed results; image resize enforcement (1024px max) before vision API call; verified via curl before UI is wired.
 
-**Uses:** Supabase Edge Functions (Deno), OpenAI GPT-4.1, Upstash Redis, react-native-mlkit-ocr (on-device, pre-pipeline), Zod validation on LLM output.
+**Addresses:** OpenAI key security (never browser-exposed), caching as cost control, two-tier URL parsing (Cheerio for static HTML, screenshot service for SPAs).
 
-**Implements:** Ingestion Pipeline and Layered Menu Ingestion Pattern from ARCHITECTURE.md.
+**Avoids:** Playwright/Puppeteer on Vercel (Chromium binary 280MB vs 250MB limit). Image resize + `max_tokens` enforced here (PITFALLS.md Pitfall 3). SSRF protection: validate URL scheme (https only), reject private IP ranges before fetch (PITFALLS.md Security Mistakes).
 
-**Avoids:**
-- Menu parsing brittleness — fallback chain is built, not hardcoded per-restaurant parsers
-- Synchronous LLM calls in handler — use streaming or background job with polling; Supabase Edge has 2s wall clock limit (heavy scraping must offload to bg queue)
-- HTML regex parsing — JSON-LD first, then SPA state extraction, then LLM fallback
-
-**Research flag:** Needs `research-phase` during planning. Supabase Edge Function timeout constraints for Playwright-style scraping and the specific JSON-LD schema.org parser approach need implementation-level research.
+**Research flag:** Screenshot API vendor selection needs evaluation in Phase 2 research (see above). SPA detection heuristic (when to fall back from Cheerio to screenshot) needs a clear decision rule.
 
 ---
 
-### Phase 4: LLM Orchestration Layer
+### Phase 4: Dish Cards UI (`/menu/[id]`)
 
-**Rationale:** Once the ingestion pipeline produces a normalized `ParsedMenu`, the LLM orchestration can be layered on top. Translation, enrichment, and recommendations are all driven by the same normalized data structure. Building this as a separate phase ensures the API contracts are stable before the mobile UI is built against them.
+**Rationale:** First visible user-facing output. Server Component fetches from Supabase, passes structured data to Client Component DishList. Can be built and tested with a known menu UUID before any camera UI exists. Validating the data model renders correctly before investing in the scan input flow isolates data bugs from UI bugs.
 
-**Delivers:** Supabase Edge Function `/recommend` (item_id-grounded Top 3); translation pipeline (`menu_item_translations` table, per-locale, cached); allergen inference with confidence scores; two-tier cache (Redis exact-match + pgvector semantic similarity); streaming response to mobile client via Vercel AI SDK.
+**Delivers:** `app/menu/[id]/page.tsx` + loading skeleton; `DishCard` component with translated name, description, price, allergen tags, spice level, trust badge; `DishList` rendering full card grid; static `FilterBar` visual shell; mandatory `AllergenDisclaimer` wrapper component with hardcoded multilingual strings.
 
-**Uses:** Vercel AI SDK v6, @ai-sdk/openai, GPT-4.1 (Top 3) + GPT-4.1-mini (translation), pgvector, Upstash Redis.
+**Addresses:** Dish cards (FEATURES.md table stakes), trust badges, allergen disclaimer with EU-compliant wording in all 6 languages.
 
-**Implements:** LLM Orchestrator, Two-Tier Cache Pattern, and item_id-Grounded Recommendations Pattern from ARCHITECTURE.md.
+**Avoids:** Allergen hallucination without disclaimer — `AllergenDisclaimer` must be a mandatory wrapper at the component level enforced by code structure, not developer discipline (PITFALLS.md Pitfall 4). No green "safe" indicators for allergen absence — amber/orange warning only.
 
-**Avoids:**
-- LLM hallucination — item_id grounding enforced; every returned ID validated against `menu_items` before response
-- LLM cost explosion — two-tier cache with >90% hit rate target for repeat restaurants
-- Max_tokens not set — hardcode per call type (enrichment: ~500, Top 3: ~200)
-
-**Research flag:** Needs `research-phase` during planning. pgvector semantic cache configuration, OpenAI prefix caching setup, and streaming via Vercel AI SDK through Supabase Edge Functions are niche enough to warrant focused research.
+**Research flag:** Standard patterns. Component structure well-documented in ARCHITECTURE.md. Skip `/gsd:research-phase`.
 
 ---
 
-### Phase 5: Mobile App Core (Scan → Dish Cards)
+### Phase 5: Scan Input UI (`/scan`)
 
-**Rationale:** With stable API contracts from Phases 3 and 4, the mobile UI can be built without risk of API-driven rework. The scan-to-dish-card loop is the product's core value — everything else in the mobile app depends on this working reliably.
+**Rationale:** Camera and QR scanning are the highest-risk technical components (iOS Safari PWA bugs, SSR incompatibility, camera stream cleanup). They come after the data pipeline is stable so UI bugs can be isolated from data bugs. Building scan input after the dish card destination is validated means the happy path is working before testing the most unpredictable component.
 
-**Delivers:** Expo SDK 54 app; Scan Screen (QR, URL input, photo capture); on-device ML Kit OCR; Vision Camera integration; DishCard component with progressive image hydration; allergen badges with mandatory "inféré" disclaimer; offline MMKV caching; anonymous session (no account required for first scan).
+**Delivers:** `app/scan/page.tsx` Server Component shell; `QrScanner` (dynamic import, `ssr: false`), `PhotoCapture`, `UrlInput`, `ScanProgress` Client Components; end-to-end scan → redirect to `/menu/[id]` flow working on a physical iPhone.
 
-**Uses:** Expo SDK 54, Expo Router 6, NativeWind v4 + Tailwind CSS 3.4.17, Vision Camera 4, react-native-mlkit-ocr, react-native-mmkv, Reanimated 4, Zustand 5, expo-haptics.
+**Uses:** `@yudiel/react-qr-scanner` (dynamic, ssr:false), `react-webcam` (ssr:false), image resize before upload to `/api/scan`.
 
-**Implements:** Scan Screen, Dish Cards UI, Progressive Image Hydration Pattern from ARCHITECTURE.md.
+**Avoids:** iOS PWA standalone camera failure — must test on physical iPhone before merge, not just desktop Chrome (PITFALLS.md Pitfall 1). Raw `deviceId` persistence for camera selection — persist `facingMode` instead (PITFALLS.md Pitfall 2). Camera stream not released after scan — `stream.getTracks().forEach(t => t.stop())` in cleanup. `getUserMedia` called outside user gesture — trigger only from onClick/onTouchEnd.
 
-**Avoids:**
-- Forcing account creation before scan — anonymous session from first launch
-- API key in app bundle — all LLM calls proxied through Edge Functions
-- Camera permission crash — `NSCameraUsageDescription` and Android permission flow handled before TestFlight
-- Blocking UI on image load — gradient+emoji placeholder rendered immediately; images are async enhancement
-- Vision Camera multi-fire — debounce QR decode; disable scanner after first valid read
-
-**Research flag:** Vision Camera + Expo dev client setup (cannot use Expo Go) may need a brief `research-phase` focused on EAS Build configuration for first native build.
+**Research flag:** Needs `/gsd:research-phase` specifically for iOS PWA camera testing protocol — the WebKit bug patterns (bugs #185448 and #215884) require explicit test cases documented before implementation starts.
 
 ---
 
-### Phase 6: Monetization + Account Layer
+### Phase 6: Allergen Filtering and AI Top 3
 
-**Rationale:** Once the core scan loop is validated with real users, add the monetization layer and account features. These depend on the core loop working reliably and on having real user feedback about where the credit limits feel right.
+**Rationale:** Both features depend on structured dish data from Phase 4 and the recommend Route Handler. Allergen filtering is purely client-side (zero API cost, instant). AI Top 3 is the primary differentiator and paywall trigger — implementing together validates the freemium conversion mechanic with real data before further investment.
 
-**Delivers:** Credits system with free tier (5 scans/day); Pass + Pro subscription via in-app purchase (RevenueCat or Expo IAP); account creation (magic link); anonymous history migration to account; basic Taste Profile onboarding (dietary prefs, cuisine likes/dislikes); scan history sync to Supabase.
+**Delivers:** `FilterBar` filter logic (useState + activeFilters prop passed to DishList); `app/api/recommend/route.ts` with item_id-grounded Top 3 and UUID validation; `RecommendPanel` with preference input and highlighted dish cards; session-based credit counter (3x/day free gate using localStorage UUID or hashed IP).
 
-**Uses:** Supabase Auth, Supabase Realtime (Taste Profile sync), Stripe or Expo IAP, react-hook-form, Zod.
+**Addresses:** Dietary filter UI (FEATURES.md differentiator), AI Top 3 assistant (primary differentiator), session credit counter.
 
-**Implements:** Account Layers (Phase 2e) from ARCHITECTURE.md build order.
+**Avoids:** LLM calls on every filter toggle — filtering is pure in-memory array intersection on already-loaded dish data (ARCHITECTURE.md Anti-Pattern 3). GDPR-compliant rate limiting: if IP-based, use daily-rotated SHA-256 hash with 24-hour pg_cron deletion; if localStorage UUID-based, no GDPR risk but bypassable (PITFALLS.md Pitfall 6).
 
-**Avoids:**
-- Anonymous session data silently lost — `linkAnonymousUser()` migration on account creation
-- Rate limit bypass — enforce day limits server-side at Edge Function level, not only client-side
-
-**Research flag:** In-app purchase implementation (Expo IAP vs RevenueCat) needs `research-phase` — billing integration is complex and platform-specific.
+**Research flag:** Needs `/gsd:research-phase` for GDPR-compliant rate limiting implementation (localStorage UUID vs hashed IP tradeoffs and legal review recommendation for French market) and Top 3 prompt engineering (diversity + clarity + filter-match criteria).
 
 ---
 
-### Phase 7: Personalization + Social (Post-Validation)
+### Phase 7: Navigation Integration and Admin Config
 
-**Rationale:** These features require accumulated user data and a critical mass of Strasbourg users to feel meaningful. Building them before validation wastes engineering effort on features that may need to pivot. NOM Wrapped requires 12+ months of data — start collecting now, ship the feature later.
+**Rationale:** Nav integration comes last — only after `/scan` is fully functional on a real device. Adding the entry point before the destination is stable creates user-facing broken states. Admin config is low-risk and can be built alongside nav integration as a parallel track.
 
-**Delivers:** Personalized Match Score per dish (requires Taste Profile data); Dish Stories; Leaderboard (gated behind Strasbourg user threshold of ~50 active users); Reverse search (pgvector image embeddings + restaurant database); data collection infrastructure for NOM Wrapped.
+**Delivers:** "Scanner" CTA in Nav.tsx linking to `/scan`; landing page hero button wired to `/scan`; `app/admin/page.tsx` with `ADMIN_SECRET` env gate, `admin_config` table read/write, model selector dropdown (gpt-4o / gpt-4o-mini / gpt-4.1-mini).
 
-**Uses:** pgvector, GPT-4.1 vision (reverse search), Supabase Realtime (leaderboard updates).
+**Addresses:** No-account-required first scan (FEATURES.md table stakes), admin model configurability.
 
-**Avoids:**
-- Leaderboard cold-start — show privately ("you are #4 in Strasbourg") until public threshold met
-- Reverse search before database — requires pre-indexed Strasbourg dish image embeddings; cannot ship without restaurant database populated
+**Avoids:** Middleware conflicts between landing page and app routes — explicit `matcher` exclusion pattern must be configured to exclude `/_next/static`, `/_next/image`, and existing landing routes before the middleware chain is active (PITFALLS.md Pitfall 10).
 
-**Research flag:** Reverse search (image embeddings + similarity search at scale) and Strasbourg restaurant database ingestion strategy both need `research-phase` during planning.
+**Research flag:** Standard patterns. Skip `/gsd:research-phase`.
+
+---
+
+### Phase 8: Reverse Search and v1.x Polish (Post-Validation)
+
+**Rationale:** Reverse search is a differentiator but not a launch blocker. Client-side tag filter covers 80% of use cases instantly. Add after the core loop is validated with real users (first 50 scans), so feature decisions are data-driven.
+
+**Delivers:** `ReverseSearch` client component with natural language input; client-side tag filter for simple queries ("vegetarian", "no nuts"); optional GPT-4o ranking call for nuanced queries; real dish photo lookup via Yelp Fusion or Google Places Photos; budget flag on dish cards; "last scanned" timestamp with manual refresh.
+
+**Addresses:** Reverse search (FEATURES.md differentiator), Top 3 rationale display, real photo sourcing.
+
+**Research flag:** Needs `/gsd:research-phase` for Yelp Fusion vs Google Places API comparison: quota limits, cost per request, coverage in the Strasbourg market specifically.
 
 ---
 
 ### Phase Ordering Rationale
 
-- **Landing page first** — independent, ships immediately, validates demand, builds waitlist for beta invites.
-- **Schema before LLM** — caching must be in the data model from day one; retrofitting is a schema migration that breaks deployed features.
-- **Ingestion before orchestration** — `ParsedMenu` is the contract that LLM orchestration and mobile UI both depend on; stable contract = no rework.
-- **API stable before mobile UI** — mobile UI changes (especially React Native) are expensive; wait for stable API contracts before building screens.
-- **Core loop before monetization** — validate that the scan → dish card experience is good before asking users to pay.
-- **Social features last** — require data, user mass, and a validated core loop before they deliver value.
+- **Schema before pipeline:** Supabase tables and TypeScript types must exist before any LLM output can be persisted. The cache strategy must be in the schema from day one.
+- **Pipeline before UI:** LLM structured output bugs are best caught with curl, not with a camera pointed at a menu. Isolating the pipeline also makes token cost visible before any user can trigger it.
+- **Route Handler before scan UI:** `/api/scan` must exist and return `menuId` before the scan UI can redirect to `/menu/[id]`.
+- **Dish cards before camera:** The destination (`/menu/[id]`) must render correctly before building the source (scan UI). This isolates UI bugs from data bugs.
+- **Camera last among core features:** iOS Safari PWA camera bugs are the highest-risk unknown. Everything else should be stable before engaging the most unpredictable component.
+- **Legal compliance integrated per phase, not at the end:** Allergen disclaimer in Phase 4, GDPR rate limiting in Phase 6, robots.txt checking in Phase 2/3. Not a separate "compliance phase" — enforced when the risk surface is created.
+
+---
 
 ### Research Flags
 
-**Needs `research-phase` during planning:**
-- **Phase 3 (Ingestion Pipeline):** Supabase Edge Function timeout limits for scraping, Playwright offload to background queue (BullMQ on Railway vs Supabase pg_cron), JSON-LD schema.org parser implementation
-- **Phase 4 (LLM Orchestration):** pgvector semantic cache configuration, OpenAI prefix caching setup, streaming through Supabase Edge Functions to Expo client
-- **Phase 6 (Monetization):** Expo IAP vs RevenueCat, App Store review for credit-based monetization model
-- **Phase 7 (Reverse Search):** Image embedding strategy, Strasbourg restaurant database ingestion pipeline design
+**Needs `/gsd:research-phase` during planning:**
+- **Phase 2 (LLM Pipeline):** Prompt engineering for allergen + translation in a single LLM call, token benchmarks for large menus, screenshot API vendor evaluation for SPA handling
+- **Phase 5 (Scan UI):** iOS PWA camera testing protocol, physical device test matrix for iOS versions affected by WebKit bugs #185448 and #215884
+- **Phase 6 (Top 3 + Filtering):** GDPR-compliant rate limiting implementation, Top 3 prompt diversity/clarity criteria engineering
+- **Phase 8 (v1.x Polish):** Yelp Fusion vs Google Places API for Strasbourg market dish photo coverage
 
-**Standard patterns — skip `research-phase`:**
-- **Phase 1 (Landing Page):** Next.js + Tailwind v4 + Motion + Resend + Supabase waitlist is a well-documented Vercel template pattern
-- **Phase 2 (Data Foundation):** Supabase schema design with Turborepo monorepo is standard; official templates exist
-- **Phase 5 (Mobile Core):** Expo SDK 54 + Vision Camera + NativeWind is well-documented; main risk is version constraints (already captured)
+**Standard patterns — skip `/gsd:research-phase`:**
+- **Phase 1 (DB Foundation):** Supabase schema design is well-documented; official migration tooling
+- **Phase 3 (Route Handler):** Next.js Route Handler patterns from official docs; architecture is prescribed
+- **Phase 4 (Dish Cards UI):** Component structure fully specified in ARCHITECTURE.md with code examples
+- **Phase 7 (Nav + Admin):** Middleware matcher config is documented; admin pattern is simple env-gated read/write
 
 ---
 
@@ -275,60 +250,66 @@ Based on the combined research — particularly the architecture dependency grap
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All package versions verified via npm registry; version compatibility matrix verified via official docs and community consensus |
-| Features | MEDIUM | Landing page patterns HIGH confidence (well-documented conversion research); competitor feature analysis HIGH (direct site verification); gamification specifics LOW (single sources) |
-| Architecture | MEDIUM-HIGH | Core patterns (Supabase Edge Functions, pgvector, two-tier cache) backed by official docs; specific LLM orchestration patterns backed by authoritative sources; ingestion pipeline brittleness risk is domain-specific and harder to quantify |
-| Pitfalls | MEDIUM | Legal/allergen liability findings are HIGH confidence (EU Regulation 1169/2011 is clear); LLM cost and caching pitfalls are MEDIUM (multiple sources agree on direction); Lottie animation optimization is LOW (single source) |
+| Stack | MEDIUM-HIGH | Package versions verified via npm registry; Vercel AI SDK and next-intl confirmed via official docs; `@yudiel/react-qr-scanner` as sole active QR library is MEDIUM (community consensus, not official benchmark); `@ai-sdk/openai` ^3.0.31 last published 15 hours before research — active but version may increment quickly |
+| Features | MEDIUM-HIGH | Competitor analysis verified Feb 2026 (MenuGuide, FoodieLens, Yelp Blog); allergen UX HIGH via regulatory sources and peer-reviewed research; AI recommendation patterns MEDIUM (market-verified, but no NOM-specific precedent for the paywall-on-AI-moment model) |
+| Architecture | HIGH | Next.js App Router patterns from official docs; Supabase service-role pattern from official docs; Zod structured output from official OpenAI docs; SSR disable for camera components confirmed via official Next.js docs and community patterns |
+| Pitfalls | HIGH for camera/LLM/Next.js (official sources, WebKit bug tracker); MEDIUM for legal (GDPR analysis corroborated by multiple sources, no specific ruling for AI allergen apps); LOW for web scraping legality (jurisdiction-dependent, no case law specific to this domain) |
 
 **Overall confidence:** MEDIUM-HIGH
 
 ### Gaps to Address
 
-- **NativeWind v4 + Tailwind CSS 3.4.17 compatibility:** Verified via community sources (multiple agree), but no single official doc page covers this exact version matrix. Validate with a test scaffold at project setup before committing to NativeWind styling architecture.
+- **Screenshot API vendor selection:** Research recommends a screenshot service for SPA menus (eazee-link.com confirmed JavaScript SPA via direct fetch) but did not evaluate specific vendors. Screenshotone, APIFlash, and Browserless all exist; pricing, cold-start latency, and reliability need evaluation in Phase 2 research before architecture is locked.
 
-- **Supabase Edge Function timeout for heavy scraping:** The 2s wall clock limit is documented; the recommended fix (BullMQ on Railway or Supabase pg_cron) is community-sourced. Validate the background queue architecture during Phase 3 planning research.
+- **Dish photo sourcing for v1.x:** Yelp Fusion API and Google Places Photos are candidates for real dish images. Neither was evaluated for rate limits, cost per request, or actual coverage in the Strasbourg restaurant market. Flag for Phase 8 research.
 
-- **OpenAI GPT-4.1 for food domain multilingual text:** Vision capability and multilingual support are confirmed; food-specific accuracy benchmarks (especially for Turkish/Alsatian French menu text) are not validated. Plan a translation accuracy review with human review of 20 TR/DE dish translations before public beta.
+- **Top 3 prompt quality with real menus:** The LLM prompt structure for diversity + clarity + filter-match criteria was not tested with real Strasbourg restaurant menus. Token count for large menus (50+ dishes) with full 6-language translations was not benchmarked. Flag for Phase 2 research.
 
-- **pgvector semantic cache threshold (0.97 cosine similarity):** The threshold value in the architecture research is a starting point, not a validated value. Tune empirically during Phase 4 implementation with real menu data.
+- **iOS camera testing matrix:** WebKit bug #185448 was partially fixed in iOS 16.4 but issues persist on specific iOS versions. The iOS version distribution of NOM's Strasbourg target users is unknown. A physical device test protocol must be established in Phase 5 planning.
 
-- **Strasbourg restaurant database scope:** The feasibility and timeline for pre-indexing Strasbourg restaurant dish images for reverse search is unresearched. This may significantly affect Phase 7 timeline.
+- **GDPR rate limiting legal review:** Research identifies daily-rotated hashed IP as compliant but this has not been reviewed by a French DPO. For an EU-market consumer app with potential liability exposure, a brief legal review before public beta is recommended. The localStorage UUID alternative avoids the question entirely.
 
-- **Reverse search Wrapped timing constraint:** NOM Wrapped requires 12+ months of user data. If NOM launches in early 2026, the first Wrapped cannot ship until early 2027. Confirm this is acceptable in product planning; start data collection hooks in Phase 5.
+- **Next.js 16 middleware rename:** The `middleware.ts` → `proxy.ts` rename is confirmed for next-intl. Whether this applies to all Next.js 16 middleware or only next-intl's integration middleware needs clarification in Phase 7 to avoid silently broken middleware.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [npmjs.com — Next.js, Expo, Motion, Tailwind, Supabase, NativeWind packages](https://npmjs.com) — all version numbers verified
-- [docs.expo.dev/guides/new-architecture/](https://docs.expo.dev/guides/new-architecture/) — New Architecture on by default in SDK 52+
-- [ai-sdk.dev/docs/getting-started/expo](https://ai-sdk.dev/docs/getting-started/expo) — Vercel AI SDK Expo setup, expo/fetch requirement
-- [ui.shadcn.com/docs/tailwind-v4](https://ui.shadcn.com/docs/tailwind-v4) — shadcn Tailwind v4 support confirmed
-- [react-native-vision-camera.com/docs/guides/code-scanning](https://react-native-vision-camera.com/docs/guides/code-scanning) — QR scanning via CodeScanner hook
-- [supabase.com/docs/guides/functions/architecture](https://supabase.com/docs/guides/functions/architecture) — Edge Functions architecture
-- [schema.org/Menu](https://schema.org/Menu) — Menu / MenuItem JSON-LD types
-- [EU Regulation 1169/2011 on Allergen Labelling](https://sites.manchester.ac.uk/foodallergens/information-for-food-businesses/eu-legal-requirements-on-food-allergen-labelling/) — allergen disclaimer legal basis
-- [MenuGuide official site](https://menuguide.app/) — competitor feature verification
-- [AnyMenu official site](https://anymenu.app/) — competitor feature verification
-- [motion.dev/docs/react-upgrade-guide](https://motion.dev/docs/react-upgrade-guide) — framer-motion → motion migration
+- [next-intl.dev](https://next-intl.dev/) — Next.js 16 compatibility, `proxy.ts` rename, App Router Server Component support
+- [ai-sdk.dev/docs](https://ai-sdk.dev/docs/introduction) — Vercel AI SDK v6 architecture and Next.js App Router integration
+- [nextjs.org/docs](https://nextjs.org/docs/app/building-your-application) — Route Handlers, Server Components, dynamic import with `ssr: false`, middleware matcher config
+- [platform.openai.com/docs](https://platform.openai.com/docs/guides/structured-outputs) — Structured Outputs with Zod, vision pricing token calculation (170 tokens per 512x512 tile)
+- [supabase.com/docs](https://supabase.com/docs/guides/database/postgres/row-level-security) — RLS, anon vs service role key patterns
+- [github.com/naptha/tesseract.js](https://github.com/naptha/tesseract.js/blob/master/docs/performance.md) — OCR performance benchmarks on mobile (2-20s recognition time)
+- [bugs.webkit.org #185448](https://bugs.webkit.org/show_bug.cgi?id=185448) — getUserMedia in iOS PWA standalone mode failure
+- [bugs.webkit.org #215884](https://bugs.webkit.org/show_bug.cgi?id=215884) — getUserMedia recurring permissions on hash change in standalone
+- [github.com/orgs/supabase/discussions/28157](https://github.com/orgs/supabase/discussions/28157) — `@supabase/ssr` opts out of Next.js fetch cache
+- [vercel.com/docs/functions/limitations](https://vercel.com/docs/functions/limitations) — 250MB serverless function size limit (blocking Playwright/Puppeteer)
+- [frontiersin.org/journals/nutrition 2025](https://www.frontiersin.org/journals/nutrition/articles/10.3389/fnut.2025.1635682/full) — peer-reviewed LLM allergen hallucination confirmation
+- [owasp.org — LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html) — prompt injection prevention patterns
 
 ### Secondary (MEDIUM confidence)
-- [redis.io/blog/what-is-semantic-caching/](https://redis.io/blog/what-is-semantic-caching/) — two-tier LLM cache pattern
-- [vercel.com/templates/saas/waitly](https://vercel.com/templates/saas/waitly) — waitlist template (Next.js + Supabase + Resend + Upstash)
-- [scrapingbee.com/blog/web-scraping-challenges/](https://www.scrapingbee.com/blog/web-scraping-challenges/) — menu parsing brittleness and 4-8 week breakage cycle
-- [waitlister.me — Waitlist Landing Page Guide](https://waitlister.me/growth-hub/guides/waitlist-landing-page-optimization-guide) — conversion patterns
-- [viral-loops.com/blog/how-to-build-a-waitlist/](https://viral-loops.com/blog/how-to-build-a-waitlist/) — referral/viral mechanics
-- [revenuecat.com/blog/growth/2025-app-monetization-trends/](https://www.revenuecat.com/blog/growth/2025-app-monetization-trends/) — credits/freemium strategy
-- NativeWind v4 + Tailwind v3.4.17 compatibility — multiple community sources agree; no single official doc
+- [MenuGuide official site + pricing](https://menuguide.app/) — competitor feature/pricing verification Feb 2026
+- [FoodieLens feature page](https://foodielens.app/) — competitor feature analysis Feb 2026
+- [TechCrunch — Yelp AI Menu Vision, Oct 2025](https://techcrunch.com/2025/10/21/yelps-ai-assistant-can-now-scan-restaurant-menus-to-show-you-what-dishes-look-like/) — industry direction
+- [npmjs.com — @yudiel/react-qr-scanner](https://www.npmjs.com/package/@yudiel/react-qr-scanner) — maintenance status and React 19 compatibility
+- [STRICH Knowledge Base — iOS PWA camera](https://kb.strich.io/article/29-camera-access-issues-in-ios-pwa) — specialist QR vendor corroboration
+- [github.com/mebjas/html5-qrcode/issues/713](https://github.com/mebjas/html5-qrcode/issues/713) — iOS PWA camera failure community confirmation
+- [OpenAI community — Vision cost thread](https://community.openai.com/t/cost-of-vision-using-gpt-4o/775002) — community-verified vision token pricing
+- [cookieyes.com — IP as personal data under GDPR](https://www.cookieyes.com/blog/ip-address-personal-data-gdpr/) — GDPR analysis corroborated by EC 2025 clarification
+- [Web Scraping GDPR 2025 enforcement](https://medium.com/deep-tech-insights/web-scraping-in-2025-the-20-million-gdpr-mistake-you-cant-afford-to-make-07a3ce240f4f) — robots.txt + DSA enforcement context
+- [roboflow.com — Tesseract vs GPT-4o accuracy](https://roboflow.com/compare/tesseract-vs-gpt-4o) — OCR accuracy comparison confirming ~60-70% Tesseract accuracy on menu photos
+- [zenrows.com — Playwright on Vercel](https://www.zenrows.com/blog/playwright-vercel) — function size limit corroboration
+- [github.com/yudielcurbelo/react-qr-scanner](https://github.com/yudielcurbelo/react-qr-scanner) — `@yudiel/react-qr-scanner` v2.5.1 maintenance status
+- Direct HTTP fetch of test menu URL (https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q) — confirmed JavaScript SPA, Cheerio cannot parse it
 
 ### Tertiary (LOW confidence — needs validation)
-- [trophy.so/blog/food-drink-gamification-examples](https://trophy.so/blog/food-drink-gamification-examples) — gamification features (single source)
-- [theninehertz.com/blog/ai-in-food-industry](https://theninehertz.com/blog/ai-in-food-industry) — food tech feature landscape (single source)
-- [Optimizing Lottie Animations in React Native](https://mukkadeepak.medium.com/optimizing-lottie-animations-in-react-native-with-the-lottie-format-8f7a31ff53ed) — Lottie size guidance (single practitioner account)
-- [AI Translation Accuracy Gap — GetBlend](https://www.getblend.com/blog/ai-translation-accuracy-gap/) — translation accuracy concerns (vendor blog)
-- OCR pipeline VLM replacement trend — multiple MEDIUM confidence sources agree on direction; specific accuracy for degraded menu photos unvalidated
+- Screenshot API vendor comparison (Screenshotone, APIFlash, Browserless) — not evaluated; needs Phase 2 validation before architecture lock
+- Yelp Fusion API / Google Places Photos Strasbourg market coverage — not verified; needs Phase 8 validation
+- Web scraping legality for menu data specifically — general GDPR/DSA analysis applies, but no case law specific to restaurant menu aggregation
 
 ---
+
 *Research completed: 2026-02-25*
 *Ready for roadmap: yes*

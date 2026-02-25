@@ -1,177 +1,206 @@
 # Stack Research
 
-**Domain:** Food-tech mobile app + animated waitlist landing page
+**Domain:** Restaurant menu scanning / AI translation web app — MVP feature additions to existing Next.js app
 **Researched:** 2026-02-25
-**Confidence:** HIGH (versions verified via npm registry; framework choices verified via official docs and multiple credible sources)
+**Confidence:** MEDIUM-HIGH (versions verified via npm registry search and GitHub; framework choices verified via official docs and multiple sources)
 
 ---
 
-## Overview
+## Context: What Already Exists (Do Not Re-add)
 
-NOM has two distinct surfaces that share no runtime but may share types/schemas:
+The project already has these packages — do not propose reinstalling them:
 
-1. **Landing page** — dark-theme animated waitlist, Vercel-deployed, French only
-2. **Mobile app** — Expo-based food scanner, AI assistant, multi-language translation
+| Package | Version | Notes |
+|---------|---------|-------|
+| `next` | 16.1.6 | App Router |
+| `react` / `react-dom` | 19.2.3 | |
+| `@supabase/supabase-js` | ^2.97.0 | |
+| `motion` | ^12.34.3 | Framer Motion successor |
+| `tailwindcss` | ^4 | CSS-first `@theme` |
+| `typescript` | ^5 | |
+| `eslint` / `eslint-config-next` | ^9 / 16.1.6 | |
 
-These are separate codebases. Do NOT try to monorepo them prematurely — the landing page has zero runtime dependency on the mobile app.
+Everything below is new, additive, and scoped to the MVP feature set.
 
 ---
 
-## Recommended Stack
+## Recommended Stack (New Additions Only)
 
-### Landing Page (Milestone 1)
+### Feature 1: QR Code Scanning (Camera)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Next.js | 16.1.6 | React framework + API routes | Native Vercel integration, App Router enables edge-ready API routes for waitlist endpoint, zero config deploy |
-| React | 19.x | UI runtime | Ships with Next.js 16; React 19 concurrent features improve perceived animation smoothness |
-| TypeScript | 5.x | Type safety | Catches waitlist form/API contract bugs at compile time, not runtime |
-| Tailwind CSS | 4.2.1 | Styling | v4 is zero-config (auto-detects content), 5x faster full builds; dark theme is first-class with `dark:` variants |
-| shadcn/ui | latest (Tailwind v4 branch) | Component primitives | Unstyled-then-styled pattern fits a custom dark design system; ships with Radix accessibility; Tailwind v4 support confirmed Feb 2025 |
-| motion (motion/react) | 12.34.3 | Animations | Replaces framer-motion, fully React 19 compatible, import from `motion/react`; no breaking changes in v12; Tailwind v4 + Motion is the de-facto 2025/2026 animation stack |
-| Resend | 6.9.2 | Transactional email | Simplest Next.js integration (official `send-with-nextjs` guide), React Email template support, developer-friendly free tier |
-| react-email | 5.2.8 | Email templates | React component model for emails, renders to HTML; pairs with Resend |
-| Supabase JS | 2.97.0 | Waitlist storage + auth | Single table for email capture, built-in RLS, free tier sufficient for waitlist scale; eliminates need for separate DB setup |
-| Zod | 4.3.6 | Input validation | Validate waitlist emails server-side in Next.js API route; pairs with React Hook Form on client |
-| react-hook-form | 7.71.2 | Form state | Uncontrolled components = zero re-renders on keystroke; required for smooth animated form UX |
+| `@yudiel/react-qr-scanner` | ^2.5.1 | Camera-based QR code detection | The only actively maintained React QR scanning library as of Feb 2026. Built on the native Barcode Detection API with ZXing WASM fallback. Supports torch, zoom, front/back camera switching. Last published ~1 month ago. Requires `dynamic()` with `ssr: false` in Next.js. |
 
-### Mobile App (Milestone 2+)
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| Expo SDK | 54.0.33 | Universal native app platform | New Architecture enabled by default in SDK 52+; SDK 54 targets RN 0.81; Managed Workflow eliminates native build config for launch |
-| React Native | 0.81.x (via Expo 54) | Mobile runtime | Included via Expo; New Architecture (Fabric + JSI) is stable and on by default |
-| Expo Router | 6.0.23 | File-based navigation | Next.js-style routing for RN; typed routes; deep linking automatic; replaces React Navigation boilerplate |
-| NativeWind | 4.2.2 | Tailwind CSS in React Native | v4.2+ confirmed compatible with Expo SDK 54 + Reanimated v4; use Tailwind CSS v3.4.17 (not v4) — NativeWind v4 does NOT support Tailwind CSS v4 |
-| Tailwind CSS | 3.4.17 (for mobile only) | NativeWind peer dep | NativeWind v4 requires Tailwind v3, not v4 — this is the most common SDK 54 breakage |
-| React Native Reanimated | 4.2.2 | Gesture animations | v4 ships with Expo 54; Worklets are now internal — do NOT add babel worklet plugin separately |
-| React Native Vision Camera | 4.7.3 | Camera + QR scanning | Built-in CodeScanner hook handles QR without frame processors; MLKit powers Android barcode on-device |
-| react-native-mlkit-ocr | 0.3.0 | On-device OCR | Google ML Kit Text Recognition; processes menu photos on-device without API call; supports Latin script (FR/EN/DE/TR) |
-| Vercel AI SDK (`ai`) | 6.0.99 | AI streaming interface | Official Expo support from SDK 52+; `useChat` hook abstracts streaming; use `expo/fetch` not native fetch |
-| @ai-sdk/openai | 3.0.33 | OpenAI provider for AI SDK | Typed provider for GPT-4.1; integrates cleanly with `streamText` |
-| Zustand | 5.0.11 | Global state | Centralized store for scan session, user preferences, cache; simpler mental model than Jotai for interconnected state like current menu + user filters |
-| TanStack Query | 5.90.21 | Server state + caching | Cache dish lookups, translation results, AI responses; automatic background refetch; pairs with Supabase |
-| @supabase/supabase-js | 2.97.0 | Backend: auth + DB + storage | User accounts, cached translations, dish history; real-time not needed at launch but available |
-| react-native-mmkv | 4.1.2 | Local persistent cache | 30x faster than AsyncStorage; cache menu scan results, translated dish cards; encrypt with built-in support |
-| Zod | 4.3.6 | API response validation | Validate AI/translation API responses at runtime; prevents undefined field crashes |
-| expo-camera | 17.0.10 | Camera access | Used with Vision Camera for photo capture fallback; Expo-managed permissions |
-| expo-image | 3.0.11 | Optimized image display | Blurhash placeholder support; faster than `<Image>` for dish card photos |
-| expo-haptics | 15.0.8 | Haptic feedback | Tactile confirmation on scan success, recommendation selection |
-
-### AI / LLM Layer
-
-| Service | Model | Purpose | Why |
-|---------|-------|---------|-----|
-| OpenAI API | gpt-4.1 | Menu parsing, translation, dish recommendations | GPT-4.1 has vision input (menu photos), structured output, multilingual by default; best accuracy for food domain text |
-| OpenAI API | gpt-4.1-mini | Fast completions for simple translation | Cost optimization: FR/EN/TR/DE translation of short dish names doesn't need full GPT-4.1 |
-| Vercel AI SDK | v6 | Streaming wrapper | Handles streaming, retries, provider switching; DO NOT call OpenAI SDK directly in mobile app |
+**What to avoid:** `html5-qrcode` and the un-scoped `react-qr-scanner` are both unmaintained (2+ years, no fixes). `@yudiel/react-qr-scanner` is the direct replacement.
 
 ---
 
-## Supporting Libraries
+### Feature 2: Photo OCR (Camera Fallback)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `react-webcam` | ^7.2.0 | Camera capture UI for photo mode | Lightweight, `facingMode: "environment"` for mobile rear camera, returns base64 still frames. Stable, ~113K weekly downloads. Requires `ssr: false`. |
+| `tesseract.js` | ^7.0.0 | Client-side OCR on captured photos | Pure JS, runs entirely in the browser via WASM, no server cost per image. Supports 100+ languages including FR/EN/TR/DE. v7.0.0 (Dec 2024) adds 15-35% faster recognition via `relaxedsimd` build. |
+
+**Architecture decision:** Run `tesseract.js` client-side first (free, instant). If extracted text quality is low (confidence score < threshold), route the image to GPT-4o Vision via a Server Action as fallback. This avoids paying OpenAI API costs for every scan while maintaining quality.
+
+**Accuracy reality:** Tesseract.js on menu photos produces ~60-70% accurate extraction without preprocessing. GPT-4o Vision achieves ~80%+ AND returns structured JSON with dish names, descriptions, and allergens in one pass. The dual-path approach is the pragmatic tradeoff.
+
+---
+
+### Feature 3: Generic Menu Web Parsing (URL input)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `cheerio` | ^1.2.0 | Server-side HTML parsing for static/SSR menus | jQuery-like API, runs in Next.js Server Actions and Route Handlers, zero browser overhead, fast. Works for static/server-rendered HTML menu pages. |
+
+**Critical finding on the test menu (`https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q`):** Direct fetch returns only `"You need to enable JavaScript to run this app"`. This is a React SPA. Cheerio CANNOT parse it — there is no HTML content without JavaScript execution.
+
+**Do NOT use Playwright or Puppeteer on Vercel.** Chromium binary alone exceeds 280 MB. Vercel's serverless function limit is 250 MB unzipped. Deployment will fail.
+
+**Two-tier URL parsing strategy (no headless browser required):**
+1. `cheerio` fetch-and-parse — works for ~40-50% of menus (static HTML, server-rendered pages)
+2. For JavaScript SPAs: call a screenshot API (e.g., Screenshotone, APIFlash) from a Server Action → pass the resulting image to GPT-4o Vision for structured extraction
+
+This pattern handles both cases with no bundle size risk, no headless browser, and predictable behavior.
+
+---
+
+### Feature 4: LLM Integration (OpenAI — dish structuring, translation, Top 3 AI assistant)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `ai` (Vercel AI SDK) | ^6.0.97 | Streaming AI responses, `generateText`, `useChat` hooks | Purpose-built for Next.js App Router. Abstracts OpenAI streaming over Server Actions. Eliminates manual ReadableStream / SSE boilerplate. Last published 4 days ago (highly active). |
+| `@ai-sdk/openai` | ^3.0.31 | OpenAI provider for Vercel AI SDK | Official Vercel-maintained provider. Typed model selection. Supports GPT-4o, GPT-4o-mini, GPT-4.1, GPT-4.1-mini. Last published 15 hours ago (very active). |
+
+**Do NOT use** the raw `openai` npm package (currently v6.x) directly in Server Actions — it requires manual streaming and lacks the App Router integration that Vercel AI SDK provides.
+
+**Model strategy:**
+
+| Model | Use Case | Rationale |
+|-------|----------|-----------|
+| `gpt-4o-mini` | Dish structuring from Cheerio-extracted text, FR/EN/TR/DE translation, allergen tagging | Cheap (~$0.15/1M tokens), fast, excellent multilingual performance for short culinary text |
+| `gpt-4o` | Vision-based parsing (photo OCR fallback, SPA screenshot parsing) | Vision input capability; balance of cost and quality for image tasks |
+| `gpt-4.1-mini` | Configurable upgrade path for Top 3 AI assistant | Outperforms GPT-4o across benchmarks; available as drop-in swap via `@ai-sdk/openai` config |
+
+**Key pattern:** All OpenAI calls are Server Actions (`"use server"`). The API key lives in `OPENAI_API_KEY` env var only. Never call the API from the browser.
+
+---
+
+### Feature 5: Translation (FR / EN / TR / DE)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `next-intl` | ^4.8.3 | UI string localization (labels, filters, navigation, error messages) | Purpose-built for Next.js App Router. Server Components and Client Components both supported. Last published 8 days ago. **Note:** Next.js 16 renamed middleware to `proxy.ts` — this is a breaking change from pre-16 next-intl tutorials. |
+
+**Translation architecture split:**
+
+- `next-intl` handles **static UI strings** — button labels, allergen category names, filter names, navigation. These go in JSON locale files.
+- **GPT-4o-mini** handles **dish name and description translation** — dynamic, AI-generated, stored in Supabase after first translation.
+
+**Do NOT add Google Translate API or DeepL** — adds another paid service when GPT-4o-mini is already in the stack, cheaper, and produces higher-quality culinary translations with cultural context (e.g., "magret de canard" stays as-is in FR but gets a proper translation in EN/TR/DE, not a literal word-by-word rendering).
+
+---
+
+### Feature 6: Menu Caching (Supabase)
+
+No new packages — `@supabase/supabase-js` is already installed.
+
+**Caching schema:**
+
+```sql
+CREATE TABLE menu_cache (
+  url_hash      TEXT PRIMARY KEY,        -- SHA-256 of input URL or image fingerprint
+  raw_content   JSONB,                   -- cheerio-extracted or GPT-extracted raw data
+  parsed_dishes JSONB,                   -- structured dish cards array
+  translations  JSONB,                   -- { "fr": [...], "en": [...], "tr": [...], "de": [...] }
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  expires_at    TIMESTAMPTZ              -- now() + interval '7 days'
+);
+```
+
+**Cache hit flow:** hash input → query Supabase → if found and not expired → return `parsed_dishes` + `translations` directly, skip ALL AI calls.
+
+**Supabase client selection:** Use `@supabase/supabase-js` (not `@supabase/ssr`) for cache operations in Server Actions. The `@supabase/ssr` package uses cookies, which opts out of Next.js fetch caching. Service-role key for cache reads/writes is fine since no user PII is stored.
+
+---
+
+### Feature 7: Allergen / Dietary Filters
+
+**No new packages.** Client-side `useState` / `useReducer` is sufficient. The GPT-4o-mini prompt instructs the model to return structured JSON per dish:
+
+```json
+{
+  "name": "...",
+  "description": "...",
+  "allergens": ["gluten", "dairy"],
+  "dietary": ["vegetarian"],
+  "translations": { "en": "...", "tr": "...", "de": "..." }
+}
+```
+
+Filter logic is pure array intersection on the client — no search library needed.
+
+---
+
+### Feature 8: Reverse Search
+
+**No new packages for MVP.** Client-side fuzzy filter over loaded dish cards. If full-text search at scale is needed later, Supabase's built-in `fts` on the `parsed_dishes` JSONB column covers it — no Algolia or Meilisearch required at this stage.
+
+---
+
+## Complete New Dependencies Summary
+
+### Core Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| expo-linking | via Expo | Deep link + QR URL handling | When user scans a restaurant QR code that points to a URL |
-| expo-clipboard | via Expo | Copy dish name / share | "Copy to clipboard" on dish card |
-| react-native-safe-area-context | via Expo | Safe area insets | Required by Expo Router; apply to all screens |
-| react-native-gesture-handler | via Expo | Swipe gestures on dish cards | Swipe-to-next-dish, pull-to-refresh |
-| @react-native-community/netinfo | latest | Network detection | Detect offline state; show cached results when offline |
-| sonner (web) | latest | Toast notifications (landing) | shadcn/ui's preferred toast; replaces deprecated `toast` component |
-
----
-
-## Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| Bun | Package manager + runtime | Faster than npm/yarn for monorepo script running; use `bun install` |
-| ESLint + `eslint-config-next` | Linting | Included by Next.js; enforce rules on landing page |
-| Prettier | Formatting | Consistent code style across both surfaces |
-| TypeScript strict mode | Type checking | Enable `"strict": true` — catches null-safety bugs in AI response parsing |
-| Expo Dev Client | Dev builds with native code | Required once Vision Camera or MMKV are added (they need bare modules) |
-| EAS Build | Cloud native builds | Expo's build service for App Store / Play Store delivery; use EAS CLI |
+| `@yudiel/react-qr-scanner` | ^2.5.1 | QR scan via device camera | QR code input mode |
+| `react-webcam` | ^7.2.0 | Camera capture UI for photo OCR | Photo input mode |
+| `tesseract.js` | ^7.0.0 | Client-side OCR (browser WASM) | Photo input, free tier path |
+| `cheerio` | ^1.2.0 | Server-side HTML parsing | URL input, static HTML menus |
+| `ai` | ^6.0.97 | Vercel AI SDK (streaming, hooks) | All LLM calls |
+| `@ai-sdk/openai` | ^3.0.31 | OpenAI provider for AI SDK | All LLM calls via OpenAI |
+| `next-intl` | ^4.8.3 | UI string localization | All pages |
 
 ---
 
 ## Installation
 
-### Landing Page
-
 ```bash
-# Bootstrap
-npx create-next-app@latest nom-landing --typescript --tailwind --app --no-src-dir
+# Camera + QR scanning
+npm install @yudiel/react-qr-scanner react-webcam
 
-# Then upgrade Tailwind to v4
-npm install tailwindcss@^4.2.1 @tailwindcss/postcss
+# Client-side OCR
+npm install tesseract.js
 
-# Animations
-npm install motion
+# Server-side HTML parsing
+npm install cheerio
 
-# UI components
-npx shadcn@latest init
-npx shadcn@latest add button input form
-
-# Email + waitlist
-npm install resend react-email
-
-# Backend / storage
-npm install @supabase/supabase-js zod react-hook-form @hookform/resolvers
-```
-
-### Mobile App
-
-```bash
-# Bootstrap
-npx create-expo-app@latest nom-app --template blank-typescript
-
-# Navigation
-npx expo install expo-router
-
-# Styling — CRITICAL: use Tailwind v3, not v4
-npm install nativewind@^4.2.2
-npm install --save-dev tailwindcss@3.4.17
-
-# Camera + scanning
-npx expo install react-native-vision-camera expo-camera
-npm install react-native-mlkit-ocr
-
-# Animations + gestures
-npx expo install react-native-reanimated react-native-gesture-handler react-native-safe-area-context
-
-# State + data
-npm install zustand @tanstack/react-query react-native-mmkv
-
-# AI
+# AI / LLM (Vercel AI SDK + OpenAI provider)
 npm install ai @ai-sdk/openai
 
-# Backend
-npm install @supabase/supabase-js zod
-
-# UX
-npx expo install expo-image expo-haptics expo-linking expo-clipboard
-
-# EAS (global)
-npm install -g eas-cli
+# UI localization
+npm install next-intl
 ```
+
+No new dev dependencies required — TypeScript types are bundled in all recommended packages.
 
 ---
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | When to Use Alternative |
-|----------|-------------|-------------|-------------------------|
-| Mobile framework | Expo SDK 54 | React Native CLI (bare) | Only if you need a native module with no Expo support — extremely rare now; Expo's Continuous Native Generation covers 95% of cases |
-| Navigation | Expo Router | React Navigation standalone | Never for greenfield in 2026; React Navigation is the underlying engine of Expo Router |
-| Styling (mobile) | NativeWind v4 + Tailwind v3 | StyleSheet API | Only for one-off components where className prop is unavailable (native modules) |
-| Styling (web) | Tailwind v4 | Tailwind v3 | Tailwind v4 is the answer for the landing page specifically; v3 is for mobile only |
-| Animation (web) | motion/react v12 | GSAP | GSAP is for complex 3D/WebGL effects; motion is sufficient for dark-theme scroll reveals and phone mockup animation |
-| OCR | react-native-mlkit-ocr | Google Cloud Vision API | Cloud Vision: better accuracy for degraded/low-res photos, costs money per request. ML Kit: free, on-device, works offline. Start with ML Kit, switch to Cloud Vision only if accuracy is inadequate |
-| AI provider | OpenAI gpt-4.1 | Anthropic Claude, Google Gemini | Multimodal + vision + structured output + multilingual: GPT-4.1 performs best in benchmarks for multi-language food text; Claude 3.5 is a viable fallback |
-| Email | Resend | SendGrid, Postmark | Resend has best Next.js DX and React Email integration; SendGrid only if you need advanced marketing automation |
-| Database | Supabase | PlanetScale, Neon, Firebase | Supabase gives auth + DB + storage in one free tier; Firebase is NoSQL (worse for relational dish/menu data); Neon is pure Postgres without auth layer |
-| State (mobile) | Zustand | Jotai, Redux Toolkit | Jotai is better for fine-grained atomic state; Zustand is better for interconnected menu session state with predictable action patterns |
-| Local cache | react-native-mmkv | AsyncStorage | MMKV is 30x faster, supports encryption, is synchronous — mandatory for cache-everything philosophy |
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| QR scanning | `@yudiel/react-qr-scanner` | `html5-qrcode` | Unmaintained since 2022. Uses deprecated ZXing-js. No React 19 support. |
+| QR scanning | `@yudiel/react-qr-scanner` | `react-qr-barcode-scanner` | Wraps deprecated `@zxing/library`. Less maintained. |
+| Web parsing | `cheerio` + screenshot API | `playwright` / `puppeteer` | Chromium binary = 280 MB. Vercel serverless limit = 250 MB. Hard deployment blocker. |
+| LLM client | Vercel AI SDK (`ai` + `@ai-sdk/openai`) | Raw `openai` v6 package | Manual streaming implementation in App Router; more boilerplate; less type-safe; no `useChat` hook. |
+| UI localization | `next-intl` | `next-i18next` | Officially incompatible with App Router — only works with Pages Router. |
+| UI localization | `next-intl` | `react-i18next` directly | Works, but next-intl has better Server Component support and is purpose-built for App Router. |
+| Dish translation | GPT-4o-mini (already in stack) | Google Translate API / DeepL | Adds another paid third-party dependency. GPT-4o-mini is cheaper and handles food vocabulary nuance better. |
+| OCR | Tesseract.js (client) + GPT-4o Vision (fallback) | Tesseract.js only | Single-engine accuracy ~60-70% on restaurant menu photos — insufficient quality for MVP. |
 
 ---
 
@@ -179,71 +208,109 @@ npm install -g eas-cli
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `framer-motion` (old package) | Does not support React 19 cleanly; the package is now `motion` | `motion` with `import { motion } from 'motion/react'` |
-| Tailwind CSS v4 in mobile (NativeWind) | NativeWind v4 does not support Tailwind CSS v4; causes silent styling failures | Tailwind CSS 3.4.17 for mobile, v4 for web only |
-| AsyncStorage | 10-50x slower than MMKV for frequent reads; no encryption | `react-native-mmkv` |
-| Expo SDK 53 or earlier | New Architecture not stable; Reanimated v3 has API differences from v4 | Expo SDK 54 |
-| Next.js Pages Router | App Router has been stable since Next.js 13.4; Pages Router is in maintenance mode | Next.js App Router |
-| Custom email HTML | Maintenance hell; dark mode rendering issues across clients | `react-email` components |
-| Calling OpenAI SDK directly from React Native | Exposes API key in bundle; no streaming abstraction | Server-side route (Expo API routes or Supabase Edge Function) + Vercel AI SDK |
-| React Navigation standalone | Extra boilerplate without benefit; Expo Router is file-based + typed + deep-linking automatic | Expo Router |
-| Redux Toolkit | Massive overkill for this app's state complexity; 3-5x more boilerplate than Zustand | Zustand |
+| `html5-qrcode` | Unmaintained since 2022. Uses deprecated ZXing-js. No bug fixes. | `@yudiel/react-qr-scanner` ^2.5.1 |
+| `react-qr-reader` (un-scoped) | Last published 3+ years ago. Not compatible with React 19. | `@yudiel/react-qr-scanner` ^2.5.1 |
+| `playwright` / `puppeteer` in Vercel serverless | Chromium binary (280 MB) exceeds Vercel 250 MB function limit. Deployment fails. | `cheerio` for static HTML + screenshot service for SPAs |
+| `next-i18next` | Not compatible with Next.js App Router. Well-documented breakage. | `next-intl` ^4.8.3 |
+| Raw `openai` npm package (v6.x) | Requires manual ReadableStream / SSE handling in Server Actions. No `useChat`. | `ai` + `@ai-sdk/openai` |
+| `@supabase/ssr` for caching | Uses cookies, which opts out of Next.js fetch caching entirely. | `@supabase/supabase-js` directly for Server Action cache calls |
+| Google Translate API / DeepL | Additional paid service. GPT-4o-mini covers the same need already. | GPT-4o-mini via `@ai-sdk/openai` |
 
 ---
 
 ## Stack Patterns by Variant
 
-**Landing page only (Milestone 1):**
-- Next.js 16 + Tailwind v4 + motion + shadcn/ui + Resend + Supabase
-- Keep it to one Supabase table: `waitlist_emails (id, email, created_at, ip_hash)`
-- Rate-limit in Next.js API route with in-memory Map or Upstash Redis (free tier)
+**If menu input is a QR code scan:**
+- `@yudiel/react-qr-scanner` decodes the QR → extracts URL → treat as URL input path below
 
-**Mobile MVP (Milestone 2):**
-- Expo 54 + NativeWind v4 (Tailwind v3) + Expo Router + Vision Camera + ML Kit OCR
-- AI calls go through Expo API routes (server-side) — never call OpenAI from client directly
-- Cache every translation result in MMKV by `(original_text + target_lang)` key
+**If menu input is a URL pointing to static/SSR HTML:**
+- Server Action fetches URL → `cheerio` parses dish names/descriptions → `gpt-4o-mini` structures and translates → cache in Supabase
 
-**If QR code points to a URL (not a photo):**
-- `expo-linking` parses the URL
-- Fetch menu HTML/JSON from URL server-side (Expo API route acts as proxy to avoid CORS)
-- Parse with a custom extractor or send raw HTML to GPT-4.1 for structured extraction
+**If menu input is a URL pointing to a JavaScript SPA (like eazee-link.com):**
+- Server Action calls screenshot API with URL → receives image → `gpt-4o` Vision extracts structured dish data → cache in Supabase
 
-**If menu is a photo (OCR path):**
-- Capture with `expo-camera` or Vision Camera
-- Run `react-native-mlkit-ocr` on-device first (free, fast)
-- Send extracted text (not image) to GPT-4.1 for structuring + translation
-- Fallback: send image directly to GPT-4.1 vision if ML Kit confidence is low
+**If menu input is a photo from camera:**
+- `react-webcam` captures image → `tesseract.js` runs client-side OCR in browser → if confidence low, upload to Server Action → `gpt-4o` Vision → cache result
+
+**Top 3 AI Assistant:**
+- Client sends current dish array → Server Action calls `gpt-4o-mini` (or `gpt-4.1-mini`) with user dietary/allergen prefs → streams back ranked recommendations via `useChat`
 
 ---
 
-## Version Compatibility Matrix
+## Version Compatibility
 
 | Package | Compatible With | Critical Note |
-|---------|-----------------|---------------|
-| NativeWind 4.2.2 | Expo SDK 54, Tailwind CSS 3.4.17, Reanimated 4.x | DO NOT use Tailwind v4 with NativeWind v4 |
-| react-native-reanimated 4.2.2 | Expo SDK 54 | DO NOT add `babel-plugin-reanimated` — worklets are built-in to v4 |
-| motion 12.x | Next.js 16, React 19 | Import from `motion/react`, NOT `framer-motion` |
-| shadcn/ui | Tailwind v4, React 19 | Use Tailwind v4 branch; `toast` → `sonner`; `tailwindcss-animate` → `tw-animate-css` |
-| Vercel AI SDK 6.x | Expo SDK 52+ | Use `expo/fetch` not `global.fetch` for streaming to work |
-| react-native-vision-camera 4.7.x | Expo SDK 54 (requires dev client) | Cannot use with Expo Go; requires EAS build or local dev client |
+|---------|----------------|---------------|
+| `@yudiel/react-qr-scanner` ^2.5.1 | React 18+, React 19 | Must use `dynamic(() => import(...), { ssr: false })` — accesses `navigator.mediaDevices` |
+| `react-webcam` ^7.2.0 | React 18+, React 19 | Must use `dynamic()` with `ssr: false`. HTTPS required on mobile devices. |
+| `tesseract.js` ^7.0.0 | Node.js 16+, modern browsers | Requires webpack config in `next.config.ts` — see integration notes below |
+| `next-intl` ^4.8.3 | Next.js 15+, **Next.js 16** | Middleware file must be named `proxy.ts` in Next.js 16 (was `middleware.ts` in older versions) |
+| `ai` ^6.0.97 | Next.js App Router, React 18+ | Use `generateText` in Server Actions; `useChat` is client-only |
+| `@ai-sdk/openai` ^3.0.31 | `ai` ^6.x | Must match `ai` SDK major version — do not mix `ai` v5 with `@ai-sdk/openai` v3 |
+| `cheerio` ^1.2.0 | Node.js 18+ | Server-only. Never import in Client Components or `'use client'` files. |
+
+---
+
+## Integration Notes
+
+### Next.js 16 + `next-intl`: Middleware Renamed
+In Next.js 16, the `next-intl` integration middleware must be named `proxy.ts` (previously `middleware.ts`). Pre-16 tutorials will be wrong on this step.
+
+### Camera Components: Always `ssr: false`
+Both `@yudiel/react-qr-scanner` and `react-webcam` access browser-only APIs (`navigator.mediaDevices`). Use dynamic imports:
+
+```typescript
+// In any Next.js page or component
+import dynamic from "next/dynamic";
+
+const QrScanner = dynamic(() => import("@yudiel/react-qr-scanner"), { ssr: false });
+const Webcam = dynamic(() => import("react-webcam"), { ssr: false });
+```
+
+### Tesseract.js: Next.js Webpack Config
+Tesseract.js uses Web Workers and WASM. Add to `next.config.ts`:
+
+```typescript
+const nextConfig = {
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+    return config;
+  },
+};
+```
+
+### Vercel Function Size Budget
+Estimated bundle additions from new packages:
+- `tesseract.js` — ~2 MB JS (WASM loaded lazily from CDN, not bundled)
+- `cheerio` — ~1 MB
+- `ai` + `@ai-sdk/openai` — ~500 KB
+- `@yudiel/react-qr-scanner` — ~300 KB
+- `react-webcam` — ~100 KB
+- `next-intl` — ~200 KB
+
+Total addition: ~4.1 MB. Well within Vercel's 250 MB serverless function limit. No size risk.
 
 ---
 
 ## Sources
 
-- [npmjs.com/package/next](https://www.npmjs.com/package/next) — verified Next.js 16.1.6 (latest stable, Feb 2026) — HIGH confidence
-- [npmjs.com/package/expo](https://www.npmjs.com/package/expo) — verified Expo 54.0.33 — HIGH confidence
-- [npmjs.com/package/motion](https://www.npmjs.com/package/motion) — verified motion 12.34.3 — HIGH confidence
-- [npmjs.com/package/tailwindcss](https://www.npmjs.com/package/tailwindcss) — verified Tailwind 4.2.1 — HIGH confidence
-- [docs.expo.dev/guides/new-architecture/](https://docs.expo.dev/guides/new-architecture/) — New Architecture on by default in SDK 52+ — HIGH confidence
-- [ai-sdk.dev/docs/getting-started/expo](https://ai-sdk.dev/docs/getting-started/expo) — Vercel AI SDK Expo setup, SDK 52+ requirement, expo/fetch requirement — HIGH confidence
-- [react-native-vision-camera.com/docs/guides/code-scanning](https://react-native-vision-camera.com/docs/guides/code-scanning) — QR/barcode scanning via CodeScanner hook — HIGH confidence
-- [ui.shadcn.com/docs/tailwind-v4](https://ui.shadcn.com/docs/tailwind-v4) — shadcn Tailwind v4 support confirmed — HIGH confidence
-- [motion.dev/docs/react-upgrade-guide](https://motion.dev/docs/react-upgrade-guide) — framer-motion → motion migration, no breaking changes in v12 — HIGH confidence
-- NativeWind SDK 54 compatibility — MEDIUM confidence (multiple community sources agree on Tailwind v3.4.17 requirement; no single official doc page covers this exact version matrix)
-- OpenAI gpt-4.1 vision for menu parsing — MEDIUM confidence (confirmed capability from official OpenAI docs; food-specific benchmarks not found)
+- [github.com/yudielcurbelo/react-qr-scanner](https://github.com/yudielcurbelo/react-qr-scanner) — `@yudiel/react-qr-scanner` v2.5.1 confirmed, last published ~1 month ago (MEDIUM confidence, search result)
+- [github.com/naptha/tesseract.js/releases](https://github.com/naptha/tesseract.js/releases) — v7.0.0 released December 2024, confirmed latest (HIGH confidence, official source)
+- [ai-sdk.dev/docs/introduction](https://ai-sdk.dev/docs/introduction) — Vercel AI SDK v6.0.97, official documentation (HIGH confidence)
+- [npmjs.com/package/@ai-sdk/openai](https://www.npmjs.com/package/@ai-sdk/openai) — `@ai-sdk/openai` v3.0.31, last published 15 hours ago (MEDIUM confidence, search result)
+- [next-intl.dev](https://next-intl.dev/) — v4.8.3, Next.js 16 compatibility and `proxy.ts` rename confirmed (HIGH confidence)
+- [npmjs.com/package/cheerio](https://www.npmjs.com/package/cheerio) — v1.2.0 confirmed (MEDIUM confidence, search result)
+- [vercel.com/docs/functions/limitations](https://vercel.com/docs/functions/limitations) — 250 MB unzipped function limit (HIGH confidence, official docs)
+- [npm-compare.com](https://npm-compare.com/@zxing/library,html5-qrcode,jsqr,qr-scanner,qrcode-reader) — html5-qrcode and @zxing/library maintenance status confirmed unmaintained (MEDIUM confidence)
+- Test menu direct analysis (https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q) — confirmed JavaScript SPA, Cheerio cannot parse it (HIGH confidence, direct HTTP fetch)
+- [roboflow.com/compare/tesseract-vs-gpt-4o](https://roboflow.com/compare/tesseract-vs-gpt-4o) — Tesseract vs GPT-4o accuracy comparison (MEDIUM confidence)
+- [zenrows.com/blog/playwright-vercel](https://www.zenrows.com/blog/playwright-vercel) — Playwright/Playwright Chromium on Vercel size constraints (HIGH confidence, corroborated by Vercel docs)
 
 ---
 
-*Stack research for: NOM — food-tech mobile app + landing page*
+*Stack research for: NOM — restaurant menu scanning / AI translation MVP features (Next.js web app)*
 *Researched: 2026-02-25*

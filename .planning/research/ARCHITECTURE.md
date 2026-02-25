@@ -1,345 +1,687 @@
 # Architecture Research
 
-**Domain:** Food-tech mobile app + marketing landing page (menu translation/recommendation)
+**Domain:** MVP feature integration — QR scanning, OCR, LLM menu parsing, dish cards, caching into existing Next.js 16 + Supabase web app
 **Researched:** 2026-02-25
-**Confidence:** MEDIUM-HIGH
+**Confidence:** HIGH (Next.js App Router patterns verified via official docs; library choices verified via npm registry and official sources)
 
 ---
 
-## Standard Architecture
+## Context: What Already Exists
 
-### System Overview
+The codebase is a **Next.js 16.1.6 App Router** landing page with:
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     PHASE 1: Landing Page (Vercel)                  │
-│  ┌────────────────┐  ┌────────────────┐  ┌──────────────────────┐  │
-│  │  Next.js App   │  │  Waitlist API  │  │  Email (Resend)      │  │
-│  │  (marketing)   │  │  Route Handler │  │  Confirmation flow   │  │
-│  └────────────────┘  └───────┬────────┘  └──────────────────────┘  │
-│                               │                                      │
-│                        ┌──────▼──────┐                              │
-│                        │  Supabase   │  (waitlist table)            │
-│                        └─────────────┘                              │
-└─────────────────────────────────────────────────────────────────────┘
+- `app/page.tsx` — single route, all marketing sections
+- `app/layout.tsx` — root layout, Nav + Footer
+- `app/actions/waitlist.ts` — one Server Action
+- `components/sections/` — 8 section components (Hero, DishCarousel, Features, etc.)
+- `components/ui/` — 3 primitives (Btn, Pill, FoodImage)
+- `components/layout/` — Nav, Footer
+- `lib/supabase.ts` — single Supabase client (anon key, browser-safe)
+- `lib/data.ts` — static mock data (FOOD[], DISHES[], FEATURES[], FAQS[])
+- Tailwind v4 CSS-first `@theme`, motion/react v12, Outfit font
 
-┌─────────────────────────────────────────────────────────────────────┐
-│                     PHASE 2: Mobile App + Backend                   │
-│                                                                     │
-│  CLIENT (React Native / Expo)                                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Scan Screen │  │  Dish Cards  │  │  Taste       │             │
-│  │  (QR/URL/    │  │  (translate/ │  │  Profile /   │             │
-│  │   Photo)     │  │   illustr.)  │  │  History     │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│         └─────────────────┴─────────────────┘                      │
-│                            │ REST/HTTPS                             │
-├────────────────────────────┼────────────────────────────────────────┤
-│  API LAYER (Next.js Route  │ Handlers or Supabase Edge Functions)   │
-│  ┌──────────────┐  ┌───────┴──────┐  ┌──────────────┐             │
-│  │  /scan       │  │  /recommend  │  │  /search     │             │
-│  │  (ingest)    │  │  (LLM)       │  │  (reverse)   │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│         └─────────────────┴─────────────────┘                      │
-│                            │                                        │
-├────────────────────────────┼────────────────────────────────────────┤
-│  PROCESSING PIPELINE                                                │
-│  ┌──────────────┐  ┌───────┴──────┐  ┌──────────────┐             │
-│  │  Ingestion   │  │  LLM         │  │  Cache       │             │
-│  │  (scrape /   │  │  Orchestrat. │  │  Layer       │             │
-│  │   OCR)       │  │  (translate/ │  │  (Redis /    │             │
-│  └──────┬───────┘  │   recommend) │  │   Upstash)   │             │
-│         │          └──────┬───────┘  └──────────────┘             │
-│         │                 │                                         │
-├─────────┼─────────────────┼──────────────────────────────────────── │
-│  DATA LAYER               │                                         │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────────────┐             │
-│  │  Supabase    │  │  pgvector    │  │  Supabase    │             │
-│  │  PostgreSQL  │  │  (embeddings │  │  Storage     │             │
-│  │  (menus,     │  │   for reverse│  │  (dish       │             │
-│  │   users,     │  │   search)    │  │   images)    │             │
-│  │   sessions)  │  └──────────────┘  └──────────────┘             │
-│  └──────────────┘                                                   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| Landing Page | Marketing, waitlist capture, animations | Next.js 15 on Vercel, Framer Motion |
-| Waitlist API | Email collection, dedup, confirmation | Next.js Route Handler + Resend + Supabase |
-| Scan Screen | QR decode, URL input, photo capture | Expo Camera, expo-barcode-scanner |
-| Ingestion Service | URL fetch → parse HTML/JSON-LD/PDF → normalize menu | Node.js scraper + Playwright (headless) + Tesseract / Google Vision OCR |
-| Menu Store | Normalized menu items keyed by restaurant+language | PostgreSQL (menus, menu_items, restaurants tables) |
-| LLM Orchestrator | Translation, cultural explanation, Top 3 recs, reverse search | Structured prompt pipeline, item_id grounding |
-| Cache Layer | Deduplicate LLM calls; exact + semantic cache | Upstash Redis (exact match) + pgvector semantic similarity |
-| Dish Cards UI | Render translated/illustrated cards, confidence badges | React Native, react-native-fast-image |
-| Image Service | Progressive image strategy: gradient+emoji → web → community | Supabase Storage + CDN |
-| Taste Profile | Per-user preferences, favorite tags | Supabase row, synced via Supabase Realtime |
-| Auth | Layered: anonymous session → light account → social | Supabase Auth (magic link / OAuth) |
+This milestone adds a **functional app surface** to this same Next.js codebase. No new framework. No separate app. New routes are added under `app/`.
 
 ---
 
-## Recommended Project Structure
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     BROWSER (Mobile-first PWA)                      │
+│                                                                      │
+│  ┌───────────────────┐   ┌───────────────────┐                      │
+│  │  Landing routes   │   │  App routes        │                      │
+│  │  /                │   │  /scan             │                      │
+│  │  (existing)       │   │  /menu/[id]        │                      │
+│  └───────────────────┘   └─────────┬─────────┘                      │
+│                                    │                                  │
+│  Client Components only where     │                                  │
+│  browser APIs are needed:          │                                  │
+│  - QrScanner (camera)              │                                  │
+│  - PhotoCapture (camera)           │                                  │
+│  - FilterBar (interactive state)   │                                  │
+│  - DishCard list (filter state)    │                                  │
+└────────────────────────────────────┼────────────────────────────────┘
+                                     │  fetch / Server Actions
+┌────────────────────────────────────┼────────────────────────────────┐
+│              NEXT.JS API LAYER     │                                 │
+│                                    │                                  │
+│  ┌─────────────────┐  ┌────────────┴──────┐  ┌──────────────────┐   │
+│  │  POST           │  │  POST             │  │  GET             │   │
+│  │  /api/scan      │  │  /api/recommend   │  │  /api/menu/[id]  │   │
+│  │                 │  │                   │  │                  │   │
+│  │  - URL parse    │  │  - taste query    │  │  - cache lookup  │   │
+│  │  - OCR (base64) │  │  - item_id        │  │  - return dishes │   │
+│  │  - cache check  │  │    grounded Top 3 │  │                  │   │
+│  └────────┬────────┘  └────────┬──────────┘  └────────┬─────────┘   │
+│           │                    │                       │              │
+│           └────────────────────┴───────────────────────┘             │
+│                                 │                                     │
+│  ┌──────────────────────────────┴─────────────────────────────────┐  │
+│  │                    lib/openai.ts (server-only)                  │  │
+│  │  - parseMenuFromText(rawText) → ParsedMenu (structured output)  │  │
+│  │  - translateDishes(items, targetLocale) → translated[]          │  │
+│  │  - getRecommendations(menuId, preference) → item_id[]          │  │
+│  └──────────────────────────────────────────────────────────────── │  │
+│                                 │                                     │
+│  ┌──────────────────────────────┴─────────────────────────────────┐  │
+│  │                   lib/supabase-server.ts (server-only)          │  │
+│  │  - Service role client for server-side writes                   │  │
+│  │  - menu_cache upsert / lookup by url_hash                       │  │
+│  └──────────────────────────────────────────────────────────────── │  │
+└──────────────────────────────────┬─────────────────────────────────┘
+                                   │
+┌──────────────────────────────────┼─────────────────────────────────┐
+│              DATA + EXTERNAL     │                                   │
+│                                  │                                   │
+│  ┌─────────────────┐  ┌──────────┴───────┐  ┌──────────────────┐   │
+│  │  Supabase       │  │  OpenAI API       │  │  External URL    │   │
+│  │  PostgreSQL     │  │  gpt-4o           │  │  (restaurant     │   │
+│  │                 │  │  vision + text    │  │   menu pages)    │   │
+│  │  tables:        │  │                   │  │                  │   │
+│  │  - menus        │  │  structured       │  │  fetch + extract │   │
+│  │  - menu_items   │  │  output via       │  │  text server-    │   │
+│  │  - admin_config │  │  Zod schema       │  │  side (no CORS)  │   │
+│  │  (existing)     │  │                   │  │                  │   │
+│  │  - waitlist     │  └──────────────────┘  └──────────────────┘   │
+│  └─────────────────┘                                                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## New vs Modified: Complete Inventory
+
+### New Files (create from scratch)
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `app/scan/page.tsx` | Server Component (layout shell) | Scan entry point route; renders client scanner inside Suspense |
+| `app/scan/loading.tsx` | Loading UI | Suspense fallback for scan page |
+| `app/menu/[id]/page.tsx` | Server Component | Fetch cached menu from Supabase; pass to client dish list |
+| `app/menu/[id]/loading.tsx` | Loading UI | Skeleton while menu loads |
+| `app/admin/page.tsx` | Server Component (gated) | Admin config UI; reads `admin_config` table |
+| `app/api/scan/route.ts` | Route Handler (POST) | Accepts URL or base64 image; runs cache check → OCR/fetch → LLM parse → upsert |
+| `app/api/recommend/route.ts` | Route Handler (POST) | Accepts `menuId` + taste preference string; returns Top 3 item_ids |
+| `app/api/menu/[id]/route.ts` | Route Handler (GET) | Returns cached menu dishes for a given menu ID |
+| `components/app/QrScanner.tsx` | Client Component | Camera QR code reader using `qr-scanner`; dynamic-imported with `ssr: false` |
+| `components/app/PhotoCapture.tsx` | Client Component | File input + camera photo capture; sends base64 to `/api/scan` |
+| `components/app/UrlInput.tsx` | Client Component | Controlled input for direct URL paste; calls `/api/scan` |
+| `components/app/DishCard.tsx` | Client Component (display) | Single dish card: name, translation, price, allergen tags, spice level |
+| `components/app/DishList.tsx` | Client Component | Renders filtered list of DishCards; receives `dishes` prop |
+| `components/app/FilterBar.tsx` | Client Component | Allergen/dietary filter toggles; manages local filter state |
+| `components/app/RecommendPanel.tsx` | Client Component | Taste preference input + renders Top 3 highlighted results |
+| `components/app/ReverseSearch.tsx` | Client Component | Separate from landing `ReverseSearch.tsx`; functional version with real API call |
+| `components/app/ScanProgress.tsx` | Client Component | Shows QR scan → processing → dish cards animated step indicator |
+| `lib/openai.ts` | Server-only module | OpenAI client init + typed wrappers: `parseMenu`, `translateDishes`, `getRecommendations` |
+| `lib/supabase-server.ts` | Server-only module | Service role Supabase client for server-side writes; never exported to client |
+| `lib/cache.ts` | Server-only module | `urlHash(url)` + `checkMenuCache(hash)` + `upsertMenuCache(hash, data)` |
+| `lib/menu-extract.ts` | Server-only module | URL fetch → HTML text extraction → stripped text for LLM |
+| `types/menu.ts` | Shared types | `ParsedMenu`, `MenuItem`, `Allergen`, `DietaryTag`, `MenuCache`, `AdminConfig` |
+
+### Modified Files (existing, targeted edits)
+
+| Path | Change | Reason |
+|------|--------|--------|
+| `app/layout.tsx` | Add conditional nav link to `/scan` | Expose app entry point in navigation |
+| `components/layout/Nav.tsx` | Add "Scanner" CTA button linking to `/scan` | Visible app entry point |
+| `lib/supabase.ts` | Keep unchanged — browser client stays as-is | Existing waitlist code uses it; do not break |
+| `app/globals.css` | Add `@keyframes shimmer` for skeleton loading, `@keyframes pulse-glow` for scan active state | Match existing animation pattern |
+| `lib/data.ts` | Keep unchanged — mock data stays for landing sections | Landing page continues to work |
+
+### New Supabase Tables (SQL migrations)
+
+| Table | Columns | Purpose |
+|-------|---------|---------|
+| `menus` | `id uuid pk`, `url_hash text unique`, `source_url text`, `restaurant_name text`, `created_at`, `updated_at` | One row per scanned restaurant URL |
+| `menu_items` | `id uuid pk`, `menu_id uuid fk`, `original_name text`, `translated_name text`, `description_translated text`, `price text`, `allergens jsonb`, `dietary_tags jsonb`, `spice_level int`, `position int` | Parsed + translated dishes |
+| `admin_config` | `id int pk default 1`, `llm_model text default 'gpt-4o'`, `llm_model_ocr text default 'gpt-4o'`, `updated_at` | Single-row config for model selection |
+
+---
+
+## Recommended Project Structure (additions only)
 
 ```
 nomnomnom/
-├── apps/
-│   ├── landing/                # Next.js 15 — Phase 1
-│   │   ├── app/
-│   │   │   ├── page.tsx        # Hero, waitlist form, animations
-│   │   │   └── api/
-│   │   │       └── waitlist/
-│   │   │           └── route.ts  # Email capture endpoint
-│   │   └── components/
-│   └── mobile/                 # Expo / React Native — Phase 2
-│       ├── app/                # Expo Router (file-based)
-│       │   ├── (tabs)/
-│       │   │   ├── scan.tsx
-│       │   │   ├── history.tsx
-│       │   │   └── profile.tsx
-│       │   └── menu/[id].tsx   # Dish cards screen
-│       ├── components/
-│       │   ├── DishCard.tsx
-│       │   ├── ConfidenceBadge.tsx
-│       │   └── ProgressiveImage.tsx
-│       └── services/
-│           ├── api.ts          # typed fetch wrappers
-│           └── cache.ts        # local AsyncStorage cache
-├── packages/
-│   ├── shared-types/           # TS interfaces (MenuItem, Restaurant, etc.)
-│   └── shared-ui/              # Optional: shared design tokens
-├── supabase/
-│   ├── migrations/             # SQL migration files
-│   └── functions/              # Edge Functions (scan, recommend, search)
+├── app/
+│   ├── page.tsx             # EXISTING — landing page, unchanged
+│   ├── layout.tsx           # MODIFIED — add nav link to /scan
+│   ├── globals.css          # MODIFIED — add shimmer/pulse keyframes
+│   ├── actions/
+│   │   └── waitlist.ts      # EXISTING — unchanged
+│   ├── scan/
+│   │   ├── page.tsx         # NEW — scan entry (Server Component shell)
+│   │   └── loading.tsx      # NEW
+│   ├── menu/
+│   │   └── [id]/
+│   │       ├── page.tsx     # NEW — dish list page (Server Component)
+│   │       └── loading.tsx  # NEW
+│   ├── admin/
+│   │   └── page.tsx         # NEW — admin config (simple password gate)
+│   └── api/
 │       ├── scan/
-│       │   └── index.ts
+│       │   └── route.ts     # NEW — core ingest endpoint
 │       ├── recommend/
-│       │   └── index.ts
-│       └── reverse-search/
-│           └── index.ts
-└── turbo.json                  # Turborepo task graph
+│       │   └── route.ts     # NEW — Top 3 recommendations
+│       └── menu/
+│           └── [id]/
+│               └── route.ts # NEW — menu data fetch
+├── components/
+│   ├── sections/            # EXISTING — all unchanged
+│   ├── ui/                  # EXISTING — Btn, Pill, FoodImage unchanged
+│   ├── layout/              # EXISTING — Nav modified, Footer unchanged
+│   └── app/                 # NEW folder — all functional app components
+│       ├── QrScanner.tsx
+│       ├── PhotoCapture.tsx
+│       ├── UrlInput.tsx
+│       ├── DishCard.tsx
+│       ├── DishList.tsx
+│       ├── FilterBar.tsx
+│       ├── RecommendPanel.tsx
+│       ├── ReverseSearch.tsx
+│       └── ScanProgress.tsx
+├── lib/
+│   ├── supabase.ts          # EXISTING — browser client, unchanged
+│   ├── data.ts              # EXISTING — mock data, unchanged
+│   ├── openai.ts            # NEW — server-only OpenAI wrappers
+│   ├── supabase-server.ts   # NEW — server-only service role client
+│   ├── cache.ts             # NEW — URL hash + cache read/write
+│   └── menu-extract.ts      # NEW — URL fetch + text extraction
+├── types/
+│   └── menu.ts              # NEW — shared TypeScript interfaces
+└── supabase/
+    └── migrations/
+        └── 001_mvp_tables.sql  # NEW — menus, menu_items, admin_config
 ```
 
 ### Structure Rationale
 
-- **apps/landing vs apps/mobile:** Independent deployments, no coupling. Landing deploys to Vercel Day 1; mobile ships to App Store when ready.
-- **supabase/functions/:** Co-locating Edge Functions with the DB keeps the backend close to data, reducing round-trips. Deno TypeScript first. Scales automatically.
-- **packages/shared-types/:** Single source of truth for `MenuItem`, `Restaurant`, `ScanResult` interfaces — prevents drift between landing, mobile, and API.
-- **supabase/migrations/:** Version-controlled schema, enables reproducible environments and safe CI deploys.
+- **`components/app/` vs `components/sections/`:** Landing sections and app components have different rendering rules (app components require `"use client"`; most landing sections are already stable). Separating them prevents accidentally adding `"use client"` to marketing components and inflating client bundles.
+- **`lib/openai.ts` and `lib/supabase-server.ts` as server-only:** These hold API keys and must never be bundled client-side. Naming convention `*-server.ts` signals intent; add `import 'server-only'` at top to get a build error if accidentally imported from a Client Component.
+- **`types/menu.ts` as shared (no directive):** Pure TypeScript interfaces; importable from both Server and Client Components without bundle concerns.
+- **`app/api/` Route Handlers:** Prefer Route Handlers over Server Actions for the scan/recommend endpoints because they need to handle `multipart/form-data` (photo upload) and are called from Client Components with `fetch()`. Server Actions are appropriate for form submissions (existing waitlist pattern) but less ergonomic for binary uploads.
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Layered Menu Ingestion Pipeline
+### Pattern 1: Server Component Shell + Client Component Islands
 
-**What:** A sequential pipeline that handles diverse input types (QR → URL, direct URL, photo) and normalizes to a single canonical `ParsedMenu` structure before any LLM call.
-**When to use:** Every scan entry point funnels through this pipeline before hitting the LLM.
-**Trade-offs:** Adds latency on first scan (~3-8s), but separates parsing complexity from LLM concerns and makes each stage independently testable.
-
-```typescript
-// supabase/functions/scan/index.ts
-type ScanInput =
-  | { type: "url"; url: string }
-  | { type: "photo"; base64: string };
-
-async function ingestMenu(input: ScanInput): Promise<ParsedMenu> {
-  // Stage 1: Resolve URL or run OCR
-  const rawText = input.type === "url"
-    ? await fetchAndExtract(input.url)   // HTML → JSON-LD → fallback scrape
-    : await runOCR(input.base64);        // Google Vision / VLM
-
-  // Stage 2: Normalize to canonical structure
-  const normalized = await normalizeMenu(rawText); // LLM structured extraction
-
-  // Stage 3: Persist (idempotent by URL hash / content hash)
-  return await upsertMenu(normalized);
-}
-```
-
-### Pattern 2: item_id-Grounded LLM Recommendations
-
-**What:** The LLM receives the full list of `menu_item` records (with their IDs) and is instructed to return only `item_id` references. Never free-text item names. This is the anti-hallucination contract.
-**When to use:** Every call to `/recommend` and `/reverse-search`.
-**Trade-offs:** Slightly more prompt complexity; eliminates hallucinated dish names entirely.
+**What:** Each new page (`/scan`, `/menu/[id]`) is a Server Component that does data fetching and renders the static frame, then passes data to Client Component children for interactivity.
+**When to use:** Every new page route. Server Components handle: Supabase reads, passing initial data, metadata. Client Components handle: camera access, filter state, recommendation input.
+**Trade-offs:** Minimal JS shipped to browser; camera/state logic is isolated. Server Components cannot use browser APIs — everything touching `navigator.mediaDevices` or `useState` must be a Client Component.
 
 ```typescript
-// supabase/functions/recommend/index.ts
-async function getRecommendations(menuId: string, userProfile: TasteProfile) {
-  const items = await db.query<MenuItem>(
-    "SELECT id, name, description, tags FROM menu_items WHERE menu_id = $1",
-    [menuId]
-  );
+// app/menu/[id]/page.tsx — Server Component
+import { createServerSupabase } from '@/lib/supabase-server';
+import DishList from '@/components/app/DishList';
+import FilterBar from '@/components/app/FilterBar';
+import RecommendPanel from '@/components/app/RecommendPanel';
 
-  const prompt = `
-You are a food guide. From the following menu items, select the top 3 for this user.
-IMPORTANT: Return ONLY item_id values from the list below. Do not invent items.
+export default async function MenuPage({ params }: { params: { id: string } }) {
+  const supabase = createServerSupabase();
+  const { data: menu } = await supabase
+    .from('menus')
+    .select('*, menu_items(*)')
+    .eq('id', params.id)
+    .single();
 
-Menu items:
-${JSON.stringify(items.map(i => ({ id: i.id, name: i.name, tags: i.tags })))}
-
-User preferences: ${JSON.stringify(userProfile)}
-
-Return JSON: { "recommendations": ["<item_id>", "<item_id>", "<item_id>"] }
-  `;
-
-  const result = await llm.complete(prompt, { response_format: { type: "json_object" } });
-  const { recommendations } = JSON.parse(result);
-
-  // Validate: every returned ID must exist in items
-  const validIds = new Set(items.map(i => i.id));
-  return recommendations.filter((id: string) => validIds.has(id));
-}
-```
-
-### Pattern 3: Two-Tier Cache (Exact + Semantic)
-
-**What:** Check exact URL/content hash first (sub-millisecond Redis hit). On miss, check semantic similarity via pgvector embeddings for "close enough" cached results. Only call the LLM on full cache miss.
-**When to use:** All LLM orchestrator calls.
-**Trade-offs:** Adds ~50ms for embedding lookup on semantic check; saves ~0.14€ per avoided LLM call.
-
-```typescript
-async function cachedLLMCall(cacheKey: string, prompt: string): Promise<string> {
-  // Tier 1: exact match
-  const exact = await redis.get(cacheKey);
-  if (exact) return exact;
-
-  // Tier 2: semantic similarity (pgvector)
-  const embedding = await embed(prompt);
-  const similar = await db.query(
-    "SELECT response FROM llm_cache ORDER BY embedding <=> $1 LIMIT 1",
-    [embedding]
-  );
-  if (similar.rows[0] && cosineSim(embedding, similar.rows[0].embedding) > 0.97) {
-    return similar.rows[0].response;
-  }
-
-  // Tier 3: LLM call + store both caches
-  const response = await llm.complete(prompt);
-  await redis.setex(cacheKey, 86400, response);
-  await db.query(
-    "INSERT INTO llm_cache (key, prompt, response, embedding) VALUES ($1, $2, $3, $4)",
-    [cacheKey, prompt, response, embedding]
-  );
-  return response;
-}
-```
-
-### Pattern 4: Progressive Image Hydration
-
-**What:** Render dish cards immediately with gradient + emoji placeholder. Attempt web image fetch in background. Accept community photo uploads. Never block the UI on image availability.
-**When to use:** All `DishCard` renders.
-**Trade-offs:** Users always see content instantly; image quality improves asynchronously.
-
-```typescript
-// components/DishCard.tsx — simplified
-function DishCard({ item }: { item: MenuItem }) {
-  const [imageSource, setImageSource] = useState<"placeholder" | "web" | "community">("placeholder");
-
-  useEffect(() => {
-    if (item.communityImageUrl) { setImageSource("community"); return; }
-    if (item.webImageUrl) { setImageSource("web"); return; }
-    // fallback: gradient+emoji — already rendered
-  }, [item]);
+  if (!menu) notFound();
 
   return (
-    <View style={[styles.card, { backgroundColor: item.gradientColor }]}>
-      {imageSource === "placeholder" && <Text style={styles.emoji}>{item.emoji}</Text>}
-      {imageSource !== "placeholder" && (
-        <ProgressiveImage uri={imageSource === "community" ? item.communityImageUrl : item.webImageUrl} />
-      )}
-      <ConfidenceBadge level={item.confidenceLevel} />
-    </View>
+    <main className="max-w-content mx-auto px-4 py-6">
+      <h1 className="font-black text-2xl mb-2">{menu.restaurant_name}</h1>
+      {/* FilterBar and DishList are Client Components — get data as props */}
+      <FilterBar />
+      <DishList dishes={menu.menu_items} />
+      <RecommendPanel menuId={menu.id} />
+    </main>
   );
 }
+```
+
+### Pattern 2: QR Scanner with Dynamic Import + SSR Disabled
+
+**What:** `qr-scanner` (nimiq) accesses `getUserMedia` and Worker APIs that don't exist in Node.js/SSR. Wrap in `next/dynamic` with `{ ssr: false }` and a loading fallback.
+**When to use:** The `QrScanner` component and any other component that touches camera, canvas, or navigator APIs.
+**Trade-offs:** Adds a small waterfall on first render (Suspense boundary shows loading state until scanner JS loads). Non-negotiable — SSR will throw without this.
+
+```typescript
+// app/scan/page.tsx — Server Component
+import dynamic from 'next/dynamic';
+
+const QrScanner = dynamic(
+  () => import('@/components/app/QrScanner'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-64 rounded-2xl bg-white/[0.03] border border-white/[0.07]">
+        <p className="text-brand-muted text-sm">Chargement de la caméra…</p>
+      </div>
+    ),
+  }
+);
+
+export default function ScanPage() {
+  return (
+    <main className="max-w-content mx-auto px-4 py-8">
+      <QrScanner />
+      {/* UrlInput and PhotoCapture are also Client Components but don't need ssr:false */}
+    </main>
+  );
+}
+```
+
+### Pattern 3: Route Handler as Server-Side Proxy for OpenAI
+
+**What:** Client Components call `/api/scan` and `/api/recommend` via `fetch()`. The Route Handler runs server-side where `OPENAI_API_KEY` is available. Client never sees the API key.
+**When to use:** All LLM and OCR calls. Never call OpenAI SDK from a Client Component.
+**Trade-offs:** One extra network hop (client → Next.js Route Handler → OpenAI) vs direct client call, but this is mandatory for key security.
+
+```typescript
+// app/api/scan/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { checkMenuCache, upsertMenuCache, urlHash } from '@/lib/cache';
+import { extractTextFromUrl } from '@/lib/menu-extract';
+import { parseMenuFromText } from '@/lib/openai';
+import { createServerSupabase } from '@/lib/supabase-server';
+
+export async function POST(req: NextRequest) {
+  const formData = await req.formData();
+  const url = formData.get('url') as string | null;
+  const photo = formData.get('photo') as File | null;
+
+  // Cache check for URL inputs
+  if (url) {
+    const hash = urlHash(url);
+    const cached = await checkMenuCache(hash);
+    if (cached) return NextResponse.json({ menuId: cached.id, cached: true });
+  }
+
+  // Extract raw text
+  const rawText = url
+    ? await extractTextFromUrl(url)
+    : await extractTextFromPhoto(photo!); // base64 → GPT-4o vision
+
+  // LLM parse → structured output
+  const parsed = await parseMenuFromText(rawText);
+
+  // Persist to Supabase
+  const supabase = createServerSupabase();
+  const { data: menu } = await supabase
+    .from('menus')
+    .upsert({ url_hash: url ? urlHash(url) : null, source_url: url, restaurant_name: parsed.restaurantName })
+    .select('id')
+    .single();
+
+  // Upsert dishes
+  await supabase.from('menu_items').upsert(
+    parsed.items.map((item, i) => ({ ...item, menu_id: menu!.id, position: i }))
+  );
+
+  return NextResponse.json({ menuId: menu!.id, cached: false });
+}
+```
+
+### Pattern 4: OpenAI Structured Output with Zod
+
+**What:** Define the expected menu schema with Zod. Pass to OpenAI's `response_format` using `zodResponseFormat` from the official SDK. Guarantees LLM output matches `ParsedMenu` type at runtime.
+**When to use:** `parseMenuFromText()` in `lib/openai.ts`. Also `getRecommendations()`.
+**Trade-offs:** Structured output has slightly higher latency than free-form JSON (model must constrain token selection). Eliminates all JSON parsing errors — strongly recommended.
+
+```typescript
+// lib/openai.ts
+import 'server-only';
+import OpenAI, { zodResponseFormat } from 'openai';
+import { z } from 'zod';
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const MenuItemSchema = z.object({
+  original_name: z.string(),
+  translated_name: z.string(),
+  description_translated: z.string(),
+  price: z.string().nullable(),
+  allergens: z.array(z.string()),
+  dietary_tags: z.array(z.string()),
+  spice_level: z.number().int().min(0).max(3),
+});
+
+const ParsedMenuSchema = z.object({
+  restaurant_name: z.string(),
+  items: z.array(MenuItemSchema),
+});
+
+export async function parseMenuFromText(rawText: string, model = 'gpt-4o') {
+  const response = await client.beta.chat.completions.parse({
+    model,
+    messages: [
+      { role: 'system', content: 'Extract menu dishes with French translations and allergens.' },
+      { role: 'user', content: rawText },
+    ],
+    response_format: zodResponseFormat(ParsedMenuSchema, 'parsed_menu'),
+  });
+  return response.choices[0].message.parsed!;
+}
+```
+
+### Pattern 5: URL Hash as Idempotent Cache Key
+
+**What:** SHA-256 the source URL (normalized: lowercase, trailing-slash stripped, query params sorted). Store `url_hash` as a unique key in `menus` table. On every scan request, check this hash before any LLM call.
+**When to use:** All URL-based scans. Photo scans use a content hash of the extracted text instead.
+**Trade-offs:** Does not handle menu changes (restaurant updates their menu → stale cache). Mitigation: add `updated_at` and allow forced re-scan from UI with `?refresh=1`.
+
+```typescript
+// lib/cache.ts
+import 'server-only';
+import { createHash } from 'crypto';
+
+export function urlHash(url: string): string {
+  const normalized = new URL(url);
+  normalized.hostname = normalized.hostname.toLowerCase();
+  normalized.pathname = normalized.pathname.replace(/\/$/, '');
+  normalized.searchParams.sort();
+  return createHash('sha256').update(normalized.toString()).digest('hex');
+}
+```
+
+### Pattern 6: item_id-Grounded Recommendations
+
+**What:** The LLM receives the full list of `menu_items` records (with their database UUIDs) and is instructed to return only UUIDs. Never free-text names. Validate every returned UUID against the actual menu before display.
+**When to use:** `/api/recommend` exclusively.
+**Trade-offs:** Prompt includes all menu items (~100-200 tokens per menu). Eliminates hallucinated dishes entirely.
+
+```typescript
+// app/api/recommend/route.ts (simplified)
+const RecommendSchema = z.object({
+  recommendations: z.array(z.object({
+    item_id: z.string().uuid(),
+    reason: z.string().max(100),
+  })).length(3),
+});
+
+// Validate returned IDs exist in the actual menu
+const validIds = new Set(menuItems.map(i => i.id));
+const safe = parsed.recommendations.filter(r => validIds.has(r.item_id));
 ```
 
 ---
 
 ## Data Flow
 
-### Request Flow: First Menu Scan (cache miss)
+### Flow 1: QR Code Scan (primary path)
 
 ```
-User opens camera / pastes URL
+User opens /scan → QrScanner (Client Component) activates camera
     |
     v
-[Expo app] — POST /scan { url or base64 } ──────────────────────>
-                                                [Supabase Edge: scan]
-                                                    |
-                                                    v
-                                            Check URL hash in Redis
-                                                    |
-                                              Cache MISS
-                                                    |
-                                                    v
-                                        Fetch URL (Playwright/fetch)
-                                        OR run OCR (Google Vision)
-                                                    |
-                                                    v
-                                        Parse: JSON-LD schema.org first
-                                        → fallback: HTML scrape
-                                        → fallback: LLM structured extract
-                                                    |
-                                                    v
-                                        Normalize → upsert PostgreSQL
-                                        (restaurants + menu_items tables)
-                                                    |
-                                                    v
-                                            POST /recommend
-                                                    |
-                                                    v
-                                        LLM call (item_id grounded)
-                                        Store result in Redis + pgvector
-                                                    |
-    <─── ParsedMenu + recommendations ──────────────
+nimiq/qr-scanner decodes QR → returns URL string
     |
     v
-Render DishCards (gradient+emoji immediately)
-Background: fetch web images
-```
-
-### Request Flow: Repeat Scan (cache hit)
-
-```
-User scans same restaurant
+Client calls POST /api/scan { url }
     |
     v
-[Expo app] — POST /scan { url }
-                    |
-                    v
-            Redis key: sha256(url) → HIT (~1ms)
-                    |
-                    v
-            Return cached ParsedMenu + cached recommendations
-                    |
-    <───────────────
+Route Handler: urlHash(url) → query menus table
     |
-Render DishCards — total latency ~200ms vs ~4-8s on first scan
+    ├── Cache HIT: return { menuId, cached: true } → redirect to /menu/[id]
+    |
+    └── Cache MISS:
+            |
+            v
+        fetch(url) server-side (no CORS issue)
+        extract visible text (strip HTML, navigation, footers)
+            |
+            v
+        POST to OpenAI gpt-4o with ParsedMenuSchema
+            |
+            v
+        Upsert menus + menu_items in Supabase
+            |
+            v
+        Return { menuId }
+    |
+    v
+Client redirects to /menu/[id]
+    |
+    v
+/menu/[id] Server Component fetches from Supabase → renders DishList
 ```
 
-### State Management (Client)
+### Flow 2: Photo OCR Scan
 
 ```
-[Zustand Store]
+User taps "Photo" on /scan → PhotoCapture component activates
     |
-    |── scanHistory[]      (local + synced to Supabase for Layer 1 accounts)
-    |── currentMenu        (active ParsedMenu)
-    |── tasteProfile       (synced to Supabase for Layer 1 accounts)
-    |── aiQuestionCount    (rate-limit counter, resets daily — Layer 0)
+    v
+User takes/uploads photo → FileReader converts to base64
     |
-[Components] ← subscribe to slices → [Actions] → [Store mutations]
+    v
+Client calls POST /api/scan (multipart FormData, 'photo' field)
+    |
+    v
+Route Handler: no cache key for photos — always process
+    |
+    v
+Send base64 image to OpenAI gpt-4o vision with OCR + parse prompt
+(single call handles both OCR and structured extraction)
+    |
+    v
+Same upsert flow → return { menuId }
+    |
+    v
+Client redirects to /menu/[id]
 ```
 
-### Key Data Flows
+### Flow 3: Top 3 Recommendations
 
-1. **Waitlist flow (Phase 1):** Form submit → Next.js Route Handler → Supabase `waitlist` table → Resend confirmation email. Rate-limited via Upstash Redis (1 signup per email per hour).
-2. **Scan ingestion (Phase 2):** QR/URL/photo → Edge Function → parse pipeline → PostgreSQL upsert → LLM recommendations → Redis cache → mobile client.
-3. **Translation flow:** Menu items stored in source language. On first request for a target locale, LLM translates + explains. Result stored in `menu_item_translations` table keyed by `(item_id, locale)`. Subsequent requests for same locale served from DB — no LLM call.
-4. **Reverse search flow:** User describes craving in natural language → embed query → pgvector similarity search across `menu_item_translations.embedding` → return matching items with confidence score.
-5. **Account sync (Layer 1):** Anonymous session data (history, favorites) migrated on account creation via Supabase `link_anonymous_user` flow.
+```
+User types preference in RecommendPanel ("chaud, consistant, pas épicé")
+    |
+    v
+Client calls POST /api/recommend { menuId, preference }
+    |
+    v
+Route Handler fetches menu_items from Supabase (id, original_name, dietary_tags)
+    |
+    v
+OpenAI gpt-4o with item_id-grounded RecommendSchema
+    |
+    v
+Validate returned UUIDs against actual menu_items
+    |
+    v
+Return { recommendations: [{ item_id, reason }] }
+    |
+    v
+Client highlights matching DishCards in DishList
+```
+
+### Flow 4: Allergen / Dietary Filtering (client-only, no API)
+
+```
+User toggles "Sans gluten" in FilterBar
+    |
+    v
+FilterBar updates local state (useState) → emits callback with active filters
+    |
+    v
+DishList receives filters as prop → filters dishes in memory
+(all dish data already loaded from /menu/[id] Server Component)
+    |
+    v
+Filtered DishCard list renders instantly — zero API calls
+```
+
+### State Architecture
+
+```
+Per-session state (React useState, not global):
+  /scan page:
+    - scanMode: 'qr' | 'photo' | 'url'
+    - scanStatus: 'idle' | 'scanning' | 'processing' | 'done' | 'error'
+    - pendingMenuId: string | null
+
+  /menu/[id] page:
+    - activeFilters: Set<string>
+    - recommendationResults: { item_id: string; reason: string }[]
+    - preferenceInput: string
+    - recommendLoading: boolean
+
+No global state store needed for MVP.
+URL is the primary state carrier:
+  - /scan → user scans
+  - /menu/[id] → dishes are shown
+  - ?ref=qr | ?ref=photo | ?ref=url for analytics tracking
+```
+
+---
+
+## Integration Points
+
+### New API Routes ↔ Existing Architecture
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Client Component → `/api/scan` | `fetch` POST (FormData or JSON) | Route Handler runs server-side; OpenAI key never exposed to browser |
+| `/api/scan` → OpenAI | `openai` npm package, server-only | Use `beta.chat.completions.parse()` for structured output |
+| `/api/scan` → Supabase | `lib/supabase-server.ts` (service role) | Separate from existing `lib/supabase.ts` (anon key) — service role can bypass RLS for server writes |
+| `/menu/[id]` Server Component → Supabase | `lib/supabase-server.ts` direct query | No API hop needed — Server Component talks to Supabase directly |
+| `app/actions/waitlist.ts` (existing) | Unchanged | Continues using `lib/supabase.ts` anon client |
+| Landing sections (existing) | Unchanged | No integration needed; `lib/data.ts` mock data unchanged |
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| OpenAI gpt-4o | Via `lib/openai.ts` (server-only) | Use `zodResponseFormat` for guaranteed structured output; model configurable via `admin_config` table |
+| Supabase PostgreSQL | Two clients: anon (browser, existing waitlist) + service role (new server routes) | Never use service role key in Client Components |
+| External restaurant URLs | `fetch()` in Route Handler (server-side) | Bypasses browser CORS restrictions; parse HTML to plain text before sending to LLM |
+
+### Environment Variables (additions)
+
+| Variable | Where Used | Notes |
+|----------|------------|-------|
+| `OPENAI_API_KEY` | `lib/openai.ts` (server-only) | Never prefix with `NEXT_PUBLIC_` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `lib/supabase-server.ts` | Never prefix with `NEXT_PUBLIC_`; admin-only write access |
+| `ADMIN_SECRET` | `app/admin/page.tsx` middleware check | Simple string compare for MVP admin gate |
+| `NEXT_PUBLIC_SUPABASE_URL` | Existing + new client code | Already in `.env.local` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Existing waitlist client | Already in `.env.local` |
+
+---
+
+## Suggested Build Order
+
+Dependencies drive the order. Later steps rely on earlier steps being stable.
+
+```
+Step 1: Database Foundation
+  └── Add Supabase tables: menus, menu_items, admin_config
+  └── Write types/menu.ts interfaces
+  └── Add lib/supabase-server.ts (service role client)
+  └── Verify: can write + read from new tables via Supabase dashboard
+  (No UI changes. No OpenAI. Purely schema + types.)
+
+Step 2: lib/openai.ts + parseMenuFromText
+  └── Implement with Zod ParsedMenuSchema
+  └── Test with curl / ts-node against a known menu URL
+  └── Verify structured output matches schema
+  └── Add lib/menu-extract.ts (URL fetch → stripped text)
+  (Server-only. No routes yet. Can test in isolation.)
+
+Step 3: /api/scan Route Handler (URL path only)
+  └── Wire lib/menu-extract.ts → lib/openai.ts → Supabase upsert
+  └── Implement lib/cache.ts urlHash + cache check
+  └── Test with Postman/curl: POST { url: "https://..." }
+  └── Verify menu + items appear in Supabase
+  (No UI. API only. Validates the full server pipeline.)
+
+Step 4: /menu/[id] page + DishCard + DishList
+  └── Server Component fetches from Supabase
+  └── DishCard component (Tailwind, matching dark theme)
+  └── DishList renders all dishes
+  └── Static FilterBar (visual only, no filter logic yet)
+  └── Test: navigate to /menu/[known-uuid] — dishes render
+  (First visible UI. No camera yet. Shows something real.)
+
+Step 5: /api/scan — Photo OCR path
+  └── Extend route.ts to handle FormData 'photo' field
+  └── Send base64 to GPT-4o vision in lib/openai.ts
+  └── Test with a real menu photo
+  (Extends Step 3. URL path must work first.)
+
+Step 6: /scan page + QrScanner + UrlInput + PhotoCapture
+  └── ScanPage Server Component shell
+  └── QrScanner (dynamic import, ssr:false) using nimiq/qr-scanner
+  └── UrlInput controlled form
+  └── PhotoCapture file input
+  └── ScanProgress step indicator
+  └── Wire all three to POST /api/scan + redirect to /menu/[id]
+  (Full scan flow now works end-to-end.)
+
+Step 7: FilterBar logic + allergen filtering
+  └── FilterBar useState + callback
+  └── DishList consumes activeFilters prop — filters in memory
+  (Pure client-side. Zero new API calls.)
+
+Step 8: /api/recommend + RecommendPanel
+  └── Route Handler: fetch menu_items → OpenAI item_id-grounded Top 3
+  └── RecommendPanel component: preference input + highlights matching cards
+  └── Wire RecommendPanel into /menu/[id] page
+  (Depends on Steps 3 + 4. Menu data must exist first.)
+
+Step 9: Admin config page
+  └── /admin/page.tsx with simple ADMIN_SECRET env check
+  └── Read/write admin_config table
+  └── Model selector dropdown (gpt-4o / gpt-4o-mini / gpt-4-turbo)
+  └── Pass selected model through to lib/openai.ts calls
+  (Optional last step. Does not block any user-facing features.)
+
+Step 10: Nav integration
+  └── Add "Scanner" CTA to Nav.tsx pointing to /scan
+  └── Landing page hero Btn "Tester maintenant" links to /scan
+  (Last — only after /scan is fully functional.)
+```
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Server-Only Modules Imported in Client Components
+
+**What people do:** Import `lib/openai.ts` or `lib/supabase-server.ts` directly inside a `"use client"` component to call the API "directly."
+**Why it's wrong:** Next.js bundles that import into the browser bundle, exposing `OPENAI_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in the client JS — visible in DevTools.
+**Do this instead:** Add `import 'server-only'` at the top of both files. Next.js will throw a build error if they're accidentally imported client-side. All LLM calls go through Route Handlers.
+
+### Anti-Pattern 2: Single Supabase Client for Everything
+
+**What people do:** Use the existing `lib/supabase.ts` (anon key) in Route Handlers and Server Components for writes.
+**Why it's wrong:** The anon key respects RLS. Writes to `menus` and `menu_items` from server-side code need the service role key to bypass RLS, or you must write overly permissive public-insert policies.
+**Do this instead:** `lib/supabase.ts` (anon key) for browser-only code. `lib/supabase-server.ts` (service role) for all Route Handlers and Server Components that write data.
+
+### Anti-Pattern 3: Calling OpenAI from FilterBar or DishList
+
+**What people do:** Add "smart filter" that calls the LLM on every filter toggle to re-rank dishes.
+**Why it's wrong:** Every toggle = 1 OpenAI API call = ~0.01-0.05€. A user toggling 10 filters = 0.50€ per session. At 100 users/day that's 50€/day on filtering alone.
+**Do this instead:** Filtering is purely in-memory on `dietary_tags` and `allergens` JSONB fields already stored in Supabase. The LLM is called once at scan time (to parse/tag) and once for Top 3 recommendations. Never on filter interactions.
+
+### Anti-Pattern 4: Re-running OCR + LLM on Every Page Load
+
+**What people do:** The `/menu/[id]` page calls `/api/scan` again to "refresh" data.
+**Why it's wrong:** Duplicates LLM cost. A popular restaurant scanned by 500 users generates 500 OpenAI calls instead of 1.
+**Do this instead:** `/menu/[id]` page reads exclusively from Supabase (the cache). Only `/api/scan` triggers LLM processing, and only on a cache miss (new URL hash). The `menus` + `menu_items` tables ARE the cache.
+
+### Anti-Pattern 5: QrScanner Without SSR Disable
+
+**What people do:** Import `qr-scanner` at the top of a page or component without `ssr: false`.
+**Why it's wrong:** Node.js has no `window`, `navigator`, or `Worker` — the import crashes Next.js SSR with a ReferenceError.
+**Do this instead:** Always wrap camera/media API components in `dynamic(() => import('...'), { ssr: false })`. Apply to the component, not the package.
+
+### Anti-Pattern 6: Storing OpenAI Responses as Raw Text
+
+**What people do:** Cache the raw LLM response string in Supabase. Re-parse JSON on each request.
+**Why it's wrong:** If the response was malformed once, it stays malformed in cache. Parsing on every read adds latency. Schema migrations become impossible without re-scanning.
+**Do this instead:** Parse + validate with Zod at scan time. Store normalized structured data in `menu_items` rows with typed columns. Never store raw LLM output in the cache tables.
 
 ---
 
@@ -347,143 +689,34 @@ Render DishCards — total latency ~200ms vs ~4-8s on first scan
 
 | Scale | Architecture Adjustments |
 |-------|--------------------------|
-| 0-1k users | Single Supabase project, Upstash free tier Redis, Vercel hobby. Supabase Edge Functions handle all backend. LLM cost covered by caching — estimate <50€/month. |
-| 1k-100k users | Upgrade Supabase to Pro. Add Upstash Redis paid tier. Enable Supabase read replicas for menu queries. Add rate-limiting per-user at Edge Function level. Consider moving OCR to dedicated worker (e.g. Modal.com) to avoid Edge Function timeout limits. |
-| 100k+ users | Separate ingestion workers from recommendation API. Add dedicated image CDN (Cloudflare R2). Consider pgvector → dedicated vector DB (Qdrant) if embedding table exceeds 10M rows. Split mobile API from landing domain. |
+| 0-1k users | Current architecture is sufficient. Supabase free tier handles the load. `menus` + `menu_items` as cache is sufficient — no Redis needed. |
+| 1k-100k users | Add Upstash Redis for `url_hash` → `menu_id` lookup (faster than Supabase SELECT for hot restaurants). Move image OCR to a separate queue worker (Route Handler timeout at ~60s on Vercel hobby). Add rate limiting on `/api/scan` (1 request/IP/minute). |
+| 100k+ users | Separate the LLM pipeline from the Next.js app into a dedicated service. Add pgvector for semantic similarity matching in reverse search. Consider per-locale translation pre-warming for popular menus. |
 
-### Scaling Priorities
+### First Bottleneck
 
-1. **First bottleneck: LLM API cost** — hits at ~1k DAU without caching. Prevention: two-tier cache from day one. Target: >90% cache hit rate for repeat restaurants.
-2. **Second bottleneck: Ingestion latency** — Playwright/Puppeteer is CPU-heavy. Supabase Edge has 2s wall clock limit, which is insufficient for heavy scraping. Fix: offload to background job queue (Supabase pg_cron or BullMQ on Railway) and return a `scanId` for polling.
+**What breaks first:** Vercel function timeout on `/api/scan` for complex menus. URL fetch + LLM parse can exceed 10s on slow restaurant sites.
+**Fix:** Return `{ scanId }` immediately and poll status. Store scan progress in Supabase (`scans` table with `status: 'pending' | 'done' | 'error'`). Client polls `/api/scan/[scanId]` every 2s. Only implement this if timeout issues appear in practice — don't over-engineer upfront.
 
----
+### Second Bottleneck
 
-## Anti-Patterns
-
-### Anti-Pattern 1: Free-Text LLM Dish Name Returns
-
-**What people do:** Prompt says "recommend dishes" and accept LLM free-text response like "the pasta primavera." Parse out dish names and try to match to menu items.
-**Why it's wrong:** LLM hallucinates dish names, misspells them, or combines items. Matching logic fails silently. Users see recommendations for dishes not on the menu.
-**Do this instead:** Ground all recommendation prompts with the full `menu_items` list including IDs. Instruct LLM to return only `item_id` values. Validate every returned ID against the actual menu before displaying.
-
-### Anti-Pattern 2: Calling OCR and LLM on Every Scan
-
-**What people do:** Every scan triggers: OCR call + LLM parse + LLM translate + LLM recommend. No deduplication.
-**Why it's wrong:** A single popular restaurant gets 1000 users scanning it. Each scan costs ~0.15€. Total: 150€ for one restaurant. At scale this becomes the dominant cost.
-**Do this instead:** Hash the URL (or image content hash for photos). Check Redis before every pipeline stage. Store all LLM outputs in PostgreSQL keyed by `(restaurant_id, locale)`. Serve from cache for all subsequent requests.
-
-### Anti-Pattern 3: Parsing HTML with Regex Directly
-
-**What people do:** Regex patterns to extract menu sections from restaurant HTML. Works for 3 sites. Breaks on update #4.
-**Why it's wrong:** Restaurant websites are wildly heterogeneous. Maintenance becomes a full-time job. Parser breaks silently (returns empty menu).
-**Do this instead:** Use a priority cascade — (1) schema.org JSON-LD (`MenuItem` type) — works for ~30% of modern sites; (2) `window.__PRELOADED_STATE__` extraction for SPA menus (Zomato, Yelp patterns); (3) Generic LLM-based structured extraction from visible text as the fallback. Log which parser succeeded per domain to improve over time.
-
-### Anti-Pattern 4: Anonymous Session Data Silently Lost
-
-**What people do:** Layer 0 anonymous users generate history. On account creation (Layer 1), a new session is created. Old data gone. User feels punished for signing up.
-**Why it's wrong:** Reduces Layer 1 conversion. Erodes trust.
-**Do this instead:** Generate a device-local UUID on first launch. Store scan history in Supabase with `anonymous_id`. On account creation, call `supabase.auth.linkAnonymousUser()` or run a migration query: `UPDATE scans SET user_id = $new_user_id WHERE anonymous_id = $device_id`.
-
-### Anti-Pattern 5: Blocking UI on Image Loading
-
-**What people do:** DishCard waits for web image fetch before rendering. Slow network = blank card = perceived app failure.
-**Why it's wrong:** First impression is blank white squares. Users abandon.
-**Do this instead:** Render gradient+emoji immediately on card mount. Images are enhancement, not prerequisites. Use `react-native-fast-image` with `onLoad`/`onError` transitions.
-
----
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| OpenAI / Anthropic (LLM) | REST API via Edge Function, structured JSON output | Always use `response_format: json_object`. Set max_tokens budget. Cache all responses. |
-| Google Cloud Vision (OCR) | REST API, base64 image upload | Used only for photo menus. Fallback: open-source VLM (PaddleOCR) for cost control at scale. |
-| Resend (email) | REST API from Next.js Route Handler and Edge Functions | Waitlist confirmation + future notification flows. |
-| Upstash Redis (cache) | REST SDK (`@upstash/redis`) | Serverless-compatible. Use for exact-match LLM cache + rate limiting. |
-| Expo (mobile distribution) | EAS Build + Submit | OTA updates via Expo Updates for non-native changes. |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Mobile app ↔ Supabase Edge Functions | HTTPS REST + Supabase Auth JWT | Mobile sends Bearer token; Edge validates via `supabase.auth.getUser()` |
-| Landing page ↔ Supabase | Supabase JS client (server-side in Route Handlers) | Only `waitlist` table needed for Phase 1 |
-| Edge Functions ↔ PostgreSQL | Supabase internal `supabase-js` (no external round-trip) | Runs in same region as DB — low latency |
-| Ingestion pipeline ↔ LLM | Direct REST call from Edge Function | Wrap in retry logic (3 attempts, exponential backoff) |
-| Edge Functions ↔ Redis | `@upstash/redis` REST SDK | HTTP-based, compatible with Deno runtime |
-
----
-
-## Build Order Implications
-
-The dependency graph drives phase ordering:
-
-```
-Phase 1: Landing Page
-  └── Supabase project setup (waitlist table)
-  └── Next.js landing app
-  └── Waitlist API + Resend email
-  └── Vercel deploy
-       |
-       v (no dependency on Phase 2)
-
-Phase 2a: Data Foundation (must come first within Phase 2)
-  └── PostgreSQL schema (restaurants, menus, menu_items, menu_item_translations)
-  └── Supabase Auth setup (anonymous + magic link)
-  └── Shared types package
-       |
-       v
-
-Phase 2b: Ingestion Pipeline (depends on 2a schema)
-  └── URL fetch + JSON-LD parser
-  └── OCR integration (Google Vision)
-  └── LLM structured extraction fallback
-  └── Two-tier cache (Redis + pgvector)
-       |
-       v
-
-Phase 2c: LLM Orchestration (depends on 2b normalized menu)
-  └── Translation pipeline (per item, per locale)
-  └── item_id-grounded recommendations
-  └── Reverse search (embedding + pgvector)
-       |
-       v
-
-Phase 2d: Mobile UI (depends on 2b + 2c APIs)
-  └── Scan screen
-  └── DishCard component + progressive images
-  └── Confidence badges
-  └── AI question quota (Layer 0)
-       |
-       v
-
-Phase 2e: Account Layers (depends on 2d working anonymously)
-  └── Layer 1: account creation + history migration
-  └── Taste Profile
-  └── Layer 2: social features (Stories, Match Score)
-```
-
-Phases 1 and 2a can run in parallel. Never build UI (2d) before the API contracts are stable (2b + 2c) — mobile UI changes are expensive.
+**What breaks next:** OpenAI cost on LLM-per-scan if cache hit rate is low.
+**Fix:** The `menus` table IS the cache. As long as URL hashing is working, popular restaurants generate 1 LLM call total regardless of user count. Monitor `cached: true` vs `cached: false` ratio in response logs.
 
 ---
 
 ## Sources
 
-- [schema.org Menu / MenuItem types](https://schema.org/Menu) — HIGH confidence, official spec
-- [Supabase Edge Functions architecture](https://supabase.com/docs/guides/functions/architecture) — HIGH confidence, official docs
-- [Redis semantic caching for LLMs](https://redis.io/blog/what-is-semantic-caching/) — HIGH confidence, official Redis blog
-- [LiteLLM caching system architecture](https://deepwiki.com/BerriAI/litellm/5.1-caching-system-architecture) — MEDIUM confidence
-- [Upstash Redis LLM token optimization](https://redis.io/blog/llm-token-optimization-speed-up-apps/) — HIGH confidence
-- [Turborepo + React Native + Next.js monorepo](https://vercel.com/templates/next.js/turborepo-react-native) — HIGH confidence, official Vercel template
-- [Expo documentation](https://expo.dev/) — HIGH confidence, official docs
-- [PaddleOCR / open-source OCR models 2025](https://www.e2enetworks.com/blog/complete-guide-open-source-ocr-models-2025) — MEDIUM confidence
-- [OCR pipeline: VLMs replacing traditional OCR](https://intuitionlabs.ai/articles/non-llm-ocr-technologies) — MEDIUM confidence
-- [react-native-fast-image progressive loading](https://medium.com/@harshitkishor2/supercharge-your-apps-image-performance-with-react-native-fast-image-3e9e1a74c141) — MEDIUM confidence
-- [Vercel waitlist template (Next.js + Supabase + Resend + Upstash)](https://vercel.com/templates/saas/waitly) — HIGH confidence
+- [Next.js App Router Route Handlers docs](https://nextjs.org/docs/app/building-your-application/routing/route-handlers) — HIGH confidence, official docs
+- [Next.js dynamic import with ssr:false](https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading#with-no-ssr) — HIGH confidence, official docs
+- [OpenAI Structured Outputs with Zod](https://platform.openai.com/docs/guides/structured-outputs) — HIGH confidence, official OpenAI docs
+- [nimiq/qr-scanner — Next.js SSR handling](https://github.com/nimiq/qr-scanner) — MEDIUM confidence (community patterns confirmed across multiple sources)
+- [Supabase Row Level Security — anon vs service role](https://supabase.com/docs/guides/database/postgres/row-level-security) — HIGH confidence, official Supabase docs
+- [Next.js server-only package](https://nextjs.org/docs/app/building-your-application/rendering/composition-patterns#keeping-server-only-code-out-of-the-client-environment) — HIGH confidence, official Next.js docs
+- [Vercel AI SDK Getting Started Next.js App Router](https://ai-sdk.dev/docs/getting-started/nextjs-app-router) — HIGH confidence, official Vercel AI SDK docs
+- [Next.js formData() in Route Handlers](https://nextjs.org/docs/app/building-your-application/routing/route-handlers#request-body-formdata) — HIGH confidence, official docs
 
 ---
 
-*Architecture research for: NOM — restaurant menu translation and recommendation app*
+*Architecture research for: NŌM — MVP feature integration into existing Next.js 16 + Supabase codebase*
 *Researched: 2026-02-25*
