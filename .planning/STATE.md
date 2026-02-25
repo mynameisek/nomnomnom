@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 1 of 3 (Foundation)
-Plan: 1 of 1 in current phase — COMPLETE
-Status: Phase 01-foundation complete — ready for Phase 02
-Last activity: 2026-02-25 — 01-01 all 4 tasks complete, user approved visual verification, SUMMARY.md created
+Phase: 2 of 3 (Content Sections)
+Plan: 1 of 3 in current phase — COMPLETE
+Status: Phase 02, Plan 01 complete — Hero + PhoneDemo built and user-approved
+Last activity: 2026-02-25 — 02-01 all 3 tasks complete (2 auto + 1 checkpoint approved), SUMMARY.md created
 
-Progress: [███████░░░] 33% (Phase 1 complete — 1 of 3 phases done)
+Progress: [████████░░] 45% (Phase 1 complete, Phase 2 Plan 1 of 3 done)
 
 ## Performance Metrics
 
@@ -28,10 +28,11 @@ Progress: [███████░░░] 33% (Phase 1 complete — 1 of 3 phas
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 1 (complete) | ~40 min | ~40 min |
+| 02-content-sections | 1/3 (in progress) | ~35 min so far | ~35 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~40 min, complete)
-- Trend: —
+- Last 5 plans: 01-01 (~40 min, complete), 02-01 (~35 min, complete)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -48,6 +49,10 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Next.js 16 + Tailwind v4 + motion + Supabase deployed to Vercel via GitHub CI/CD
 - [Phase 01-foundation]: Tailwind v4 @theme block for brand tokens instead of tailwind.config — single source of truth in globals.css
 - [Phase 01-foundation]: Footer as Server Component, Nav as use client — minimize client bundle
+- [Phase 02-01]: Pill and Btn are server-safe (no use client) — only Hero and PhoneDemo need client-side
+- [Phase 02-01]: FoodImage uses plain HTML img (not next/image) for simplicity inside phone mockup
+- [Phase 02-01]: PhoneDemo cleanup uses array of timeout IDs — prevents memory leaks on unmount
+- [Phase 02-01]: lib/data.ts as single source of truth for all landing page copy and data arrays
 
 ### Pending Todos
 
@@ -60,5 +65,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 01-01-PLAN.md — Phase 01-foundation fully complete, SUMMARY.md written
-Next: Phase 02 (content sections — hero, carousel, feature sections into app/page.tsx)
+Stopped at: Completed 02-01-PLAN.md — Hero + PhoneDemo built, user approved visual verification, SUMMARY.md written
+Next: Phase 02 Plan 02 (remaining content sections — carousel, feature grid, beli section, FAQ, waitlist form)
