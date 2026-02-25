@@ -53,11 +53,13 @@ export default function ScanTabs() {
     (decodedUrl: string) => {
       // Switch to URL tab to show the URL input flow
       setActiveTab('url');
-      // Programmatically trigger the URL scan by dispatching a custom event
-      // (simpler than prop drilling — UrlInput listens for this)
-      window.dispatchEvent(
-        new CustomEvent('qr-decoded', { detail: { url: decodedUrl } }),
-      );
+      // Delay event dispatch to let React re-render and mount UrlInput first.
+      // UrlInput's useEffect registers the 'qr-decoded' listener on mount.
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('qr-decoded', { detail: { url: decodedUrl } }),
+        );
+      }, 200);
     },
     [],
   );
