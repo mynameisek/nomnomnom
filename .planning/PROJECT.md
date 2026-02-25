@@ -12,19 +12,15 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Landing page NŌM avec le design validé (dark theme, orange #FF6B35, animations) — v1.0
+- ✓ Phone demo animée (scan → fiches → assistant Top 3) — v1.0
+- ✓ Sections : hero, carousel plats, features, recherche inversée, social/gamification, pricing, FAQ, waitlist — v1.0
+- ✓ Formulaire waitlist email fonctionnel avec stockage backend (Supabase + referral system) — v1.0
+- ✓ Déploiement sur Vercel (domaine par défaut) — v1.0
+- ✓ FR seulement, optimisé mobile-first — v1.0
+- ✓ SEO basique (meta tags, OG images, Twitter cards, semantic HTML) — v1.0
 
 ### Active
-
-#### Milestone 1 — Landing Page
-
-- [ ] Landing page NŌM avec le design validé (dark theme, orange #FF6B35, animations)
-- [ ] Phone demo animée (scan → fiches → assistant Top 3)
-- [ ] Sections : hero, carousel plats, features, recherche inversée, social/gamification, pricing, FAQ, waitlist
-- [ ] Formulaire waitlist email fonctionnel avec stockage backend
-- [ ] Déploiement sur Vercel (domaine par défaut)
-- [ ] FR seulement, optimisé mobile-first
-- [ ] SEO basique (meta tags, OG images)
 
 #### Milestone 2+ — MVP App (Phase 1 du doc v1.2)
 
@@ -104,13 +100,32 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Milestones séparés (landing → MVP app) | Ship la landing vite pour collecter emails, puis construire l'app | — Pending |
-| Reconstruction propre de la landing | Le JSX v5 est une référence visuelle, pas une base de code | — Pending |
+| Milestones séparés (landing → MVP app) | Ship la landing vite pour collecter emails, puis construire l'app | ✓ Good — landing shipped in 3h |
+| Reconstruction propre de la landing | Le JSX v5 est une référence visuelle, pas une base de code | ✓ Good — cleaner architecture |
 | Design validé (dark, orange, animations) | Le look & feel v5 est approuvé | ✓ Good |
-| FR seulement pour la landing | Cible Strasbourg d'abord, anglais plus tard | — Pending |
-| Vercel pour le déploiement | Gratuit, rapide, idéal pour React/Next | — Pending |
-| Stack technique à déterminer par recherche | Laisser la recherche choisir (React/Vite vs Next.js, service waitlist) | — Pending |
+| FR seulement pour la landing | Cible Strasbourg d'abord, anglais plus tard | ✓ Good |
+| Vercel pour le déploiement | Gratuit, rapide, idéal pour React/Next | ✓ Good — CI/CD via GitHub |
+| Next.js 16 + Tailwind v4 + motion/react + Supabase | Research-driven stack choice | ✓ Good — Server Components, fast builds |
 | Doc v1.2 fait référence sur le scope | MVP scope lock : si pas Phase 1, pas dans le code | ✓ Good |
+| Tailwind v4 @theme block (not tailwind.config) | Single source of truth for brand tokens in globals.css | ✓ Good |
+| Server Components by default, use client only for interactive | Minimize client JS bundle | ✓ Good — only 6/14 components need client |
+| useActionState for waitlist form | React 19 pattern, no useState/useEffect boilerplate | ✓ Good |
+| Referral system: position = raw - (referrals × 5) | Simple linear queue, no complex tier system | — Pending validation |
+
+## Current State
+
+**v1.0 Landing Page shipped** (2026-02-25). Deployed on Vercel via GitHub CI/CD.
+
+**Codebase:** ~1,984 LOC TypeScript/TSX/CSS across 14 components + 1 Server Action + shared data module.
+**Stack:** Next.js 16.1.6, React 19, Tailwind v4 (CSS-first @theme), motion/react 12.34.3, Supabase.
+
+**What's live:**
+- Full landing page: hero → phone demo → dish carousel → features → reverse search → social → pricing → FAQ → waitlist
+- Working waitlist form with Supabase backend, referral codes, position tracking
+- SEO: OG/Twitter cards, meta tags, semantic HTML
+- Performance: GPU-composited animations, lazy-loaded images, Server Components
+
+**Pre-launch action needed:** Run Supabase SQL to create `waitlist` table + RLS policies (documented in .planning/phases/03-waitlist-ship/03-01-SUMMARY.md).
 
 ---
-*Last updated: 2026-02-25 after initialization*
+*Last updated: 2026-02-25 after v1.0 milestone*
