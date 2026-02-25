@@ -15,6 +15,11 @@
 import { useMemo } from 'react';
 import type { MenuItem, DietaryTag, Allergen } from '@/lib/types/menu';
 
+/** Strip diacritics so "végétarien" matches "vegetarien" */
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 /** Active filter state — passed to useFilteredDishes */
 export type FilterState = {
   /** Free-text search across dish names (original + translations) */
@@ -37,20 +42,22 @@ export type FilterState = {
  */
 export function useFilteredDishes(items: MenuItem[], filters: FilterState): MenuItem[] {
   return useMemo(() => {
-    const query = filters.searchQuery.trim().toLowerCase();
+    const query = stripAccents(filters.searchQuery.trim().toLowerCase());
 
     return items.filter((item) => {
-      // Search filter: match against original name + all translations
+      // Search filter: match against original name + all translations (accent-insensitive)
       if (query) {
-        const searchable = [
-          item.name_original,
-          ...Object.values(item.name_translations),
-          item.description_original,
-          ...(item.description_translations ? Object.values(item.description_translations) : []),
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
+        const searchable = stripAccents(
+          [
+            item.name_original,
+            ...Object.values(item.name_translations),
+            item.description_original,
+            ...(item.description_translations ? Object.values(item.description_translations) : []),
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+        );
         if (!searchable.includes(query)) return false;
       }
 
