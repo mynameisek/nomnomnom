@@ -43,11 +43,11 @@ Plans:
   3. The dish carousel auto-scrolls and clicking a card makes it active with orange border and scaling effect
   4. The reverse search demo shows animated typing followed by match results with percentages and flags
   5. Clicking "Rejoindre la liste d'attente" or "Comment ça marche" scrolls to the correct section
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Build hero section and animated phone demo (HERO-*, DEMO-*)
-- [ ] 02-02: Build dish carousel, features grid, reverse search demo, social section, pricing, FAQ, and final CTA sections (CAROUSEL-*, FEAT-*, REVERSE-*, SOCIAL-*, PRICE-*, FAQ-*, WAIT-07, WAIT-08)
+- [ ] 02-01-PLAN.md — Build hero section with animated phone demo, shared data/UI primitives, and animation keyframes (HERO-01 through HERO-05, DEMO-01 through DEMO-05)
+- [ ] 02-02-PLAN.md — Build dish carousel, features grid, reverse search demo, social section, pricing, FAQ, and final CTA sections (CAROUSEL-*, FEAT-*, REVERSE-*, SOCIAL-*, PRICE-*, FAQ-*, WAIT-07, WAIT-08)
 
 ### Phase 3: Waitlist + Ship
 **Goal**: Users can join the waitlist, get a referral link, and the page is SEO-ready and performant — ready for public launch
