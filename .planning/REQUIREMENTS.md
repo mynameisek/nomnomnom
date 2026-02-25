@@ -9,41 +9,41 @@ Requirements for MVP App. Each maps to roadmap phases.
 
 ### Scan
 
-- [ ] **SCAN-01**: User can scan a QR code with phone camera to load a restaurant menu
-- [ ] **SCAN-02**: User can paste a URL/link to load a restaurant menu
-- [ ] **SCAN-03**: User can take a photo of a physical menu to extract dishes via OCR
-- [ ] **SCAN-04**: User sees a loading state with progress feedback during menu parsing
-- [ ] **SCAN-05**: Scanned menus are cached in Supabase — repeat scans of the same URL return instant results
+- [x] **SCAN-01**: User can scan a QR code with phone camera to load a restaurant menu
+- [x] **SCAN-02**: User can paste a URL/link to load a restaurant menu
+- [x] **SCAN-03**: User can take a photo of a physical menu to extract dishes via OCR
+- [x] **SCAN-04**: User sees a loading state with progress feedback during menu parsing
+- [x] **SCAN-05**: Scanned menus are cached in Supabase — repeat scans of the same URL return instant results
 
 ### Fiches Plats
 
-- [ ] **DISH-01**: User sees a dish card for each item with translated name, description, and price
+- [x] **DISH-01**: User sees a dish card for each item with translated name, description, and price
 - [ ] **DISH-02**: Dish cards show translation in 4 languages (FR/EN/TR/DE)
-- [ ] **DISH-03**: Each dish card displays a trust badge (Verified Menu / Inferred)
-- [ ] **DISH-04**: Each dish card shows detected allergens (EU 14 allergens) with warning badge
-- [ ] **DISH-05**: Allergen display always includes a mandatory disclaimer ("demandez au serveur") in user's language
-- [ ] **DISH-06**: Each dish card shows dietary tags (végétarien, végan, épicé)
+- [x] **DISH-03**: Each dish card displays a trust badge (Verified Menu / Inferred)
+- [x] **DISH-04**: Each dish card shows detected allergens (EU 14 allergens) with warning badge
+- [x] **DISH-05**: Allergen display always includes a mandatory disclaimer ("demandez au serveur") in user's language
+- [x] **DISH-06**: Each dish card shows dietary tags (végétarien, végan, épicé)
 
 ### Filtres
 
-- [ ] **FILT-01**: User can filter dishes by dietary preference (végétarien, végan)
-- [ ] **FILT-02**: User can filter dishes by allergen exclusion (gluten, nuts, dairy, etc.)
-- [ ] **FILT-03**: User can filter dishes by spice level
-- [ ] **FILT-04**: Filters apply instantly (client-side, no API call)
+- [x] **FILT-01**: User can filter dishes by dietary preference (végétarien, végan)
+- [x] **FILT-02**: User can filter dishes by allergen exclusion (gluten, nuts, dairy, etc.)
+- [x] **FILT-03**: User can filter dishes by spice level
+- [x] **FILT-04**: Filters apply instantly (client-side, no API call)
 
 ### Admin
 
-- [ ] **ADMN-01**: Admin can access a protected admin page (secret-based auth)
-- [ ] **ADMN-02**: Admin can select the LLM model used for menu parsing (GPT-4o, GPT-4o-mini, etc.)
-- [ ] **ADMN-03**: Admin can view basic scan statistics (total scans, cached vs fresh, avg parse time)
+- [x] **ADMN-01**: Admin can access a protected admin page (secret-based auth)
+- [x] **ADMN-02**: Admin can select the LLM model used for menu parsing (GPT-4o, GPT-4o-mini, etc.)
+- [x] **ADMN-03**: Admin can view basic scan statistics (total scans, cached vs fresh, avg parse time)
 
 ### Infrastructure
 
 - [x] **INFR-01**: Supabase schema with menus, menu_items, and admin_config tables
 - [x] **INFR-02**: OpenAI API integration via Vercel AI SDK (server-only, key never exposed to browser)
 - [x] **INFR-03**: URL hash-based caching — LLM called only on cache miss
-- [ ] **INFR-04**: Image resize client-side (1024px max) before sending photo to API
-- [ ] **INFR-05**: Navigation integration — CTA on landing page links to /scan
+- [x] **INFR-04**: Image resize client-side (1024px max) before sending photo to API
+- [x] **INFR-05**: Navigation integration — CTA on landing page links to /scan
 
 ## v1.2 Requirements
 
@@ -88,32 +88,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAN-01 | Phase 5 | Pending |
-| SCAN-02 | Phase 5 | Pending |
-| SCAN-03 | Phase 5 | Pending |
-| SCAN-04 | Phase 5 | Pending |
-| SCAN-05 | Phase 5 | Pending |
-| DISH-01 | Phase 6 | Pending |
-| DISH-02 | Phase 6 | Pending |
-| DISH-03 | Phase 6 | Pending |
-| DISH-04 | Phase 6 | Pending |
-| DISH-05 | Phase 6 | Pending |
-| DISH-06 | Phase 6 | Pending |
-| FILT-01 | Phase 6 | Pending |
-| FILT-02 | Phase 6 | Pending |
-| FILT-03 | Phase 6 | Pending |
-| FILT-04 | Phase 6 | Pending |
-| ADMN-01 | Phase 7 | Pending |
-| ADMN-02 | Phase 7 | Pending |
-| ADMN-03 | Phase 7 | Pending |
+| SCAN-01 | Phase 5 | Complete |
+| SCAN-02 | Phase 5 | Complete |
+| SCAN-03 | Phase 5 | Complete |
+| SCAN-04 | Phase 5 | Complete |
+| SCAN-05 | Phase 5 | Complete |
+| DISH-01 | Phase 6 | Complete |
+| DISH-02 | Phase 8 | Pending |
+| DISH-03 | Phase 6 | Complete |
+| DISH-04 | Phase 6 | Complete |
+| DISH-05 | Phase 6 | Complete |
+| DISH-06 | Phase 6 | Complete |
+| FILT-01 | Phase 6 | Complete |
+| FILT-02 | Phase 6 | Complete |
+| FILT-03 | Phase 6 | Complete |
+| FILT-04 | Phase 6 | Complete |
+| ADMN-01 | Phase 7 | Complete |
+| ADMN-02 | Phase 7 | Complete |
+| ADMN-03 | Phase 7 | Complete |
 | INFR-01 | Phase 4 | Complete |
 | INFR-02 | Phase 4 | Complete |
 | INFR-03 | Phase 4 | Complete |
-| INFR-04 | Phase 5 | Pending |
-| INFR-05 | Phase 7 | Pending |
+| INFR-04 | Phase 5 | Complete |
+| INFR-05 | Phase 7 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 23 total
+- Complete: 22
+- Pending: 1 (DISH-02 → Phase 8)
 - Mapped to phases: 23
 - Unmapped: 0 ✓
 

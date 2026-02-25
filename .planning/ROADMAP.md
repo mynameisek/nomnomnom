@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Landing Page** — Phases 1-3 (shipped 2026-02-25)
-- 🚧 **v1.1 MVP App** — Phases 4-7 (in progress)
+- 🚧 **v1.1 MVP App** — Phases 4-9 (in progress)
 
 ## Phases
 
@@ -26,6 +26,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 5: Scan Pipeline** - All three scan methods (QR/URL/photo) through the LLM pipeline to a menu ID
 - [x] **Phase 6: Dish Cards and Filters** - Full menu display surface with translations, trust badges, allergens, and client-side filters (completed 2026-02-25)
 - [x] **Phase 7: Navigation and Admin** - Landing CTA wired to /scan, protected admin config panel (completed 2026-02-25)
+- [ ] **Phase 8: Eazee-link Translation Fix** - LLM translation for eazee-link provider menus (gap closure)
+- [ ] **Phase 9: Tech Debt Cleanup** - Type safety, deduplication, documentation fixes (gap closure)
 
 ## Phase Details
 
@@ -83,9 +85,34 @@ Plans:
 - [ ] 07-01-PLAN.md — Landing CTA → /scan navigation + schema migration for stats
 - [ ] 07-02-PLAN.md — Protected admin page with model selector and scan statistics
 
+### Phase 8: Eazee-link Translation Fix
+**Goal**: Eazee-link menus display properly translated dish names in all 4 languages (FR/EN/TR/DE) instead of identical original text
+**Depends on**: Phase 5, Phase 6
+**Requirements**: DISH-02
+**Gap Closure**: Closes gaps from v1.1 audit (DISH-02 partial, eazee-link integration gap, QR→translation flow gap)
+**Success Criteria** (what must be TRUE):
+  1. Scanning an eazee-link QR code and switching language shows different translated text for each language (FR/EN/TR/DE)
+  2. The LLM translation step is invoked for eazee-link menus that bypass the generic parser
+  3. Cache still works — re-scanning an already-translated eazee-link menu returns cached translations without a new LLM call
+**Plans**: 1 plan
+- [ ] 08-01-PLAN.md — Add LLM translation pass for eazee-link preParseResult dishes
+
+### Phase 9: Tech Debt Cleanup
+**Goal**: Resolve accumulated tech debt items identified in v1.1 audit — type safety, code deduplication, and documentation alignment
+**Depends on**: Phase 8
+**Requirements**: None (tech debt, no new requirements)
+**Gap Closure**: Closes tech debt from v1.1 audit
+**Success Criteria** (what must be TRUE):
+  1. `ALLOWED_MODELS` is defined in a single shared location — no duplication between server and client
+  2. `Menu` TypeScript type includes `hit_count` and `parse_time_ms` fields
+  3. Phase 5 has a VERIFICATION.md confirming scan pipeline requirements
+  4. REQUIREMENTS.md checkboxes match actual implementation status
+**Plans**: 1 plan
+- [ ] 09-01-PLAN.md — ALLOWED_MODELS dedup, Menu type fix, Phase 5 verification, checkbox sync
+
 ## Progress
 
-**Execution Order:** 4 → 5 → 6 → 7
+**Execution Order:** 4 → 5 → 6 → 7 → 8 → 9
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -96,3 +123,5 @@ Plans:
 | 5. Scan Pipeline | v1.1 | 0/TBD | Not started | - |
 | 6. Dish Cards and Filters | v1.1 | Complete    | 2026-02-25 | - |
 | 7. Navigation and Admin | v1.1 | Complete    | 2026-02-25 | - |
+| 8. Eazee-link Translation Fix | v1.1 | 0/1 | Not started | - |
+| 9. Tech Debt Cleanup | v1.1 | 0/1 | Not started | - |
