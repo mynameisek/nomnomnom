@@ -65,7 +65,9 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   3. Each card shows EU allergen tags with a mandatory "demandez au serveur" disclaimer in the user's language — never a "safe" green indicator
   4. Tapping "végétarien" filter immediately hides non-vegetarian dishes with no API call and no perceptible delay
   5. Tapping "sans gluten" filter immediately hides dishes containing gluten — filter combinations stack correctly
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 06-01-PLAN.md — i18n system, spicy schema fix, useFilteredDishes hook
+- [ ] 06-02-PLAN.md — DishCard, FilterBar, AllergenBanner, LangSwitcher, MenuShell, page refactor
 
 ### Phase 7: Navigation and Admin
 **Goal**: Users can reach the app from the landing page, and the admin can control which LLM model is used and view scan statistics
