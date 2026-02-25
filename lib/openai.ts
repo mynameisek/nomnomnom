@@ -18,7 +18,7 @@ import { DEFAULT_LLM_MODEL } from './types/config';
 // System prompt — detailed instructions for multilingual menu parsing
 // =============================================================================
 
-const MENU_PARSE_SYSTEM_PROMPT = `You are a professional menu parser and food information specialist. Your task is to extract structured information from raw restaurant menu text.
+export const MENU_PARSE_SYSTEM_PROMPT = `You are a professional menu parser and food information specialist. Your task is to extract structured information from raw restaurant menu text.
 
 For each dish found in the menu text, you must:
 

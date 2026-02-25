@@ -8,7 +8,7 @@
 // =============================================================================
 
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Service role Supabase client for server-side write operations.
@@ -21,15 +21,45 @@ import { createClient } from '@supabase/supabase-js';
  * Do NOT use for:
  * - Public cache lookups (use anon client from lib/supabase.ts — preserves Next.js fetch cache)
  * - Any client-side code (import 'server-only' guards this)
+ *
+ * Lazily initialized: client is created on first use to avoid module-level
+ * crashes when SUPABASE_SERVICE_ROLE_KEY is not set in the build environment.
  */
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,    // shared with anon client — safe to be public
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,   // NO NEXT_PUBLIC_ prefix — server-only secret
-  {
+let _supabaseAdmin: SupabaseClient | null = null;
+
+function getSupabaseAdmin(): SupabaseClient {
+  if (_supabaseAdmin) return _supabaseAdmin;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      '[supabase-admin] Missing required environment variables: ' +
+      'NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set'
+    );
+  }
+
+  _supabaseAdmin = createClient(url, key, {
     auth: {
       persistSession: false,       // service role doesn't need session management
       autoRefreshToken: false,     // no session to refresh
       detectSessionInUrl: false,   // no OAuth redirects for server clients
     },
-  }
-);
+  });
+
+  return _supabaseAdmin;
+}
+
+/**
+ * Proxy object that defers client creation until first property access.
+ * Drop-in replacement for the eagerly-initialized `supabaseAdmin` — all
+ * existing call sites (`supabaseAdmin.from(...)`) continue to work unchanged.
+ */
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabaseAdmin();
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+});

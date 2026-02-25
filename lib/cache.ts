@@ -14,6 +14,7 @@ import { parseDishesFromMenu } from './openai';
 import { DEFAULT_LLM_MODEL, DEFAULT_CACHE_TTL_HOURS } from './types/config';
 import type { AdminConfig } from './types/config';
 import type { MenuWithItems } from './types/menu';
+import type { DishResponse } from './types/llm';
 
 // =============================================================================
 // hashUrl — SHA-256 of normalized URL
@@ -88,7 +89,8 @@ export async function getAdminConfig(): Promise<AdminConfig> {
 export async function getOrParseMenu(
   url: string,
   sourceType: 'url' | 'photo' | 'qr',
-  rawText: string
+  rawText: string,
+  preParseResult?: { dishes: DishResponse[] }
 ): Promise<MenuWithItems> {
   const urlHash = hashUrl(url);
 
@@ -108,8 +110,8 @@ export async function getOrParseMenu(
     return cached as MenuWithItems;
   }
 
-  // Step 4: Cache MISS — call LLM
-  const parsed = await parseDishesFromMenu(rawText, config.llm_model);
+  // Step 4: Cache MISS — use pre-parsed result or call LLM
+  const parsed = preParseResult ?? await parseDishesFromMenu(rawText, config.llm_model);
 
   // Step 5: Compute expiry
   const expiresAt = new Date(
