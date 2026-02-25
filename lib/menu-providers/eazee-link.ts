@@ -102,20 +102,35 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
     categoryMap.set(cat.categoryId, cat);
   }
 
-  // Resolve the display category for a product.
-  // Strategy: use the most specific (deepest) category as the display name.
-  // Generic parents like "La carte" are skipped — their children become top-level.
-  // 3-level example: "Boissons" → "Bières" → "Bières à la pression"
-  //   → category = "Bières", subcategory = "Bières à la pression"
-  // 2-level example: "La carte" → "Entrée"
-  //   → category = "Entrée", subcategory = null
-  // 1-level example: "Nouveautés & suggestions"
-  //   → category = "Nouveautés & suggestions", subcategory = null
+  // Detect which root categories have grandchildren (3-level hierarchy).
+  // These roots are meaningful group parents (e.g. "Boissons").
+  // Roots with only direct leaf children are generic containers (e.g. "La carte") → flatten.
+  const rootsWithGrandchildren = new Set<number>();
+  for (const cat of data.categories) {
+    if (cat.parentId) {
+      const parent = categoryMap.get(cat.parentId);
+      if (parent?.parentId) {
+        // This cat's parent has a parent → the grandparent root has grandchildren
+        let root = parent;
+        while (root.parentId) {
+          const rp = categoryMap.get(root.parentId);
+          if (!rp) break;
+          root = rp;
+        }
+        rootsWithGrandchildren.add(root.categoryId);
+      }
+    }
+  }
+
+  // Resolve category/subcategory for display.
+  // - Root with grandchildren (e.g. "Boissons"): keep root as category, child as subcategory
+  // - Root without grandchildren (e.g. "La carte"): flatten, child becomes category
+  // - Standalone root (e.g. "Nouveautés"): category = root name
   function resolveCategory(categoryId: number): { category: string | null; subcategory: string | null } {
     const cat = categoryMap.get(categoryId);
     if (!cat) return { category: null, subcategory: null };
 
-    // Walk up the tree to build the chain: [root, ..., leaf]
+    // Walk up to build chain: [root, ..., leaf]
     const chain: EazeeCategory[] = [cat];
     let current = cat;
     while (current.parentId) {
@@ -125,16 +140,22 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
       current = parent;
     }
 
+    const root = chain[0];
+
     if (chain.length === 1) {
-      // Root-level category (e.g. "Nouveautés & suggestions")
-      return { category: chain[0].label, subcategory: null };
+      // Standalone root (e.g. "Nouveautés & suggestions")
+      return { category: root.label, subcategory: null };
     }
-    if (chain.length === 2) {
-      // 2-level: parent → child. Use child as category (skip generic parent).
-      return { category: chain[1].label, subcategory: null };
+
+    if (rootsWithGrandchildren.has(root.categoryId)) {
+      // Meaningful parent (e.g. "Boissons") — keep as group
+      // subcategory = the most specific child name
+      const sub = chain.length >= 3 ? chain[chain.length - 1].label : chain[1].label;
+      return { category: root.label, subcategory: sub };
     }
-    // 3+ levels: use second-to-last as category, last as subcategory
-    return { category: chain[chain.length - 2].label, subcategory: chain[chain.length - 1].label };
+
+    // Generic parent (e.g. "La carte") — flatten: child becomes top-level category
+    return { category: chain[1].label, subcategory: null };
   }
 
   // Build sort key preserving full hierarchy order.

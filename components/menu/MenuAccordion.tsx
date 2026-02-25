@@ -5,37 +5,59 @@ import type { MenuItem, TrustSignal } from '@/lib/types/menu';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface CategoryGroup {
+/** Leaf group: items sharing same category + subcategory */
+interface SubGroup {
   key: string;
-  category: string;
   subcategory: string | null;
   items: MenuItem[];
 }
 
+/** Top-level section: a category that may contain multiple subgroups */
+interface Section {
+  category: string;
+  subGroups: SubGroup[];
+  totalItems: number;
+  hasSubcategories: boolean;
+}
+
 // ─── Grouping logic ──────────────────────────────────────────────────────────
 
-function groupByCategory(items: MenuItem[]): CategoryGroup[] {
-  const groups: CategoryGroup[] = [];
-  let currentKey = '';
+function buildSections(items: MenuItem[]): Section[] {
+  const sections: Section[] = [];
+  let currentCat = '';
+  let currentSub = '';
 
   for (const item of items) {
     const cat = item.category ?? 'Autres';
     const sub = item.subcategory ?? '';
-    const key = `${cat}|||${sub}`;
 
-    if (key !== currentKey) {
-      currentKey = key;
-      groups.push({
-        key,
+    if (cat !== currentCat) {
+      // New top-level section
+      currentCat = cat;
+      currentSub = sub;
+      sections.push({
         category: cat,
-        subcategory: item.subcategory,
-        items: [],
+        subGroups: [{ key: `${cat}|||${sub}`, subcategory: item.subcategory, items: [item] }],
+        totalItems: 1,
+        hasSubcategories: !!item.subcategory,
       });
+    } else if (sub !== currentSub) {
+      // New subgroup within same section
+      currentSub = sub;
+      const section = sections[sections.length - 1];
+      section.subGroups.push({ key: `${cat}|||${sub}`, subcategory: item.subcategory, items: [item] });
+      section.totalItems++;
+      if (item.subcategory) section.hasSubcategories = true;
+    } else {
+      // Same group
+      const section = sections[sections.length - 1];
+      const subGroup = section.subGroups[section.subGroups.length - 1];
+      subGroup.items.push(item);
+      section.totalItems++;
     }
-    groups[groups.length - 1].items.push(item);
   }
 
-  return groups;
+  return sections;
 }
 
 // ─── Trust signal badge ──────────────────────────────────────────────────────
@@ -60,7 +82,6 @@ function TrustBadge({ signal }: { signal: TrustSignal }) {
 function DishCard({ item }: { item: MenuItem }) {
   return (
     <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/8">
-      {/* Name + price row */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-brand-white font-semibold text-sm leading-snug flex-1">
           {item.name_original}
@@ -72,33 +93,23 @@ function DishCard({ item }: { item: MenuItem }) {
         )}
       </div>
 
-      {/* Description */}
       {item.description_original && (
         <p className="text-brand-muted text-xs leading-relaxed">
           {item.description_original}
         </p>
       )}
 
-      {/* Trust signal + allergens */}
-      {(item.trust_signal || item.allergens.length > 0 || item.dietary_tags.length > 0) && (
+      {(item.allergens.length > 0 || item.dietary_tags.length > 0) && (
         <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
           <TrustBadge signal={item.trust_signal} />
-
-          {item.allergens.map((allergen) => (
-            <span
-              key={allergen}
-              className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-brand-muted text-xs"
-            >
-              {allergen}
+          {item.allergens.map((a) => (
+            <span key={a} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-brand-muted text-xs">
+              {a}
             </span>
           ))}
-
-          {item.dietary_tags.map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-0.5 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green text-xs"
-            >
-              {tag}
+          {item.dietary_tags.map((t) => (
+            <span key={t} className="px-2 py-0.5 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green text-xs">
+              {t}
             </span>
           ))}
         </div>
@@ -109,10 +120,10 @@ function DishCard({ item }: { item: MenuItem }) {
 
 // ─── Chevron icon ────────────────────────────────────────────────────────────
 
-function ChevronDown({ open }: { open: boolean }) {
+function ChevronDown({ open, className }: { open: boolean; className?: string }) {
   return (
     <svg
-      className={`w-5 h-5 text-brand-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+      className={`w-5 h-5 text-brand-muted transition-transform duration-200 ${open ? 'rotate-180' : ''} ${className ?? ''}`}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -123,13 +134,43 @@ function ChevronDown({ open }: { open: boolean }) {
   );
 }
 
-// ─── Accordion section ───────────────────────────────────────────────────────
+// ─── Sub-accordion (nested inside a parent group like "Boissons") ────────────
 
-function CategorySection({ group, defaultOpen }: { group: CategoryGroup; defaultOpen: boolean }) {
+function SubAccordion({ subGroup }: { subGroup: SubGroup }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-white/6 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-3 py-2.5 bg-white/3 hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-brand-white/80 font-medium text-xs">
+            {subGroup.subcategory}
+          </span>
+          <span className="text-brand-muted/60 text-xs">
+            {subGroup.items.length}
+          </span>
+        </div>
+        <ChevronDown open={open} className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 p-2">
+          {subGroup.items.map((item) => (
+            <DishCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Top-level section accordion ─────────────────────────────────────────────
+
+function SectionAccordion({ section, defaultOpen }: { section: Section; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
-  const label = group.subcategory
-    ? `${group.category} — ${group.subcategory}`
-    : group.category;
 
   return (
     <section className="rounded-2xl border border-white/8 overflow-hidden">
@@ -140,10 +181,10 @@ function CategorySection({ group, defaultOpen }: { group: CategoryGroup; default
       >
         <div className="flex items-center gap-3">
           <span className="text-brand-white font-semibold text-sm">
-            {label}
+            {section.category}
           </span>
           <span className="text-brand-muted text-xs">
-            {group.items.length}
+            {section.totalItems}
           </span>
         </div>
         <ChevronDown open={open} />
@@ -151,9 +192,18 @@ function CategorySection({ group, defaultOpen }: { group: CategoryGroup; default
 
       {open && (
         <div className="flex flex-col gap-2 p-3">
-          {group.items.map((item) => (
-            <DishCard key={item.id} item={item} />
-          ))}
+          {section.hasSubcategories
+            ? section.subGroups.map((sg) =>
+                sg.subcategory ? (
+                  <SubAccordion key={sg.key} subGroup={sg} />
+                ) : (
+                  // Items without subcategory rendered directly
+                  sg.items.map((item) => <DishCard key={item.id} item={item} />)
+                )
+              )
+            : section.subGroups.flatMap((sg) =>
+                sg.items.map((item) => <DishCard key={item.id} item={item} />)
+              )}
         </div>
       )}
     </section>
@@ -164,9 +214,9 @@ function CategorySection({ group, defaultOpen }: { group: CategoryGroup; default
 
 export default function MenuAccordion({ items }: { items: MenuItem[] }) {
   const sorted = [...items].sort((a, b) => a.sort_order - b.sort_order);
-  const groups = groupByCategory(sorted);
+  const sections = buildSections(sorted);
 
-  if (groups.length === 0) {
+  if (sections.length === 0) {
     return (
       <div className="text-center py-16 text-brand-muted">
         <p className="text-4xl mb-4">&#127869;</p>
@@ -177,8 +227,8 @@ export default function MenuAccordion({ items }: { items: MenuItem[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {groups.map((group, i) => (
-        <CategorySection key={group.key} group={group} defaultOpen={i === 0} />
+      {sections.map((section, i) => (
+        <SectionAccordion key={section.category} section={section} defaultOpen={i === 0} />
       ))}
     </div>
   );
