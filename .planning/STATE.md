@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 5 of 7 (Scan Pipeline)
-Plan: 1 of 2 in current phase (05-01 complete — server-side scan routes done)
-Status: In progress
-Last activity: 2026-02-25 — 05-01 complete (Screenshotone wrapper + URL/photo Route Handlers + cache layer adaptation)
+Plan: 2 of 2 in current phase (05-02 tasks 1-2 complete — client scan UI + /menu/[id] page built; paused at Task 3 checkpoint:human-verify)
+Status: In progress — awaiting human verification
+Last activity: 2026-02-25 — 05-02 tasks 1-2 complete (/scan page with QR/URL/Photo tabs, ScanProgress, /menu/[id] Supabase stub)
 
-Progress: [██████░░░░░░░░░░░░░░] 29% (4/7 phases complete + 1/2 plans in phase 5)
+Progress: [███████░░░░░░░░░░░░░] 33% (4/7 phases complete + 2/2 plans in phase 5 built, pending final verification)
 
 ## Performance Metrics
 
@@ -33,6 +33,7 @@ Progress: [██████░░░░░░░░░░░░░░] 29% (4/
 | 4. Infrastructure Foundation (v1.1) — plan 1/2 | 1 | ~2 min | ~2 min |
 | 4. Infrastructure Foundation (v1.1) — plan 2/2 | 1 | ~3 min | ~3 min |
 | 5. Scan Pipeline (v1.1) — plan 1/2 | 1 | ~9 min | ~9 min |
+| 5. Scan Pipeline (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
 
 *Updated after each plan completion*
 
@@ -58,6 +59,9 @@ Progress: [██████░░░░░░░░░░░░░░] 29% (4/
 - Lazy singleton pattern for SDK clients (Screenshotone, supabaseAdmin) — prevents Next.js build-time crash when env vars absent
 - preParseResult optional param on getOrParseMenu — photo Vision result passed directly, avoids redundant LLM call
 - Synthetic photo URL key (`photo:${Date.now()}`) — unique cache key per photo upload, no URL collision
+- Custom window event (qr-decoded) for QR->URL handoff — avoids prop drilling when QR tab unmounts on tab switch
+- dynamic import('qr-scanner') in useEffect — browser-only library; SSR-safe via Next.js dynamic with ssr: false
+- Timer-driven progress simulation (3s/step) with immediate jump on API resolve — acceptable UX for 6-15s opaque background tasks
 
 ### Pending Todos
 
@@ -74,5 +78,5 @@ Progress: [██████░░░░░░░░░░░░░░] 29% (4/
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 05-01-PLAN.md (Screenshotone wrapper + URL/photo Route Handlers + cache adaptation). Phase 5 plan 1/2 done. Next: Phase 5 Plan 02 (client scan UI components)
+Stopped at: 05-02 Task 3 checkpoint:human-verify — complete scan pipeline built, awaiting end-to-end verification (URL/QR/Photo scan, cache hit, loading UX). Resume with "approved" signal.
 Resume file: None
