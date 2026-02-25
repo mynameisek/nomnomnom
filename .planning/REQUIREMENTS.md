@@ -39,9 +39,9 @@ Requirements for MVP App. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFR-01**: Supabase schema with menus, menu_items, and admin_config tables
-- [ ] **INFR-02**: OpenAI API integration via Vercel AI SDK (server-only, key never exposed to browser)
-- [ ] **INFR-03**: URL hash-based caching — LLM called only on cache miss
+- [x] **INFR-01**: Supabase schema with menus, menu_items, and admin_config tables
+- [x] **INFR-02**: OpenAI API integration via Vercel AI SDK (server-only, key never exposed to browser)
+- [x] **INFR-03**: URL hash-based caching — LLM called only on cache miss
 - [ ] **INFR-04**: Image resize client-side (1024px max) before sending photo to API
 - [ ] **INFR-05**: Navigation integration — CTA on landing page links to /scan
 
@@ -106,9 +106,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMN-01 | Phase 7 | Pending |
 | ADMN-02 | Phase 7 | Pending |
 | ADMN-03 | Phase 7 | Pending |
-| INFR-01 | Phase 4 | Pending |
-| INFR-02 | Phase 4 | Pending |
-| INFR-03 | Phase 4 | Pending |
+| INFR-01 | Phase 4 | Complete |
+| INFR-02 | Phase 4 | Complete |
+| INFR-03 | Phase 4 | Complete |
 | INFR-04 | Phase 5 | Pending |
 | INFR-05 | Phase 7 | Pending |
 
