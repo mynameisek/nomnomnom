@@ -65,20 +65,20 @@ requirements-completed:
   - DEPLOY-02
 
 # Metrics
-duration: 25min
+duration: ~40min
 completed: 2026-02-25
 ---
 
 # Phase 1 Plan 01: Foundation Summary
 
-**Next.js 16 + Tailwind v4 shell with NOM dark brand system deployed to Vercel at https://nomnomnom-delta.vercel.app**
+**Next.js 16 + Tailwind v4 shell with NOM dark brand system deployed to Vercel at https://nomnomnom-delta.vercel.app — visually approved by user**
 
 ## Performance
 
-- **Duration:** ~25 min
+- **Duration:** ~40 min (25 min tasks 1-3 + checkpoint verification)
 - **Started:** 2026-02-25T03:17:25Z
-- **Completed:** 2026-02-25T03:42:00Z
-- **Tasks:** 3 completed (Task 4 is checkpoint:human-verify, pending user approval)
+- **Completed:** 2026-02-25
+- **Tasks:** 4 (3 auto + 1 checkpoint:human-verify — approved)
 - **Files modified:** 9 created, 2 modified
 
 ## Accomplishments
@@ -96,7 +96,8 @@ Each task was committed atomically:
 
 1. **Task 1: Scaffold Next.js 16 project and configure brand design system** - `7bfb7c6` (feat)
 2. **Task 2: Build Nav and Footer components** - `5dda21b` (feat)
-3. **Task 3: Initialize git repo, push to GitHub, deploy to Vercel** - no separate commit needed (git + Vercel CLI handled externally)
+3. **Task 3: Initialize git repo, push to GitHub, deploy to Vercel** - `692df3c` (docs — checkpoint commit, code pushed to GitHub)
+4. **Task 4: Verify deployed shell visually** - Checkpoint:human-verify — user approved all visual checks (dark theme, Nav blur, Outfit font, footer, responsive at 320px)
 
 ## Files Created/Modified
 - `app/globals.css` - Tailwind v4 @theme brand tokens, noise grain overlay, smooth scroll
@@ -171,3 +172,14 @@ After adding env vars, trigger a new Vercel deployment (push any commit or redep
 ---
 *Phase: 01-foundation*
 *Completed: 2026-02-25*
+
+## Self-Check: PASSED
+
+- app/globals.css — FOUND
+- app/layout.tsx — FOUND
+- components/layout/Nav.tsx — FOUND
+- components/layout/Footer.tsx — FOUND
+- lib/supabase.ts — FOUND
+- Commit 7bfb7c6 — FOUND
+- Commit 5dda21b — FOUND
+- Commit 692df3c — FOUND
