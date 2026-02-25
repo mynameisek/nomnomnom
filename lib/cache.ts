@@ -106,12 +106,20 @@ export async function getOrParseMenu(
     .maybeSingle();
 
   if (cached !== null) {
-    // Cache HIT — return stored result without any LLM call
+    // Cache HIT — increment hit_count (fire-and-forget, don't block response)
+    supabaseAdmin
+      .from('menus')
+      .update({ hit_count: (cached.hit_count ?? 0) + 1 })
+      .eq('id', cached.id)
+      .then(() => {});
+
     return cached as MenuWithItems;
   }
 
-  // Step 4: Cache MISS — use pre-parsed result or call LLM
+  // Step 4: Cache MISS — use pre-parsed result or call LLM (with timing instrumentation)
+  const parseStart = Date.now();
   const parsed = preParseResult ?? await parseDishesFromMenu(rawText, config.llm_model);
+  const parseTimeMs = preParseResult ? null : Date.now() - parseStart;
 
   // Step 5: Compute expiry
   const expiresAt = new Date(
@@ -134,6 +142,7 @@ export async function getOrParseMenu(
       source_type: sourceType,
       raw_text: rawText,
       expires_at: expiresAt,
+      parse_time_ms: parseTimeMs,
     })
     .select('*')
     .single();

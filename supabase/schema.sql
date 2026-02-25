@@ -39,6 +39,8 @@ create table menus (
   restaurant_name text,                             -- nullable — may not be extractable
   source_type     text,                             -- 'url' | 'photo' | 'qr'
   raw_text        text,                             -- original scraped/OCR text (debugging)
+  parse_time_ms   integer,                          -- LLM parse duration in ms (null for cache hits / pre-parsed)
+  hit_count       integer     not null default 0,   -- incremented on each cache hit
   parsed_at       timestamptz default now(),
   expires_at      timestamptz not null,             -- parsed_at + cache_ttl_hours from admin_config
   created_at      timestamptz default now()
