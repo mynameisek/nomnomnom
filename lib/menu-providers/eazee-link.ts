@@ -102,30 +102,61 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
     categoryMap.set(cat.categoryId, cat);
   }
 
-  // Resolve category + subcategory from parent/child hierarchy
+  // Resolve the display category for a product.
+  // Strategy: use the most specific (deepest) category as the display name.
+  // Generic parents like "La carte" are skipped — their children become top-level.
+  // 3-level example: "Boissons" → "Bières" → "Bières à la pression"
+  //   → category = "Bières", subcategory = "Bières à la pression"
+  // 2-level example: "La carte" → "Entrée"
+  //   → category = "Entrée", subcategory = null
+  // 1-level example: "Nouveautés & suggestions"
+  //   → category = "Nouveautés & suggestions", subcategory = null
   function resolveCategory(categoryId: number): { category: string | null; subcategory: string | null } {
     const cat = categoryMap.get(categoryId);
     if (!cat) return { category: null, subcategory: null };
 
-    if (cat.parentId) {
-      const parent = categoryMap.get(cat.parentId);
-      return {
-        category: parent?.label ?? cat.label,
-        subcategory: cat.label,
-      };
+    // Walk up the tree to build the chain: [root, ..., leaf]
+    const chain: EazeeCategory[] = [cat];
+    let current = cat;
+    while (current.parentId) {
+      const parent = categoryMap.get(current.parentId);
+      if (!parent) break;
+      chain.unshift(parent);
+      current = parent;
     }
-    return { category: cat.label, subcategory: null };
+
+    if (chain.length === 1) {
+      // Root-level category (e.g. "Nouveautés & suggestions")
+      return { category: chain[0].label, subcategory: null };
+    }
+    if (chain.length === 2) {
+      // 2-level: parent → child. Use child as category (skip generic parent).
+      return { category: chain[1].label, subcategory: null };
+    }
+    // 3+ levels: use second-to-last as category, last as subcategory
+    return { category: chain[chain.length - 2].label, subcategory: chain[chain.length - 1].label };
   }
 
-  // Build category sort order: parent order * 1000 + child order
+  // Build sort key preserving full hierarchy order.
+  // Each level contributes: root_order * 1000000 + mid_order * 1000 + leaf_order
   function categorySort(categoryId: number): number {
     const cat = categoryMap.get(categoryId);
-    if (!cat) return 999000;
-    if (cat.parentId) {
-      const parent = categoryMap.get(cat.parentId);
-      return (parent?.order ?? 999) * 1000 + cat.order;
+    if (!cat) return 999000000;
+
+    const chain: EazeeCategory[] = [cat];
+    let current = cat;
+    while (current.parentId) {
+      const parent = categoryMap.get(current.parentId);
+      if (!parent) break;
+      chain.unshift(parent);
+      current = parent;
     }
-    return cat.order * 1000;
+
+    let sort = 0;
+    for (let i = 0; i < chain.length; i++) {
+      sort += chain[i].order * Math.pow(1000, chain.length - 1 - i);
+    }
+    return sort;
   }
 
   // Convert and sort by category hierarchy

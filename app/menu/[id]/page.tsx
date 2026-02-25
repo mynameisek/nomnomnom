@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { supabase } from '@/lib/supabase';
-import type { MenuWithItems, MenuItem, TrustSignal } from '@/lib/types/menu';
+import type { MenuWithItems } from '@/lib/types/menu';
+import MenuAccordion from '@/components/menu/MenuAccordion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,92 +27,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// ─── Trust signal badge ────────────────────────────────────────────────────────
-
-function TrustBadge({ signal }: { signal: TrustSignal }) {
-  if (signal === 'verified') {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-green/10 text-brand-green text-xs font-medium border border-brand-green/20">
-        ✓ Verified
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange text-xs font-medium border border-brand-orange/20">
-      ~ Inferred
-    </span>
-  );
-}
-
-// ─── Dish card ────────────────────────────────────────────────────────────────
-
-function DishCard({ item }: { item: MenuItem }) {
-  const translationFr = item.name_translations?.fr;
-  const translationEn = item.name_translations?.en;
-
-  return (
-    <div className="flex flex-col gap-2 px-4 py-4 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
-      {/* Name row */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-brand-white font-semibold text-sm leading-snug flex-1">
-          {item.name_original}
-        </h3>
-        {item.price && (
-          <span className="text-brand-orange font-semibold text-sm flex-shrink-0">
-            {item.price}
-          </span>
-        )}
-      </div>
-
-      {/* Translations */}
-      {(translationFr || translationEn) && (
-        <div className="flex flex-wrap gap-2">
-          {translationFr && translationFr !== item.name_original && (
-            <span className="text-brand-muted text-xs">
-              <span className="opacity-50">FR</span> {translationFr}
-            </span>
-          )}
-          {translationEn && translationEn !== item.name_original && (
-            <span className="text-brand-muted text-xs">
-              <span className="opacity-50">EN</span> {translationEn}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Description */}
-      {item.description_original && (
-        <p className="text-brand-muted text-xs leading-relaxed">
-          {item.description_original}
-        </p>
-      )}
-
-      {/* Trust signal + allergens row */}
-      <div className="flex flex-wrap items-center gap-2 mt-1">
-        <TrustBadge signal={item.trust_signal} />
-
-        {item.allergens.map((allergen) => (
-          <span
-            key={allergen}
-            className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-brand-muted text-xs"
-          >
-            {allergen}
-          </span>
-        ))}
-
-        {item.dietary_tags.map((tag) => (
-          <span
-            key={tag}
-            className="px-2 py-0.5 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green text-xs"
-          >
-            {tag}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Source badge ─────────────────────────────────────────────────────────────
 
 function SourceBadge({ sourceType }: { sourceType: string | null }) {
@@ -126,39 +41,6 @@ function SourceBadge({ sourceType }: { sourceType: string | null }) {
       {label}
     </span>
   );
-}
-
-// ─── Category grouping ───────────────────────────────────────────────────────
-
-interface CategoryGroup {
-  key: string;
-  category: string | null;
-  subcategory: string | null;
-  items: MenuItem[];
-}
-
-function groupByCategory(items: MenuItem[]): CategoryGroup[] {
-  const groups: CategoryGroup[] = [];
-  let currentKey = '';
-
-  for (const item of items) {
-    const cat = item.category ?? '';
-    const sub = item.subcategory ?? '';
-    const key = `${cat}|||${sub}`;
-
-    if (key !== currentKey) {
-      currentKey = key;
-      groups.push({
-        key,
-        category: item.category,
-        subcategory: item.subcategory,
-        items: [],
-      });
-    }
-    groups[groups.length - 1].items.push(item);
-  }
-
-  return groups;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -179,7 +61,6 @@ export default async function MenuPage({ params }: PageProps) {
   const typedMenu = menu as MenuWithItems;
   const dishes = typedMenu.menu_items ?? [];
 
-  // Best-effort restaurant name from first line of raw_text
   const restaurantName =
     typedMenu.restaurant_name ??
     typedMenu.raw_text?.split('\n').find((line) => line.trim().length > 0)?.trim() ??
@@ -199,42 +80,10 @@ export default async function MenuPage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Dish list — grouped by category/subcategory */}
-        {dishes.length > 0 ? (
-          <div className="flex flex-col gap-6">
-            {groupByCategory(dishes.sort((a, b) => a.sort_order - b.sort_order)).map(
-              (group) => (
-                <section key={group.key}>
-                  {group.category && (
-                    <h2 className="text-lg font-bold text-brand-white mb-1 px-1">
-                      {group.category}
-                    </h2>
-                  )}
-                  {group.subcategory && (
-                    <h3 className="text-sm font-medium text-brand-muted mb-3 px-1">
-                      {group.subcategory}
-                    </h3>
-                  )}
-                  {!group.category && !group.subcategory && (
-                    <div className="mb-3" />
-                  )}
-                  <div className="flex flex-col gap-3">
-                    {group.items.map((item) => (
-                      <DishCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                </section>
-              )
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-16 text-brand-muted">
-            <p className="text-4xl mb-4">🍽</p>
-            <p className="text-sm">No dishes were extracted from this menu.</p>
-          </div>
-        )}
+        {/* Accordion menu */}
+        <MenuAccordion items={dishes} />
 
-        {/* Footer note */}
+        {/* Footer */}
         <p className="text-brand-muted/40 text-xs text-center mt-10">
           Dish data parsed by NOM AI — translations may vary
         </p>
