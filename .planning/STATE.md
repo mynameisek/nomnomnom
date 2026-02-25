@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** Phase 6 — Dish Cards and Filters (v1.1)
+**Current focus:** Phase 7 — Polish (v1.1)
 
 ## Current Position
 
-Phase: 6 of 7 (Dish Cards and Filters)
-Plan: 1 of 2 in current phase (06-01 complete — i18n system, useFilteredDishes hook, spicy dietary tag)
-Status: In progress — 06-01 complete, ready for 06-02
-Last activity: 2026-02-25 — 06-01 complete (lib/i18n system, hooks/useFilteredDishes, spicy in DietaryTag/Zod/LLM)
+Phase: 6 of 7 (Dish Cards and Filters — COMPLETE)
+Plan: 2 of 2 in current phase (06-02 complete — dish cards, filter bar, language switcher, allergen banner)
+Status: Phase 6 complete — ready for Phase 7 (Polish)
+Last activity: 2026-02-25 — 06-02 complete (DishCard, AllergenBanner, LangSwitcher, FilterBar, MenuShell + UX polish)
 
-Progress: [████████░░░░░░░░░░░░] 38% (4/7 phases complete + phase 6 plan 1/2 complete)
+Progress: [█████████████████░░░] 85% (6/7 phases complete — phase 6 both plans done)
 
 ## Performance Metrics
 
@@ -35,6 +35,7 @@ Progress: [████████░░░░░░░░░░░░] 38% (4/
 | 5. Scan Pipeline (v1.1) — plan 1/2 | 1 | ~9 min | ~9 min |
 | 5. Scan Pipeline (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
 | 6. Dish Cards and Filters (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
+| 6. Dish Cards and Filters (v1.1) — plan 2/2 | 1 | ~110 min | ~110 min |
 
 *Updated after each plan completion*
 
@@ -67,6 +68,9 @@ Progress: [████████░░░░░░░░░░░░] 38% (4/
 - SSR-safe i18n: useState('fr') default, never read localStorage in initializer — useEffect corrects client-side only (hydration safety)
 - useMemo retained in useFilteredDishes despite React 19 compiler — explicit intent for potentially large array filter operations
 - DietaryTag 'spicy' added as non-breaking text[] change — no DB migration needed (column accepts any strings)
+- [Phase 06-dish-cards-and-filters]: FilterBar redesigned post-checkpoint: search bar at top, allergen chips hidden behind toggle row to reduce mobile visual noise
+- [Phase 06-dish-cards-and-filters]: Allergen chips removed from DishCard — redundant with FilterBar allergen exclusion chips; reduces card density
+- [Phase 06-dish-cards-and-filters]: Accent-insensitive search via normalize('NFD') — 'vege' matches 'végétarien'
 
 ### Pending Todos
 
@@ -83,5 +87,5 @@ Progress: [████████░░░░░░░░░░░░] 38% (4/
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 06-01-PLAN.md — i18n system, useFilteredDishes hook, spicy dietary tag. Ready for 06-02.
+Stopped at: Completed 06-02-PLAN.md — dish cards, filter bar, language switcher, allergen banner. Phase 6 complete. Ready for Phase 7 (Polish).
 Resume file: None
