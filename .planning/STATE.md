@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 4 of 7 (Infrastructure Foundation)
-Plan: 1 of 2 in current phase (04-01 complete)
+Plan: 2 of 2 in current phase (04-02 complete — Phase 4 DONE)
 Status: In progress
-Last activity: 2026-02-25 — 04-01 complete (schema, types, service role client)
+Last activity: 2026-02-25 — 04-02 complete (AI SDK + OpenAI wrapper + cache layer)
 
-Progress: [████░░░░░░░░░░░░░░░░] 18% (3/7 phases complete + 1 plan in phase 4)
+Progress: [█████░░░░░░░░░░░░░░░] 24% (3/7 phases complete + 2/2 plans in phase 4)
 
 ## Performance Metrics
 
@@ -31,6 +31,7 @@ Progress: [████░░░░░░░░░░░░░░░░] 18% (3/
 | 2. Content Sections (v1.0) | 2 | ~60 min | ~30 min |
 | 3. Waitlist + Ship (v1.0) | 2 | ~90 min | ~45 min |
 | 4. Infrastructure Foundation (v1.1) — plan 1/2 | 1 | ~2 min | ~2 min |
+| 4. Infrastructure Foundation (v1.1) — plan 2/2 | 1 | ~3 min | ~3 min |
 
 *Updated after each plan completion*
 
@@ -49,12 +50,16 @@ Progress: [████░░░░░░░░░░░░░░░░] 18% (3/
 - `dietary_tags` as `text[]` not PostgreSQL enum — may grow in v1.2+ unlike legally-stable EU 14 allergen list
 - `admin_config` single-row boolean PK with CHECK (id = true) — DB-level enforcement, not application-level
 - `SUPABASE_SERVICE_ROLE_KEY` no NEXT_PUBLIC_ prefix — service role key must never reach client bundle
+- Zod pinned at 3.25.76 (no caret) — Zod v4 breaks AI SDK's internal zod-to-json-schema conversion (GitHub issue #10014)
+- generateText + Output.object() pattern — generateObject deprecated in AI SDK 6
+- Anon client for cache reads, service role for writes — preserves Next.js fetch cache while bypassing RLS for inserts
+- Delete-then-insert pattern for cache refresh — cleaner than upsert with url_hash unique constraint
 
 ### Pending Todos
 
 - Run Supabase SQL to create `waitlist` table before sharing live link (from v1.0)
 - **Run `supabase/schema.sql`** in Supabase SQL Editor before v1.1 features can be tested (menus, menu_items, admin_config tables)
-- **Add `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` to `.env.local`** before Plan 04-02 can be tested
+- **Add `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` to `.env.local`** before Phase 4 can be tested end-to-end
 - Select screenshot API vendor (Screenshotone vs APIFlash vs Browserless) during Phase 5 planning
 
 ### Blockers/Concerns
@@ -65,5 +70,5 @@ Progress: [████░░░░░░░░░░░░░░░░] 18% (3/
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 04-01-PLAN.md (schema + types + service role client). Next: 04-02-PLAN.md (AI SDK + cache layer)
+Stopped at: Completed 04-02-PLAN.md (AI SDK + OpenAI wrapper + cache layer). Phase 4 complete. Next: Phase 5 (Scan Pipeline)
 Resume file: None
