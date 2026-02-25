@@ -184,9 +184,9 @@ export default function FinalCta() {
             {/* Content overlay */}
             <div className="relative p-8 px-6 flex flex-col gap-6">
               <div>
-                <h3 className="text-xl font-extrabold mb-1">
+                <h2 className="text-xl font-extrabold mb-1">
                   Rejoins les premiers testeurs
-                </h3>
+                </h2>
                 <p className="text-[13px] text-white/40 m-0">
                   Acces beta TestFlight (iOS) et Android. Gratuit, sans engagement.
                 </p>

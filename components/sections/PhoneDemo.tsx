@@ -176,6 +176,7 @@ export default function PhoneDemo() {
                   src={FOOD[7].url}
                   alt=""
                   className="w-full h-full object-cover opacity-70"
+                  loading="lazy"
                   onError={(e) => ((e.target as HTMLElement).style.display = "none")}
                 />
                 <div

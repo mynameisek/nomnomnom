@@ -9,7 +9,7 @@ import FinalCta from "@/components/sections/FinalCta";
 
 export default function Home() {
   return (
-    <main>
+    <>
       <Hero />
       <DishCarousel />
       <Features />
@@ -18,6 +18,6 @@ export default function Home() {
       <Pricing />
       <Faq />
       <FinalCta />
-    </main>
+    </>
   );
 }

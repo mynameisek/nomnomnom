@@ -12,15 +12,20 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "NŌM — Découvrez chaque menu",
-  description:
-    "NŌM transforme n'importe quel menu de restaurant en fiches claires, traduites et illustrées. Scanner, comprendre, savourer.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nomnomnom-delta.vercel.app'),
+  title: 'NŌM — Scanne le menu. Comprends chaque plat.',
+  description: "Scanne n'importe quel menu, comprends chaque plat en 50+ langues. Traductions, explications, recommandations — instantanément.",
   openGraph: {
-    title: "NŌM — Découvrez chaque menu",
-    description:
-      "NŌM transforme n'importe quel menu de restaurant en fiches claires, traduites et illustrées.",
-    locale: "fr_FR",
-    type: "website",
+    title: 'NŌM — Scanne le menu. Comprends chaque plat.',
+    description: "Scanne n'importe quel menu, comprends chaque plat en 50+ langues.",
+    locale: 'fr_FR',
+    type: 'website',
+    siteName: 'NŌM',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'NŌM — Scanne le menu. Comprends chaque plat.',
+    description: "Scanne n'importe quel menu, comprends chaque plat en 50+ langues.",
   },
 };
 
