@@ -145,58 +145,58 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LAYOUT-01 | — | Pending |
-| LAYOUT-02 | — | Pending |
-| LAYOUT-03 | — | Pending |
-| LAYOUT-04 | — | Pending |
-| LAYOUT-05 | — | Pending |
-| HERO-01 | — | Pending |
-| HERO-02 | — | Pending |
-| HERO-03 | — | Pending |
-| HERO-04 | — | Pending |
-| HERO-05 | — | Pending |
-| DEMO-01 | — | Pending |
-| DEMO-02 | — | Pending |
-| DEMO-03 | — | Pending |
-| DEMO-04 | — | Pending |
-| DEMO-05 | — | Pending |
-| CAROUSEL-01 | — | Pending |
-| CAROUSEL-02 | — | Pending |
-| CAROUSEL-03 | — | Pending |
-| FEAT-01 | — | Pending |
-| FEAT-02 | — | Pending |
-| REVERSE-01 | — | Pending |
-| REVERSE-02 | — | Pending |
-| REVERSE-03 | — | Pending |
-| SOCIAL-01 | — | Pending |
-| SOCIAL-02 | — | Pending |
-| SOCIAL-03 | — | Pending |
-| PRICE-01 | — | Pending |
-| PRICE-02 | — | Pending |
-| PRICE-03 | — | Pending |
-| FAQ-01 | — | Pending |
-| FAQ-02 | — | Pending |
-| WAIT-01 | — | Pending |
-| WAIT-02 | — | Pending |
-| WAIT-03 | — | Pending |
-| WAIT-04 | — | Pending |
-| WAIT-05 | — | Pending |
-| WAIT-06 | — | Pending |
-| WAIT-07 | — | Pending |
-| WAIT-08 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| PERF-03 | — | Pending |
-| SEO-01 | — | Pending |
-| SEO-02 | — | Pending |
-| DEPLOY-01 | — | Pending |
-| DEPLOY-02 | — | Pending |
+| LAYOUT-01 | Phase 1 | Pending |
+| LAYOUT-02 | Phase 1 | Pending |
+| LAYOUT-03 | Phase 1 | Pending |
+| LAYOUT-04 | Phase 1 | Pending |
+| LAYOUT-05 | Phase 1 | Pending |
+| DEPLOY-01 | Phase 1 | Pending |
+| DEPLOY-02 | Phase 1 | Pending |
+| HERO-01 | Phase 2 | Pending |
+| HERO-02 | Phase 2 | Pending |
+| HERO-03 | Phase 2 | Pending |
+| HERO-04 | Phase 2 | Pending |
+| HERO-05 | Phase 2 | Pending |
+| DEMO-01 | Phase 2 | Pending |
+| DEMO-02 | Phase 2 | Pending |
+| DEMO-03 | Phase 2 | Pending |
+| DEMO-04 | Phase 2 | Pending |
+| DEMO-05 | Phase 2 | Pending |
+| CAROUSEL-01 | Phase 2 | Pending |
+| CAROUSEL-02 | Phase 2 | Pending |
+| CAROUSEL-03 | Phase 2 | Pending |
+| FEAT-01 | Phase 2 | Pending |
+| FEAT-02 | Phase 2 | Pending |
+| REVERSE-01 | Phase 2 | Pending |
+| REVERSE-02 | Phase 2 | Pending |
+| REVERSE-03 | Phase 2 | Pending |
+| SOCIAL-01 | Phase 2 | Pending |
+| SOCIAL-02 | Phase 2 | Pending |
+| SOCIAL-03 | Phase 2 | Pending |
+| PRICE-01 | Phase 2 | Pending |
+| PRICE-02 | Phase 2 | Pending |
+| PRICE-03 | Phase 2 | Pending |
+| FAQ-01 | Phase 2 | Pending |
+| FAQ-02 | Phase 2 | Pending |
+| WAIT-07 | Phase 2 | Pending |
+| WAIT-08 | Phase 2 | Pending |
+| WAIT-01 | Phase 3 | Pending |
+| WAIT-02 | Phase 3 | Pending |
+| WAIT-03 | Phase 3 | Pending |
+| WAIT-04 | Phase 3 | Pending |
+| WAIT-05 | Phase 3 | Pending |
+| WAIT-06 | Phase 3 | Pending |
+| PERF-01 | Phase 3 | Pending |
+| PERF-02 | Phase 3 | Pending |
+| PERF-03 | Phase 3 | Pending |
+| SEO-01 | Phase 3 | Pending |
+| SEO-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 45 total
-- Mapped to phases: 0
-- Unmapped: 45 ⚠️
+- Mapped to phases: 45
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after initial definition*
+*Last updated: 2026-02-25 after roadmap creation*
