@@ -9,9 +9,7 @@ import { isAdminAuthenticated } from '@/lib/admin-session';
 // Allowed LLM models — exported so AdminDashboard can build the dropdown
 // =============================================================================
 
-export const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1-mini'] as const;
-
-export type AllowedModel = (typeof ALLOWED_MODELS)[number];
+const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1-mini'] as const;
 
 // =============================================================================
 // saveAdminModel — Server Action: persist LLM model selection

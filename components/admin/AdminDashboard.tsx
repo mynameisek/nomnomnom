@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { saveAdminModel, ALLOWED_MODELS } from '@/app/actions/admin';
+import { saveAdminModel } from '@/app/actions/admin';
+
+const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1-mini'] as const;
 
 // =============================================================================
 // Type definitions
@@ -89,9 +91,20 @@ export default function AdminDashboard({
   return (
     <div className="min-h-screen bg-brand-bg text-brand-white">
       {/* Page header */}
-      <div className="border-b border-zinc-800 px-6 py-4">
-        <h1 className="text-xl font-bold text-brand-white">Admin — NOM</h1>
-        <p className="text-zinc-400 text-sm mt-0.5">Tableau de bord opérationnel</p>
+      <div className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-brand-white">Admin — NOM</h1>
+          <p className="text-zinc-400 text-sm mt-0.5">Tableau de bord opérationnel</p>
+        </div>
+        <button
+          onClick={async () => {
+            await fetch('/api/admin/logout', { method: 'POST' });
+            window.location.reload();
+          }}
+          className="px-3 py-1.5 text-sm text-zinc-400 hover:text-brand-white border border-zinc-700 hover:border-zinc-500 rounded-lg transition-colors"
+        >
+          Déconnexion
+        </button>
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-10">
