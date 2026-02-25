@@ -44,8 +44,8 @@ export default function Hero() {
 
             {/* CTA row */}
             <div className="flex gap-2.5 flex-wrap mb-7">
-              <Btn primary big href="#waitlist">
-                Rejoindre la liste d&apos;attente
+              <Btn primary big href="/scan">
+                Scanner un menu
               </Btn>
               <Btn big href="#features">
                 Comment ça marche ↓

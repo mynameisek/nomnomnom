@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 type BtnBaseProps = {
   children: React.ReactNode;
@@ -30,6 +31,14 @@ export default function Btn({ children, primary, big, className = "", ...props }
 
   if ("href" in props && props.href) {
     const { href, ...anchorProps } = props as BtnAsAnchor;
+    const isInternal = href.startsWith('/');
+    if (isInternal) {
+      return (
+        <Link href={href} className={baseClasses} {...(anchorProps as Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>)}>
+          {children}
+        </Link>
+      );
+    }
     return (
       <a href={href} className={baseClasses} {...anchorProps}>
         {children}
