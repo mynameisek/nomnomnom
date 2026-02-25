@@ -52,8 +52,11 @@ export async function POST(req: NextRequest) {
     // ─── Path A: Known provider (eazee-link.com) ───
     const eazeeStickerId = getEazeeLinkStickerId(url);
     if (eazeeStickerId) {
+      // Normalize URL so all eazee-link variants (/?id=X, /menu?id=X, &o=q order)
+      // produce the same cache key
+      const canonicalUrl = `https://menu.eazee-link.com/?id=${eazeeStickerId}`;
       const { dishes, rawText } = await fetchEazeeLinkMenu(eazeeStickerId);
-      const menu = await getOrParseMenu(url, 'url', rawText, { dishes });
+      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes });
       return NextResponse.json({ menuId: menu.id });
     }
 
