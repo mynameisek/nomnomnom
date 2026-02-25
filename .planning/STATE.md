@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 3 of 3 (Waitlist Ship)
-Plan: 1 of 1 in current phase — COMPLETE
-Status: Phase 03, Plan 01 complete — Waitlist Server Action + FinalCta form with referral dashboard built; awaiting Supabase SQL setup
-Last activity: 2026-02-25 — 03-01 all 2 tasks complete, SUMMARY.md created
+Plan: 2 of 2 in current phase — Task 1 complete, awaiting human-verify checkpoint (Task 2)
+Status: Phase 03, Plan 02 paused at checkpoint:human-verify — OG image, Twitter card, SEO metadata, and semantic HTML built; awaiting visual verification in browser
+Last activity: 2026-02-25 — 03-02 Task 1 complete (feat commit 91057a0), SUMMARY.md created
 
-Progress: [██████████] 90% (Phase 1 complete, Phase 2 complete, Phase 3 Plan 1 done — SQL user action pending)
+Progress: [██████████] 95% (Phase 1 complete, Phase 2 complete, Phase 3 Plan 2 Task 1 done — awaiting human verify)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [██████████] 90% (Phase 1 complete, Phase 2 comple
 |-------|-------|-------|----------|
 | 01-foundation | 1 (complete) | ~40 min | ~40 min |
 | 02-content-sections | 3/3 (complete) | ~80 min | ~27 min |
-| 03-waitlist-ship | 1/1 (complete) | ~12 min | ~12 min |
+| 03-waitlist-ship | 2/2 (task 1 done, checkpoint) | ~30 min | ~15 min |
 
 **Recent Trend:**
 - Last 5 plans: 01-01 (~40 min, complete), 02-01 (~35 min, complete), 02-02 (~45 min, complete), 03-01 (~12 min, complete)
@@ -61,6 +61,10 @@ Recent decisions affecting current work:
 - [Phase 03-01]: useActionState(joinWaitlist) for form state — no useState/useEffect for submission logic
 - [Phase 03-01]: WaitlistForm inner component wrapped in Suspense to isolate useSearchParams boundary
 - [Phase 03-01]: getDashboard() shared helper used by both new signups and duplicate detection
+- [Phase 03-02]: metadataBase reads from NEXT_PUBLIC_SITE_URL env var with fallback to Vercel URL — correct OG image resolution in both local and production
+- [Phase 03-02]: page.tsx changed from <main> to React Fragment — layout.tsx already provides <main> landmark (was nested main, invalid HTML)
+- [Phase 03-02]: Nav.tsx: <nav aria-label> added inside <header> for proper ARIA landmark hierarchy
+- [Phase 03-02]: OG/Twitter images use inline style={{}} only — no Tailwind (Satori constraint)
 
 ### Pending Todos
 
@@ -73,5 +77,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 03-01-PLAN.md — waitlist Server Action (app/actions/waitlist.ts) and FinalCta form with referral dashboard built; TypeScript and build pass
-Next: User must run Supabase SQL to create the `waitlist` table (see 03-01-SUMMARY.md "User Setup Required" section), then verify form end-to-end in browser
+Stopped at: Paused at 03-02 checkpoint:human-verify (Task 2) — Task 1 complete (OG image, Twitter card, SEO metadata, semantic HTML fixes all built and committed)
+Next: Human must verify in browser: visit http://localhost:3000 (view-source for meta tags), visit http://localhost:3000/opengraph-image (OG image visual), run Lighthouse mobile audit for score >80, then confirm to continue
