@@ -96,6 +96,19 @@ function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
       {/* Filter bar with search + categories + dietary + allergens */}
       <FilterBar filters={filters} onChange={onFiltersChange} categories={categories} />
 
+      {/* Result count */}
+      {hasActiveFilters && filteredItems.length > 0 && (
+        <div className="px-4 pt-3">
+          <p className="text-brand-muted text-xs">
+            {filters.searchQuery.trim()
+              ? t('search_results')
+                  .replace('{count}', String(filteredItems.length))
+                  .replace('{query}', filters.searchQuery.trim())
+              : t('filter_results').replace('{count}', String(filteredItems.length))}
+          </p>
+        </div>
+      )}
+
       {/* Content area */}
       <div className="px-4 pt-4 pb-10">
         {hasActiveFilters ? (
