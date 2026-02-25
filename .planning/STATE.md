@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 2 of 3 (Content Sections)
-Plan: 2 of 3 in current phase — COMPLETE
-Status: Phase 02, Plan 02 complete — All 7 content sections built and user-approved
-Last activity: 2026-02-25 — 02-02 all 3 tasks complete (2 auto + 1 checkpoint approved), SUMMARY.md created
+Phase: 3 of 3 (Waitlist Ship)
+Plan: 1 of 1 in current phase — COMPLETE
+Status: Phase 03, Plan 01 complete — Waitlist Server Action + FinalCta form with referral dashboard built; awaiting Supabase SQL setup
+Last activity: 2026-02-25 — 03-01 all 2 tasks complete, SUMMARY.md created
 
-Progress: [█████████░] 60% (Phase 1 complete, Phase 2 Plans 1+2 of 3 done)
+Progress: [██████████] 90% (Phase 1 complete, Phase 2 complete, Phase 3 Plan 1 done — SQL user action pending)
 
 ## Performance Metrics
 
@@ -28,11 +28,12 @@ Progress: [█████████░] 60% (Phase 1 complete, Phase 2 Plans 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 1 (complete) | ~40 min | ~40 min |
-| 02-content-sections | 2/3 (in progress) | ~80 min so far | ~40 min |
+| 02-content-sections | 3/3 (complete) | ~80 min | ~27 min |
+| 03-waitlist-ship | 1/1 (complete) | ~12 min | ~12 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~40 min, complete), 02-01 (~35 min, complete), 02-02 (~45 min, complete)
-- Trend: Stable
+- Last 5 plans: 01-01 (~40 min, complete), 02-01 (~35 min, complete), 02-02 (~45 min, complete), 03-01 (~12 min, complete)
+- Trend: Accelerating (simpler focused plans)
 
 *Updated after each plan completion*
 
@@ -57,6 +58,9 @@ Recent decisions affecting current work:
 - [Phase 02-02]: TasteProfileDemo inlined in Social.tsx as single-use subcomponent rather than extracted
 - [Phase 02-02]: Memory-safe cleanup pattern — track all setTimeout/setInterval IDs in array, clearAll in useEffect return
 - [Phase 02-02]: Section id anchors in place (id=features, id=social, id=pricing, id=faq, id=waitlist) for CTA scroll targets
+- [Phase 03-01]: useActionState(joinWaitlist) for form state — no useState/useEffect for submission logic
+- [Phase 03-01]: WaitlistForm inner component wrapped in Suspense to isolate useSearchParams boundary
+- [Phase 03-01]: getDashboard() shared helper used by both new signups and duplicate detection
 
 ### Pending Todos
 
@@ -69,5 +73,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 02-02-PLAN.md — all 7 content sections built (DishCarousel through FinalCta), user approved visual verification, SUMMARY.md written
-Next: Phase 02 Plan 03 (third plan in content sections phase — check 02-CONTEXT.md for scope)
+Stopped at: Completed 03-01-PLAN.md — waitlist Server Action (app/actions/waitlist.ts) and FinalCta form with referral dashboard built; TypeScript and build pass
+Next: User must run Supabase SQL to create the `waitlist` table (see 03-01-SUMMARY.md "User Setup Required" section), then verify form end-to-end in browser
