@@ -37,9 +37,9 @@ export type Allergen =
 
 /**
  * Dietary tags — stored as text[] (not enum) because list may grow in v1.2+.
- * Current v1.1 values: vegetarian, vegan, halal.
+ * Current v1.1 values: vegetarian, vegan, halal, spicy.
  */
-export type DietaryTag = 'vegetarian' | 'vegan' | 'halal';
+export type DietaryTag = 'vegetarian' | 'vegan' | 'halal' | 'spicy';
 
 /**
  * Trust signal for allergen/ingredient information.

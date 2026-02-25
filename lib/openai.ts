@@ -45,6 +45,7 @@ For each dish found in the menu text, you must:
    - vegetarian: no meat or fish (dairy and eggs allowed)
    - vegan: no animal products at all
    - halal: prepared according to Islamic dietary law
+   - spicy: the dish is notably spicy or contains hot peppers/chili
    Do NOT tag unless you are confident. Leave the array empty if unsure.
 
 7. TRUST SIGNAL: Set the trust_signal field:

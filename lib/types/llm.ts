@@ -58,7 +58,7 @@ export const dishResponseSchema = z.object({
   description_translations: translationMapSchema.nullable(), // null if no description
   price: z.string().nullable(),                          // e.g. "12€", null if not on menu
   allergens: z.array(allergenEnum),
-  dietary_tags: z.array(z.enum(['vegetarian', 'vegan', 'halal'])),
+  dietary_tags: z.array(z.enum(['vegetarian', 'vegan', 'halal', 'spicy'])),
   trust_signal: z.enum(['verified', 'inferred']),
   category: z.string().nullable(),       // top-level category (e.g. "Entrées", "Boissons")
   subcategory: z.string().nullable(),    // sub-category (e.g. "Bières", "Cocktails")
