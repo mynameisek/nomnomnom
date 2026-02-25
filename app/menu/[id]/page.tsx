@@ -61,10 +61,7 @@ export default async function MenuPage({ params }: PageProps) {
   const typedMenu = menu as MenuWithItems;
   const dishes = typedMenu.menu_items ?? [];
 
-  const restaurantName =
-    typedMenu.restaurant_name ??
-    typedMenu.raw_text?.split('\n').find((line) => line.trim().length > 0)?.trim() ??
-    'Menu';
+  const restaurantName = typedMenu.restaurant_name ?? 'Menu';
 
   return (
     <div className="min-h-screen bg-brand-bg px-4 py-10">
