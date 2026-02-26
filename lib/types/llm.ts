@@ -72,9 +72,67 @@ export const menuResponseSchema = z.object({
   dishes: z.array(dishResponseSchema),
 });
 
+// =============================================================================
+// Fast parse schema — no translations, used for lazy translation flow
+// =============================================================================
+
+/**
+ * Dish parse schema — fast parse without translation fields.
+ * Used in the lazy translation pipeline: extract dishes first, translate on-demand.
+ * Includes source_language to enable targeted translation later.
+ */
+export const dishParseSchema = z.object({
+  name_original: z.string(),
+  description_original: z.string().nullable(),
+  price: z.string().nullable(),
+  allergens: z.array(allergenEnum),
+  dietary_tags: z.array(z.enum(['vegetarian', 'vegan', 'halal', 'spicy'])),
+  trust_signal: z.enum(['verified', 'inferred']),
+  category: z.string().nullable(),
+  subcategory: z.string().nullable(),
+});
+
+/**
+ * Fast menu parse response — includes source_language detection.
+ */
+export const menuParseSchema = z.object({
+  source_language: z.string(),  // 2-letter code: fr, en, tr, de, etc.
+  dishes: z.array(dishParseSchema),
+});
+
+// =============================================================================
+// Eazee-link translation schema — LLM output for translating eazee-link dishes
+// =============================================================================
+
+/**
+ * Translation output schema for a single eazee-link dish.
+ * Index matches the input array index so translations can be merged back.
+ *
+ * Note: .nullable() used throughout (not .optional()) per OpenAI structured outputs requirement.
+ */
+export const eazeeLinkDishTranslationSchema = z.object({
+  index: z.number(),                                     // matches input array index for merge
+  name_translations: translationMapSchema,               // FR/EN/TR/DE translations of name
+  description_translations: translationMapSchema.nullable(), // null if no description
+  cultural_context: z.string().nullable(),               // e.g. "Alsatian thin-crust pizza", null if not applicable
+});
+
+/**
+ * Top-level schema for eazee-link menu translation LLM output.
+ * source_language: auto-detected 2-letter ISO code from dish text.
+ */
+export const eazeeLinkMenuTranslationSchema = z.object({
+  source_language: z.string(), // 2-letter ISO code, auto-detected from dish text
+  dishes: z.array(eazeeLinkDishTranslationSchema),
+});
+
 /**
  * Inferred TypeScript types from Zod schemas.
  * Use these types throughout the app — they are guaranteed to match the Zod schema.
  */
 export type DishResponse = z.infer<typeof dishResponseSchema>;
 export type MenuResponse = z.infer<typeof menuResponseSchema>;
+export type DishParse = z.infer<typeof dishParseSchema>;
+export type MenuParse = z.infer<typeof menuParseSchema>;
+export type EazeeLinkDishTranslation = z.infer<typeof eazeeLinkDishTranslationSchema>;
+export type EazeeLinkMenuTranslation = z.infer<typeof eazeeLinkMenuTranslationSchema>;
