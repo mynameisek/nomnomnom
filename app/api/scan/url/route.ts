@@ -18,7 +18,7 @@ import { MENU_PARSE_FAST_PROMPT, translateEazeeLinkDishes } from '@/lib/openai';
 import { getEazeeLinkStickerId, fetchEazeeLinkMenu } from '@/lib/menu-providers/eazee-link';
 
 // Vercel Pro plan: pipeline can take 6–15s total
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   // Step 1: Parse and validate request body
