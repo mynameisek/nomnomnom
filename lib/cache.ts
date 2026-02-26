@@ -10,11 +10,11 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { supabase } from './supabase';
 import { supabaseAdmin } from './supabase-admin';
-import { parseDishesFromMenu } from './openai';
+import { parseDishesFromMenu, parseDishesFromMenuFast } from './openai';
 import { DEFAULT_LLM_MODEL, DEFAULT_CACHE_TTL_HOURS } from './types/config';
 import type { AdminConfig } from './types/config';
 import type { MenuWithItems } from './types/menu';
-import type { DishResponse } from './types/llm';
+import type { DishResponse, DishParse } from './types/llm';
 
 // =============================================================================
 // hashUrl — SHA-256 of normalized URL
@@ -68,6 +68,46 @@ export async function getAdminConfig(): Promise<AdminConfig> {
 }
 
 // =============================================================================
+// getCachedMenu — lightweight cache-check-only helper
+// =============================================================================
+
+/**
+ * Checks if a menu exists in the Supabase cache for the given URL.
+ * Returns the cached MenuWithItems if found and non-expired, null on cache miss.
+ *
+ * Used by the eazee-link branch in route.ts to check cache BEFORE invoking
+ * the translation LLM call — so translation only happens on cache miss.
+ * (Placing the check inside route.ts avoids wasting translation tokens on cache hits.)
+ *
+ * Hit count is incremented fire-and-forget (same pattern as getOrParseMenu).
+ *
+ * @param url - Menu URL (used as cache key after hashing)
+ * @returns MenuWithItems if cached and non-expired, null otherwise
+ */
+export async function getCachedMenu(url: string): Promise<MenuWithItems | null> {
+  const urlHash = hashUrl(url);
+
+  const { data: cached } = await supabase
+    .from('menus')
+    .select('*, menu_items(*)')
+    .eq('url_hash', urlHash)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+
+  if (cached !== null) {
+    // Increment hit_count (fire-and-forget)
+    supabaseAdmin
+      .from('menus')
+      .update({ hit_count: (cached.hit_count ?? 0) + 1 })
+      .eq('id', cached.id)
+      .then(() => {});
+    return cached as MenuWithItems;
+  }
+
+  return null;
+}
+
+// =============================================================================
 // getOrParseMenu — cache-aware orchestrator (main entry point for Phase 5)
 // =============================================================================
 
@@ -90,7 +130,7 @@ export async function getOrParseMenu(
   url: string,
   sourceType: 'url' | 'photo' | 'qr',
   rawText: string,
-  preParseResult?: { dishes: DishResponse[] }
+  preParseResult?: { dishes: DishResponse[]; source_language?: string } | { dishes: DishParse[]; source_language: string }
 ): Promise<MenuWithItems> {
   const urlHash = hashUrl(url);
 
@@ -116,10 +156,13 @@ export async function getOrParseMenu(
     return cached as MenuWithItems;
   }
 
-  // Step 4: Cache MISS — use pre-parsed result or call LLM (with timing instrumentation)
+  // Step 4: Cache MISS — use pre-parsed result or call fast LLM parse (no translations)
   const parseStart = Date.now();
-  const parsed = preParseResult ?? await parseDishesFromMenu(rawText, config.llm_model);
+  const parsed = preParseResult ?? await parseDishesFromMenuFast(rawText, config.llm_model);
   const parseTimeMs = preParseResult ? null : Date.now() - parseStart;
+
+  // Detect source language from fast parse result
+  const sourceLanguage = 'source_language' in parsed ? parsed.source_language : null;
 
   // Step 5: Compute expiry
   const expiresAt = new Date(
@@ -143,6 +186,7 @@ export async function getOrParseMenu(
       raw_text: rawText,
       expires_at: expiresAt,
       parse_time_ms: parseTimeMs,
+      source_language: sourceLanguage,
     })
     .select('*')
     .single();
@@ -154,11 +198,37 @@ export async function getOrParseMenu(
   }
 
   // Insert menu_items rows with sort_order from array index
-  const menuItems = parsed.dishes.map((dish, index) => ({
-    menu_id: menuRow.id,
-    ...dish,
-    sort_order: index,
-  }));
+  // Handle both DishResponse (full translations) and DishParse (no translations) shapes
+  const menuItems = parsed.dishes.map((dish, index) => {
+    const base = {
+      menu_id: menuRow.id,
+      name_original: dish.name_original,
+      description_original: dish.description_original,
+      price: dish.price,
+      allergens: dish.allergens,
+      dietary_tags: dish.dietary_tags,
+      trust_signal: dish.trust_signal,
+      category: dish.category,
+      subcategory: dish.subcategory,
+      sort_order: index,
+    };
+
+    // If dish has translation fields (DishResponse from eazee-link or legacy), include them
+    if ('name_translations' in dish) {
+      return {
+        ...base,
+        name_translations: (dish as DishResponse).name_translations,
+        description_translations: (dish as DishResponse).description_translations,
+      };
+    }
+
+    // DishParse (fast parse) — empty translations, translate on-demand
+    return {
+      ...base,
+      name_translations: {},
+      description_translations: null,
+    };
+  });
 
   const { data: insertedItems, error: itemsError } = await supabaseAdmin
     .from('menu_items')

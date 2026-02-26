@@ -11,11 +11,10 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText, Output, NoObjectGeneratedError } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-import { dishResponseSchema } from '@/lib/types/llm';
-import { getOrParseMenu, getAdminConfig } from '@/lib/cache';
+import { menuParseSchema } from '@/lib/types/llm';
+import { getOrParseMenu, getAdminConfig, getCachedMenu } from '@/lib/cache';
 import { extractMenuContent } from '@/lib/screenshotone';
-import { MENU_PARSE_SYSTEM_PROMPT } from '@/lib/openai';
+import { MENU_PARSE_FAST_PROMPT, translateEazeeLinkDishes } from '@/lib/openai';
 import { getEazeeLinkStickerId, fetchEazeeLinkMenu } from '@/lib/menu-providers/eazee-link';
 
 // Vercel Pro plan: pipeline can take 6–15s total
@@ -55,8 +54,31 @@ export async function POST(req: NextRequest) {
       // Normalize URL so all eazee-link variants (/?id=X, /menu?id=X, &o=q order)
       // produce the same cache key
       const canonicalUrl = `https://menu.eazee-link.com/?id=${eazeeStickerId}`;
+
+      // Step 1: Check cache BEFORE translation — avoid LLM cost on cache hits
+      const cachedMenu = await getCachedMenu(canonicalUrl);
+      if (cachedMenu) {
+        return NextResponse.json({ menuId: cachedMenu.id });
+      }
+
+      // Step 2: Cache MISS — fetch raw dishes from eazee-link API
       const { dishes, rawText } = await fetchEazeeLinkMenu(eazeeStickerId);
-      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes });
+
+      // Step 3: Translate dishes with LLM (single batched call for all 4 languages)
+      // Falls back to untranslated dishes on LLM failure — user still gets a menu
+      const config = await getAdminConfig();
+      let preParseResult: { dishes: typeof dishes; source_language?: string } = { dishes };
+
+      try {
+        const { translatedDishes, sourceLanguage } = await translateEazeeLinkDishes(dishes, config.llm_model);
+        preParseResult = { dishes: translatedDishes, source_language: sourceLanguage };
+      } catch (translateError) {
+        console.error('[POST /api/scan/url] eazee-link translation failed, falling back to untranslated dishes:', translateError);
+        // preParseResult stays as { dishes } — untranslated fallback (acceptable per CONTEXT.md)
+      }
+
+      // Step 4: Store in cache and return
+      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, preParseResult);
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -69,14 +91,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ menuId: menu.id });
     }
 
-    // ─── Path C: Fallback → screenshot + Vision OCR ───
+    // ─── Path C: Fallback → screenshot + Vision OCR (fast parse, no translations) ───
     const config = await getAdminConfig();
     const { experimental_output: output } = await generateText({
       model: openai(config.llm_model),
       output: Output.object({
-        schema: z.object({ dishes: z.array(dishResponseSchema) }),
+        schema: menuParseSchema,
       }),
-      system: MENU_PARSE_SYSTEM_PROMPT,
+      system: MENU_PARSE_FAST_PROMPT,
       messages: [
         {
           role: 'user',
