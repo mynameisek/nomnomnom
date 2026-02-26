@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** Phase 8 — Eazee-link Translation Fix
+**Current focus:** Phase 9 — Tech Debt Cleanup (COMPLETE)
 
 ## Current Position
 
-Phase: 8 of 8 (Eazee-link Translation Fix — COMPLETE)
-Plan: 1 of 1 in current phase (08-01 complete — eazee-link LLM translation pipeline, getCachedMenu helper, cache-aware route)
-Status: Phase 8 complete — all plans done.
-Last activity: 2026-02-26 — 08-01 fully complete (eazeeLinkMenuTranslationSchema, translateEazeeLinkDishes, getCachedMenu, cache-first eazee-link route)
+Phase: 9 of 9 (Tech Debt Cleanup — COMPLETE)
+Plan: 1 of 1 in current phase (09-01 complete — ALLOWED_MODELS dedup, Menu type fix, Phase 5 VERIFICATION.md, documentation sync)
+Status: Phase 9 complete — all plans done. v1.1 MVP complete.
+Last activity: 2026-02-26 — 09-01 fully complete (lib/models.ts, Menu interface fix, 05-VERIFICATION.md, REQUIREMENTS.md + ROADMAP.md sync)
 
-Progress: [████████████████████] 100% (8/8 phases complete — 1/1 plans in phase 8)
+Progress: [████████████████████] 100% (9/9 phases complete — 1/1 plans in phase 9)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5 (v1.0) + 2 (v1.1 phase 4) + 1 (v1.1 phase 5) = 8 total
+- Total plans completed: 5 (v1.0) + 2 (v1.1 phase 4) + 1 (v1.1 phase 5) + 1 (v1.1 phase 9) = 9 total
 - Average duration: ~36 min/plan (v1.0), ~3-9 min/plan (v1.1)
 - Total execution time: ~3 hours (v1.0, single session)
 
@@ -39,6 +39,7 @@ Progress: [████████████████████] 100% (8
 | 7. Navigation and Admin (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
 | 7. Navigation and Admin (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
 | 8. Eazee-link Translation Fix — plan 1/1 | 1 | ~3 min | ~3 min |
+| 9. Tech Debt Cleanup (v1.1) — plan 1/1 | 1 | ~4 min | ~4 min |
 
 *Updated after each plan completion*
 
@@ -79,13 +80,15 @@ Progress: [████████████████████] 100% (8
 - [Phase 07-navigation-and-admin]: hit_count increment is fire-and-forget (.then(() => {})) — avoids adding latency to cache hit response path
 - [Phase 07-navigation-and-admin]: parse_time_ms null when preParseResult supplied — no LLM call was made so no timing to record
 - [Phase 07]: SHA-256 derived token in admin cookie — raw ADMIN_SECRET never stored, prevents secret recovery from cookie
-- [Phase 07]: ALLOWED_MODELS defined locally in AdminDashboard (client component) — Next.js 16 rejects non-async exports from 'use server' files
+- [Phase 07]: ALLOWED_MODELS defined locally in AdminDashboard (client component) — Next.js 16 rejects non-async exports from 'use server' files (resolved in Phase 9 via lib/models.ts)
 - [Phase 07]: POST /api/admin/logout route + Déconnexion button — explicit logout completes admin auth lifecycle
 - [Phase 07]: Server Component gate for /admin with force-dynamic — cookie reads and Supabase fetches always live, never cached
 - [Phase 08-eazee-link-translation-fix]: getCachedMenu standalone helper in lib/cache.ts — route.ts owns cache-first logic for eazee-link, avoids lazy-param complexity in cache layer
 - [Phase 08-eazee-link-translation-fix]: Cultural context merged into description_translations as parenthetical suffix — no new DB column needed (Phase 9+ scope if dedicated column desired)
 - [Phase 08-eazee-link-translation-fix]: Translation failure caught in route.ts, untranslated fallback stored — user always gets a menu even if LLM fails
 - [Phase 08-eazee-link-translation-fix]: Old untranslated eazee-link cache entries remain until TTL expiry — lazy-by-default, zero extra LLM calls, cost optimization priority
+- [Phase 09-tech-debt-cleanup]: lib/models.ts plain TypeScript module (no directive) — ALLOWED_MODELS single source of truth, safe for both server actions and client components
+- [Phase 09-tech-debt-cleanup]: Menu interface now includes hit_count and parse_time_ms — matches DB schema exactly, no migration needed (fields already existed in schema)
 
 ### Pending Todos
 
@@ -103,5 +106,5 @@ Progress: [████████████████████] 100% (8
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 08-01-PLAN.md fully — eazee-link LLM translation pipeline complete (schema, translateEazeeLinkDishes, getCachedMenu, cache-aware route). Phase 8 complete.
+Stopped at: Completed 09-01-PLAN.md fully — tech debt closed (ALLOWED_MODELS dedup, Menu type fix, Phase 5 VERIFICATION.md, docs sync). Phase 9 complete. v1.1 MVP complete.
 Resume file: None
