@@ -51,6 +51,78 @@ function isGarbageMarkdown(text: string): boolean {
 }
 
 // =============================================================================
+// Direct HTML fetch + strip tags — fallback when Screenshotone markdown fails
+// =============================================================================
+
+/**
+ * Strips HTML tags, scripts, styles, and collapses whitespace.
+ * Lightweight alternative to cheerio/jsdom for extracting readable text.
+ */
+function htmlToText(html: string): string {
+  return html
+    // Remove script and style blocks entirely
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    // Remove HTML comments
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Replace block-level tags with newlines for readability
+    .replace(/<\/?(div|p|br|h[1-6]|li|tr|section|article|header|footer|blockquote|ul|ol|table|thead|tbody)[^>]*>/gi, '\n')
+    // Strip remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode common HTML entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&euro;/g, '€')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#\d+;/g, '')
+    // Collapse whitespace: multiple spaces → single space, multiple newlines → double
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Fetches a URL directly and extracts text from HTML.
+ * Returns null if fetch fails or text is too short to be useful.
+ * Timeout: 8s to avoid blocking the pipeline.
+ */
+async function fetchDirectText(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; NomNomNom/1.0; menu parser)',
+        'Accept': 'text/html',
+      },
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('text/html')) return null;
+
+    const html = await response.text();
+    const text = htmlToText(html);
+
+    // Must have meaningful content — at least 100 chars of clean text
+    if (text.length < 100) return null;
+
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+// =============================================================================
 // extractMenuText — try markdown first, fallback to screenshot
 // =============================================================================
 
@@ -81,10 +153,18 @@ export async function extractMenuContent(url: string): Promise<ExtractionResult>
     if (text.trim().length >= 50 && !isGarbageMarkdown(text)) {
       return { type: 'text', content: text };
     }
-    console.log('[screenshotone] Markdown extraction returned garbage, falling back to screenshot');
+    console.log('[screenshotone] Markdown extraction returned garbage, trying direct HTML fetch');
   }
 
-  // Attempt 2: PNG screenshot for Vision OCR
+  // Attempt 2: Direct HTML fetch — often works when Screenshotone markdown fails
+  const directText = await fetchDirectText(url);
+  if (directText) {
+    console.log(`[screenshotone] Direct HTML fetch succeeded (${directText.length} chars)`);
+    return { type: 'text', content: directText };
+  }
+  console.log('[screenshotone] Direct HTML fetch failed or too short, falling back to screenshot');
+
+  // Attempt 3: PNG screenshot for Vision OCR (last resort)
   const imgOptions = screenshotone.TakeOptions.url(url)
     .format('png')
     .waitUntil('networkidle2')
