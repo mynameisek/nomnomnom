@@ -63,6 +63,8 @@ export interface Menu {
   source_type: string | null; // 'url' | 'photo' | 'qr'
   raw_text: string | null;    // original scraped/OCR text for debugging
   source_language: string | null; // detected menu language (e.g. 'fr', 'en', 'tr')
+  parse_time_ms: number | null;   // LLM parse duration in ms (null for cache hits)
+  hit_count: number;              // number of cache hits since first parse (default 0)
   parsed_at: string;          // timestamptz as ISO string
   expires_at: string;         // timestamptz as ISO string
   created_at: string;         // timestamptz as ISO string

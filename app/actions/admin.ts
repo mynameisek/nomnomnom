@@ -4,12 +4,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { isAdminAuthenticated } from '@/lib/admin-session';
-
-// =============================================================================
-// Allowed LLM models — exported so AdminDashboard can build the dropdown
-// =============================================================================
-
-const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1-mini'] as const;
+import { ALLOWED_MODELS } from '@/lib/models';
 
 // =============================================================================
 // saveAdminModel — Server Action: persist LLM model selection

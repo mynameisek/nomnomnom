@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { saveAdminModel } from '@/app/actions/admin';
-
-const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1-mini'] as const;
+import { ALLOWED_MODELS } from '@/lib/models';
 
 // =============================================================================
 // Type definitions
