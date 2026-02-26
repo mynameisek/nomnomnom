@@ -108,7 +108,7 @@ Plans:
   3. Phase 5 has a VERIFICATION.md confirming scan pipeline requirements
   4. REQUIREMENTS.md checkboxes match actual implementation status
 **Plans**: 1 plan
-- [ ] 09-01-PLAN.md — ALLOWED_MODELS dedup, Menu type fix, Phase 5 verification, checkbox sync
+- [ ] 09-01-PLAN.md — ALLOWED_MODELS dedup, Menu type fix, Phase 5 verification, documentation sync
 
 ## Progress
 
