@@ -22,11 +22,11 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 **Milestone Goal:** Transform NŌM from a landing page into a working app — scan any restaurant menu (QR/URL/photo), see translated dish cards with allergen info, filter by dietary preference, and configure the LLM model via admin.
 
-- [ ] **Phase 4: Infrastructure Foundation** - Database schema, TypeScript types, and OpenAI/cache wiring
-- [ ] **Phase 5: Scan Pipeline** - All three scan methods (QR/URL/photo) through the LLM pipeline to a menu ID
+- [x] **Phase 4: Infrastructure Foundation** - Database schema, TypeScript types, and OpenAI/cache wiring (completed 2026-02-25)
+- [x] **Phase 5: Scan Pipeline** - All three scan methods (QR/URL/photo) through the LLM pipeline to a menu ID (completed 2026-02-25)
 - [x] **Phase 6: Dish Cards and Filters** - Full menu display surface with translations, trust badges, allergens, and client-side filters (completed 2026-02-25)
 - [x] **Phase 7: Navigation and Admin** - Landing CTA wired to /scan, protected admin config panel (completed 2026-02-25)
-- [ ] **Phase 8: Eazee-link Translation Fix** - LLM translation for eazee-link provider menus (gap closure)
+- [x] **Phase 8: Eazee-link Translation Fix** - LLM translation for eazee-link provider menus (gap closure) (completed 2026-02-26)
 - [ ] **Phase 9: Tech Debt Cleanup** - Type safety, deduplication, documentation fixes (gap closure)
 
 ## Phase Details
@@ -40,8 +40,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. A curl call to `lib/openai.ts` wrapper functions returns Zod-validated structured JSON matching the TypeScript types (no raw LLM string output)
   3. A repeated URL parse returns the cached result from Supabase without triggering an OpenAI API call (confirmed via Supabase logs)
 **Plans**: 2 plans
-- [ ] 04-01-PLAN.md — Schema, TypeScript types, Zod validation, service role client
-- [ ] 04-02-PLAN.md — OpenAI wrapper (AI SDK 6), URL hash cache layer
+- [x] 04-01-PLAN.md — Schema, TypeScript types, Zod validation, service role client
+- [x] 04-02-PLAN.md — OpenAI wrapper (AI SDK 6), URL hash cache layer
 
 ### Phase 5: Scan Pipeline
 **Goal**: Users can scan a restaurant menu via QR code, URL paste, or photo — and land on a valid `/menu/[id]` page with parsed dish data
@@ -54,8 +54,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   4. A loading indicator with progress feedback is visible during parsing — user is never looking at a blank page
   5. Scanning the same URL a second time returns instantly from cache (no spinner, no LLM call)
 **Plans**: 2 plans
-- [ ] 05-01-PLAN.md — Backend: Screenshotone wrapper, URL + photo API Route Handlers, cache adaptation
-- [ ] 05-02-PLAN.md — Frontend: /scan page (QR/URL/Photo tabs), progress indicator, /menu/[id] stub page
+- [x] 05-01-PLAN.md — Backend: Screenshotone wrapper, URL + photo API Route Handlers, cache adaptation
+- [x] 05-02-PLAN.md — Frontend: /scan page (QR/URL/Photo tabs), progress indicator, /menu/[id] stub page
 
 ### Phase 6: Dish Cards and Filters
 **Goal**: Every dish is presented as a clear, translated card with trust signal and allergen info — and users can filter the full list instantly
@@ -68,8 +68,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   4. Tapping "végétarien" filter immediately hides non-vegetarian dishes with no API call and no perceptible delay
   5. Tapping "sans gluten" filter immediately hides dishes containing gluten — filter combinations stack correctly
 **Plans**: 2 plans
-- [ ] 06-01-PLAN.md — i18n system, spicy schema fix, useFilteredDishes hook
-- [ ] 06-02-PLAN.md — DishCard, FilterBar, AllergenBanner, LangSwitcher, MenuShell, page refactor
+- [x] 06-01-PLAN.md — i18n system, spicy schema fix, useFilteredDishes hook
+- [x] 06-02-PLAN.md — DishCard, FilterBar, AllergenBanner, LangSwitcher, MenuShell, page refactor
 
 ### Phase 7: Navigation and Admin
 **Goal**: Users can reach the app from the landing page, and the admin can control which LLM model is used and view scan statistics
@@ -82,8 +82,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   4. Admin dashboard shows total scans, cached vs fresh ratio, and average parse time pulled from live Supabase data
 **Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md — Landing CTA → /scan navigation + schema migration for stats
-- [ ] 07-02-PLAN.md — Protected admin page with model selector and scan statistics
+- [x] 07-01-PLAN.md — Landing CTA → /scan navigation + schema migration for stats
+- [x] 07-02-PLAN.md — Protected admin page with model selector and scan statistics
 
 ### Phase 8: Eazee-link Translation Fix
 **Goal**: Eazee-link menus display properly translated dish names in all 4 languages (FR/EN/TR/DE) instead of identical original text
@@ -95,7 +95,7 @@ Plans:
   2. The LLM translation step is invoked for eazee-link menus that bypass the generic parser
   3. Cache still works — re-scanning an already-translated eazee-link menu returns cached translations without a new LLM call
 **Plans**: 1 plan
-- [ ] 08-01-PLAN.md — Add LLM translation pass for eazee-link preParseResult dishes
+- [x] 08-01-PLAN.md — Add LLM translation pass for eazee-link preParseResult dishes
 
 ### Phase 9: Tech Debt Cleanup
 **Goal**: Resolve accumulated tech debt items identified in v1.1 audit — type safety, code deduplication, and documentation alignment
@@ -119,9 +119,9 @@ Plans:
 | 1. Foundation | v1.0 | 1/1 | Complete | 2026-02-25 |
 | 2. Content Sections | v1.0 | 2/2 | Complete | 2026-02-25 |
 | 3. Waitlist + Ship | v1.0 | 2/2 | Complete | 2026-02-25 |
-| 4. Infrastructure Foundation | v1.1 | 0/2 | Not started | - |
-| 5. Scan Pipeline | v1.1 | 0/TBD | Not started | - |
-| 6. Dish Cards and Filters | v1.1 | Complete    | 2026-02-25 | - |
-| 7. Navigation and Admin | v1.1 | Complete    | 2026-02-25 | - |
-| 8. Eazee-link Translation Fix | v1.1 | 0/1 | Not started | - |
-| 9. Tech Debt Cleanup | v1.1 | 0/1 | Not started | - |
+| 4. Infrastructure Foundation | v1.1 | 2/2 | Complete | 2026-02-25 |
+| 5. Scan Pipeline | v1.1 | 2/2 | Complete | 2026-02-25 |
+| 6. Dish Cards and Filters | v1.1 | 2/2 | Complete | 2026-02-25 |
+| 7. Navigation and Admin | v1.1 | 2/2 | Complete | 2026-02-25 |
+| 8. Eazee-link Translation Fix | v1.1 | 1/1 | Complete | 2026-02-26 |
+| 9. Tech Debt Cleanup | v1.1 | 0/1 | In progress | - |

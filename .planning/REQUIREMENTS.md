@@ -18,7 +18,7 @@ Requirements for MVP App. Each maps to roadmap phases.
 ### Fiches Plats
 
 - [x] **DISH-01**: User sees a dish card for each item with translated name, description, and price
-- [ ] **DISH-02**: Dish cards show translation in 4 languages (FR/EN/TR/DE)
+- [x] **DISH-02**: Dish cards show translation in 4 languages (FR/EN/TR/DE)
 - [x] **DISH-03**: Each dish card displays a trust badge (Verified Menu / Inferred)
 - [x] **DISH-04**: Each dish card shows detected allergens (EU 14 allergens) with warning badge
 - [x] **DISH-05**: Allergen display always includes a mandatory disclaimer ("demandez au serveur") in user's language
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCAN-04 | Phase 5 | Complete |
 | SCAN-05 | Phase 5 | Complete |
 | DISH-01 | Phase 6 | Complete |
-| DISH-02 | Phase 8 | Pending |
+| DISH-02 | Phase 8 | Complete |
 | DISH-03 | Phase 6 | Complete |
 | DISH-04 | Phase 6 | Complete |
 | DISH-05 | Phase 6 | Complete |
@@ -114,8 +114,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1.1 requirements: 23 total
-- Complete: 22
-- Pending: 1 (DISH-02 → Phase 8)
+- Complete: 23
+- Pending: 0
 - Mapped to phases: 23
 - Unmapped: 0 ✓
 
