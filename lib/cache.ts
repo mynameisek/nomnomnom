@@ -189,6 +189,33 @@ export async function getOrParseMenu(
     Date.now() + config.cache_ttl_hours * 60 * 60 * 1000
   ).toISOString();
 
+  // Step 5.5: Harvest translations from old items before deleting
+  // On re-parse, recycle translations so lazy-translated languages aren't lost
+  const { data: oldMenu } = await supabaseAdmin
+    .from('menus')
+    .select('id')
+    .eq('url_hash', urlHash)
+    .maybeSingle();
+
+  const translationCache = new Map<string, { name_translations: Record<string, string>; description_translations: Record<string, string> | null }>();
+  if (oldMenu) {
+    const { data: oldItems } = await supabaseAdmin
+      .from('menu_items')
+      .select('name_original, name_translations, description_translations')
+      .eq('menu_id', oldMenu.id);
+
+    if (oldItems) {
+      for (const old of oldItems) {
+        if (old.name_original && Object.keys(old.name_translations ?? {}).length > 0) {
+          translationCache.set(old.name_original, {
+            name_translations: old.name_translations,
+            description_translations: old.description_translations,
+          });
+        }
+      }
+    }
+  }
+
   // Step 6: Store in Supabase via service role (bypasses RLS)
   // First, delete any expired entry for this url_hash (upsert-like pattern)
   await supabaseAdmin
@@ -242,11 +269,12 @@ export async function getOrParseMenu(
       };
     }
 
-    // DishParse (fast parse) — empty translations, translate on-demand
+    // DishParse (fast parse) — recycle old translations if available, else empty
+    const recycled = translationCache.get(dish.name_original);
     return {
       ...base,
-      name_translations: {},
-      description_translations: null,
+      name_translations: recycled?.name_translations ?? {},
+      description_translations: recycled?.description_translations ?? null,
     };
   });
 
