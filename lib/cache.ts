@@ -146,14 +146,21 @@ export async function getOrParseMenu(
     .maybeSingle();
 
   if (cached !== null) {
-    // Cache HIT — increment hit_count (fire-and-forget, don't block response)
-    supabaseAdmin
-      .from('menus')
-      .update({ hit_count: (cached.hit_count ?? 0) + 1 })
-      .eq('id', cached.id)
-      .then(() => {});
+    // Guard: don't serve cached menus with 0 items — treat as cache miss
+    const items = (cached as MenuWithItems).menu_items ?? [];
+    if (items.length === 0) {
+      // Delete the empty cached entry so it doesn't block future scans
+      supabaseAdmin.from('menus').delete().eq('id', cached.id).then(() => {});
+    } else {
+      // Cache HIT — increment hit_count (fire-and-forget, don't block response)
+      supabaseAdmin
+        .from('menus')
+        .update({ hit_count: (cached.hit_count ?? 0) + 1 })
+        .eq('id', cached.id)
+        .then(() => {});
 
-    return cached as MenuWithItems;
+      return cached as MenuWithItems;
+    }
   }
 
   // Step 4: Cache MISS — use pre-parsed result or call fast LLM parse (no translations)

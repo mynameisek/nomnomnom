@@ -192,11 +192,14 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
   // Trigger translation when language changes or on mount
   useEffect(() => {
     const targetLang = lang;
+    const items = menuItemsRef.current;
+
+    // Skip if no items to translate
+    if (items.length === 0) return;
 
     if (translatedLangs.current.has(targetLang)) return;
 
     // Check if translations already exist for this lang
-    const items = menuItemsRef.current;
     const hasTranslation = items.length > 0 &&
       items.every((item) => item.name_translations[targetLang]);
 
