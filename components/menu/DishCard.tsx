@@ -28,7 +28,7 @@ export default function DishCard({ item, showAllergens = false }: DishCardProps)
     ? 'bg-white/5 border-white/15 text-brand-muted'
     : 'bg-brand-orange/8 border-brand-orange/15 text-brand-orange/70';
 
-  const hasAllergens = item.allergens.length > 0;
+  const hasAllergens = (item.allergens ?? []).length > 0;
   const allergensVisible = showAllergens || allergensExpanded;
 
   return (
