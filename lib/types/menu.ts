@@ -3,16 +3,19 @@
 // =============================================================================
 
 /**
+ * Supported language codes for v1.1 scope.
+ */
+export type SupportedLang = 'fr' | 'en' | 'tr' | 'de';
+
+/**
  * Flat translation map for dish names and descriptions.
  * Languages: French, English, Turkish, German (v1.1 scope).
  * Stored as JSONB in Supabase — direct key access: name_translations->>'fr'
+ *
+ * Partial: lazy translation means not all langs are present immediately.
+ * Can be `{}` for freshly parsed items (no translations yet).
  */
-export type TranslationMap = {
-  fr: string;
-  en: string;
-  tr: string;
-  de: string;
-};
+export type TranslationMap = Partial<Record<SupportedLang, string>>;
 
 /**
  * EU 14 mandatory allergens (legally defined, stable).
@@ -59,6 +62,7 @@ export interface Menu {
   restaurant_name: string | null;
   source_type: string | null; // 'url' | 'photo' | 'qr'
   raw_text: string | null;    // original scraped/OCR text for debugging
+  source_language: string | null; // detected menu language (e.g. 'fr', 'en', 'tr')
   parsed_at: string;          // timestamptz as ISO string
   expires_at: string;         // timestamptz as ISO string
   created_at: string;         // timestamptz as ISO string
@@ -72,7 +76,7 @@ export interface MenuItem {
   id: string;
   menu_id: string;
   name_original: string;
-  name_translations: TranslationMap;
+  name_translations: TranslationMap;  // can be {} for freshly parsed items
   description_original: string | null;
   description_translations: TranslationMap | null;
   price: string | null;       // e.g. "12€", "8.50 TL", null if not on menu

@@ -10,10 +10,9 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText, Output, NoObjectGeneratedError } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-import { dishResponseSchema } from '@/lib/types/llm';
+import { menuParseSchema } from '@/lib/types/llm';
 import { getOrParseMenu, getAdminConfig } from '@/lib/cache';
-import { MENU_PARSE_SYSTEM_PROMPT } from '@/lib/openai';
+import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
 
 // Vercel Pro plan: Vision OCR can take 6–15s total
 export const maxDuration = 60;
@@ -38,9 +37,9 @@ export async function POST(req: NextRequest) {
     const { experimental_output: output } = await generateText({
       model: openai(config.llm_model),
       output: Output.object({
-        schema: z.object({ dishes: z.array(dishResponseSchema) }),
+        schema: menuParseSchema,
       }),
-      system: MENU_PARSE_SYSTEM_PROMPT,
+      system: MENU_PARSE_FAST_PROMPT,
       messages: [
         {
           role: 'user',

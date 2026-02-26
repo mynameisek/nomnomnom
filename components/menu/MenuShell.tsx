@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { LanguageProvider, useLanguage } from '@/lib/i18n';
+import type { Lang } from '@/lib/i18n';
 import { useFilteredDishes } from '@/hooks/useFilteredDishes';
 import type { FilterState } from '@/hooks/useFilteredDishes';
-import type { MenuWithItems } from '@/lib/types/menu';
+import type { MenuWithItems, MenuItem } from '@/lib/types/menu';
 import AllergenBanner from '@/components/menu/AllergenBanner';
 import FilterBar from '@/components/menu/FilterBar';
 import DishCard from '@/components/menu/DishCard';
@@ -30,6 +31,7 @@ interface MenuContentProps {
   menu: MenuWithItems;
   filters: FilterState;
   onFiltersChange: (f: FilterState) => void;
+  isTranslating: boolean;
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -39,7 +41,7 @@ const EMPTY_FILTERS: FilterState = {
   excludeAllergens: [],
 };
 
-function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
+function MenuContent({ menu, filters, onFiltersChange, isTranslating }: MenuContentProps) {
   const { t } = useLanguage();
 
   const filteredItems = useFilteredDishes(menu.menu_items, filters);
@@ -92,6 +94,16 @@ function MenuContent({ menu, filters, onFiltersChange }: MenuContentProps) {
       <div className="px-4 pb-3">
         <AllergenBanner />
       </div>
+
+      {/* Lazy translation indicator */}
+      {isTranslating && (
+        <div className="px-4 pb-3">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-orange/5 border border-brand-orange/15">
+            <span className="inline-block w-3 h-3 rounded-full border-2 border-brand-orange border-t-transparent animate-spin flex-shrink-0" />
+            <span className="text-brand-orange/80 text-xs font-medium">{t('translating')}</span>
+          </div>
+        </div>
+      )}
 
       {/* Filter bar with search + categories + dietary + allergens */}
       <FilterBar filters={filters} onChange={onFiltersChange} categories={categories} />
@@ -158,12 +170,73 @@ interface MenuShellProps {
   menu: MenuWithItems;
 }
 
-export default function MenuShell({ menu }: MenuShellProps) {
+/**
+ * Inner component that has access to LanguageProvider context.
+ * Handles lazy translation triggering based on user's language.
+ */
+function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
+  const { lang } = useLanguage();
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [menuData, setMenuData] = useState<MenuWithItems>(initialMenu);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const translatedLangs = useRef(new Set<Lang>());
+
+  const triggerTranslation = useCallback(async (targetLang: Lang) => {
+    if (translatedLangs.current.has(targetLang)) return;
+
+    // Check if translations already exist for this lang
+    const hasTranslation = menuData.menu_items.length > 0 &&
+      menuData.menu_items.every((item) => item.name_translations[targetLang]);
+
+    if (hasTranslation) {
+      translatedLangs.current.add(targetLang);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ menuId: menuData.id, lang: targetLang }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items) {
+          setMenuData((prev) => ({
+            ...prev,
+            menu_items: data.items as MenuItem[],
+          }));
+        }
+        translatedLangs.current.add(targetLang);
+      }
+    } catch (err) {
+      console.error('[MenuShell] Translation failed:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [menuData.id, menuData.menu_items]);
+
+  // Trigger translation when language changes or on mount
+  useEffect(() => {
+    triggerTranslation(lang);
+  }, [lang, triggerTranslation]);
 
   return (
+    <MenuContent
+      menu={menuData}
+      filters={filters}
+      onFiltersChange={setFilters}
+      isTranslating={isTranslating}
+    />
+  );
+}
+
+export default function MenuShell({ menu }: MenuShellProps) {
+  return (
     <LanguageProvider>
-      <MenuContent menu={menu} filters={filters} onFiltersChange={setFilters} />
+      <MenuShellInner menu={menu} />
     </LanguageProvider>
   );
 }

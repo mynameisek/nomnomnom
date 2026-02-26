@@ -44,12 +44,12 @@ export default function UrlInput({
     setIsScanning(true);
     onScanStart();
 
-    // Advance progress steps on a timer while the request runs
+    // Advance progress steps on a timer while the request runs (3 steps: 0, 1, 2)
     let step = 0;
     const stepTimer = setInterval(() => {
-      step = Math.min(step + 1, 2);
+      step = Math.min(step + 1, 1);
       onStepAdvance(step);
-    }, 3000);
+    }, 2500);
 
     try {
       const res = await fetch('/api/scan/url', {
@@ -66,7 +66,7 @@ export default function UrlInput({
       }
 
       const data = await res.json();
-      onStepAdvance(3);
+      onStepAdvance(2);
       onComplete();
 
       // Brief pause at final step so user sees it complete

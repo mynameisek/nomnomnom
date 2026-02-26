@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 
 interface ScanProgressProps {
-  currentStep: number; // 0-3
+  currentStep: number; // 0-2
   isComplete: boolean;
 }
 
 const STEPS = [
   { label: 'Reading menu...', icon: '🔍' },
   { label: 'Identifying dishes...', icon: '🍽' },
-  { label: 'Translating...', icon: '🌐' },
   { label: 'Almost done!', icon: '✓' },
 ];
 
