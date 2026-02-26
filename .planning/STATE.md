@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** Phase 7 — Polish (v1.1)
+**Current focus:** Phase 8 — Eazee-link Translation Fix
 
 ## Current Position
 
-Phase: 7 of 7 (Navigation and Admin — COMPLETE)
-Plan: 2 of 2 in current phase (07-02 complete — admin session auth, login API, admin dashboard, model selector, stats)
-Status: Phase 7 complete — all plans done. Checkpoint Task 3 human-verify APPROVED by user.
-Last activity: 2026-02-25 — 07-02 fully complete (admin auth, /admin page gate, AdminLogin, AdminDashboard, saveAdminModel, logout route)
+Phase: 8 of 8 (Eazee-link Translation Fix — COMPLETE)
+Plan: 1 of 1 in current phase (08-01 complete — eazee-link LLM translation pipeline, getCachedMenu helper, cache-aware route)
+Status: Phase 8 complete — all plans done.
+Last activity: 2026-02-26 — 08-01 fully complete (eazeeLinkMenuTranslationSchema, translateEazeeLinkDishes, getCachedMenu, cache-first eazee-link route)
 
-Progress: [████████████████████] 100% (7/7 phases complete — 2/2 plans in phase 7)
+Progress: [████████████████████] 100% (8/8 phases complete — 1/1 plans in phase 8)
 
 ## Performance Metrics
 
@@ -38,6 +38,7 @@ Progress: [████████████████████] 100% (7
 | 6. Dish Cards and Filters (v1.1) — plan 2/2 | 1 | ~110 min | ~110 min |
 | 7. Navigation and Admin (v1.1) — plan 1/2 | 1 | ~3 min | ~3 min |
 | 7. Navigation and Admin (v1.1) — plan 2/2 | 1 | ~4 min | ~4 min |
+| 8. Eazee-link Translation Fix — plan 1/1 | 1 | ~3 min | ~3 min |
 
 *Updated after each plan completion*
 
@@ -81,6 +82,10 @@ Progress: [████████████████████] 100% (7
 - [Phase 07]: ALLOWED_MODELS defined locally in AdminDashboard (client component) — Next.js 16 rejects non-async exports from 'use server' files
 - [Phase 07]: POST /api/admin/logout route + Déconnexion button — explicit logout completes admin auth lifecycle
 - [Phase 07]: Server Component gate for /admin with force-dynamic — cookie reads and Supabase fetches always live, never cached
+- [Phase 08-eazee-link-translation-fix]: getCachedMenu standalone helper in lib/cache.ts — route.ts owns cache-first logic for eazee-link, avoids lazy-param complexity in cache layer
+- [Phase 08-eazee-link-translation-fix]: Cultural context merged into description_translations as parenthetical suffix — no new DB column needed (Phase 9+ scope if dedicated column desired)
+- [Phase 08-eazee-link-translation-fix]: Translation failure caught in route.ts, untranslated fallback stored — user always gets a menu even if LLM fails
+- [Phase 08-eazee-link-translation-fix]: Old untranslated eazee-link cache entries remain until TTL expiry — lazy-by-default, zero extra LLM calls, cost optimization priority
 
 ### Pending Todos
 
@@ -97,6 +102,6 @@ Progress: [████████████████████] 100% (7
 
 ## Session Continuity
 
-Last session: 2026-02-25
-Stopped at: Completed 07-02-PLAN.md fully — checkpoint Task 3 approved, post-checkpoint fixes applied (ALLOWED_MODELS moved to client, logout route added). All 7 phases complete.
+Last session: 2026-02-26
+Stopped at: Completed 08-01-PLAN.md fully — eazee-link LLM translation pipeline complete (schema, translateEazeeLinkDishes, getCachedMenu, cache-aware route). Phase 8 complete.
 Resume file: None
