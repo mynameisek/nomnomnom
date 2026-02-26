@@ -170,7 +170,7 @@ export async function getOrParseMenu(
 
   // Guard: if LLM returned 0 dishes, throw instead of storing an empty menu
   if (parsed.dishes.length === 0) {
-    throw new Error('No dishes found on this page. The URL may not contain a menu.');
+    throw new Error('NO_DISHES');
   }
 
   // Detect source language from fast parse result

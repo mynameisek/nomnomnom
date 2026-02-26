@@ -124,6 +124,13 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[POST /api/scan/url] Pipeline error:', message);
 
+    if (message === 'NO_DISHES') {
+      return NextResponse.json(
+        { error: 'NO_DISHES' },
+        { status: 422 }
+      );
+    }
+
     if (error instanceof NoObjectGeneratedError) {
       return NextResponse.json(
         { error: 'Could not extract dishes from this URL. The menu may not be readable.' },

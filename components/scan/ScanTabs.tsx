@@ -12,6 +12,65 @@ const QrScanner = dynamic(() => import('./QrScanner'), { ssr: false });
 type TabId = 'qr' | 'url' | 'photo';
 type ScanState = 'idle' | 'scanning' | 'error';
 
+function ScanError({ error, onDismiss }: { error: string; onDismiss: () => void }) {
+  const isNoDishes = error === 'NO_DISHES';
+
+  if (isNoDishes) {
+    return (
+      <div className="mb-4 px-4 py-4 rounded-xl bg-brand-red/5 border border-brand-red/20">
+        <p className="text-brand-white text-sm font-semibold mb-2">
+          Aucun plat trouv&eacute; sur cette page
+        </p>
+        <p className="text-brand-muted text-xs leading-relaxed mb-3">
+          Cette URL ne semble pas contenir de menu. Quelques pistes :
+        </p>
+        <ul className="text-brand-muted text-xs leading-relaxed mb-3 space-y-1.5 list-none">
+          <li className="flex gap-2">
+            <span className="flex-shrink-0">&#x2794;</span>
+            <span>Essayez avec le <strong className="text-brand-white">lien direct</strong> de la page menu du restaurant (souvent &laquo; Carte &raquo; ou &laquo; Menu &raquo;)</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="flex-shrink-0">&#x1F4F7;</span>
+            <span>Prenez une <strong className="text-brand-white">photo</strong> du menu ou scannez le <strong className="text-brand-white">QR code</strong> du restaurant</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="flex-shrink-0">&#x26A0;&#xFE0F;</span>
+            <span>Certains menus (PDF, images, sites interactifs) ne sont pas encore support&eacute;s</span>
+          </li>
+        </ul>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onDismiss}
+            className="px-3 py-1.5 rounded-lg bg-brand-orange/10 border border-brand-orange/20 text-brand-orange text-xs font-medium hover:bg-brand-orange/15 transition-colors"
+          >
+            R&eacute;essayer
+          </button>
+          <a
+            href="https://github.com/mynameisek/nomnomnom/issues/new?title=Menu%20non%20reconnu&body=URL%20du%20menu%20:%20(collez%20ici)"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand-muted text-xs underline hover:text-brand-white transition-colors"
+          >
+            Signaler ce menu
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 px-4 py-3 rounded-xl bg-brand-red/10 border border-brand-red/30 text-brand-red text-sm">
+      <strong>Error:</strong> {error}
+      <button
+        onClick={onDismiss}
+        className="ml-2 underline text-xs opacity-70 hover:opacity-100"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 const TABS: { id: TabId; label: string }[] = [
   { id: 'url', label: 'URL' },
   { id: 'qr', label: 'QR Code' },
@@ -96,15 +155,7 @@ export default function ScanTabs() {
         <>
           {/* Error message */}
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-brand-red/10 border border-brand-red/30 text-brand-red text-sm">
-              <strong>Error:</strong> {error}
-              <button
-                onClick={() => setError(null)}
-                className="ml-2 underline text-xs opacity-70 hover:opacity-100"
-              >
-                Dismiss
-              </button>
-            </div>
+            <ScanError error={error} onDismiss={() => setError(null)} />
           )}
 
           {/* URL tab */}

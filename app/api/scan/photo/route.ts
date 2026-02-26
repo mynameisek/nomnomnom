@@ -66,6 +66,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message === 'NO_DISHES') {
+      return NextResponse.json(
+        { error: 'NO_DISHES' },
+        { status: 422 }
+      );
+    }
+
     if (error instanceof NoObjectGeneratedError) {
       console.error('[POST /api/scan/photo] NoObjectGeneratedError — raw output:', error.text);
       console.error('[POST /api/scan/photo] Cause:', error.cause);
