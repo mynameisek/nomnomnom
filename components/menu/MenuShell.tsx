@@ -182,6 +182,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
   const translatedLangs = useRef(new Set<Lang>());
   const menuItemsRef = useRef(initialMenu.menu_items);
   const menuIdRef = useRef(initialMenu.id);
+  const sourceLangRef = useRef(initialMenu.source_language);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -198,6 +199,12 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     if (items.length === 0) return;
 
     if (translatedLangs.current.has(targetLang)) return;
+
+    // Skip if menu source language matches — name_original is already in user's lang
+    if (sourceLangRef.current === targetLang) {
+      translatedLangs.current.add(targetLang);
+      return;
+    }
 
     // Check if translations already exist for this lang
     const hasTranslation = items.length > 0 &&
