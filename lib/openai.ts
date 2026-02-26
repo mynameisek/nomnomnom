@@ -162,7 +162,7 @@ export async function parseDishesFromMenuFast(
       output: Output.object({
         schema: menuParseSchema,
       }),
-      maxRetries: 2,
+      maxRetries: 1,
       system: MENU_PARSE_FAST_PROMPT,
       prompt: menuText,
     });
