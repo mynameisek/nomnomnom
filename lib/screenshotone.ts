@@ -138,7 +138,15 @@ export type ExtractionResult =
 export async function extractMenuContent(url: string): Promise<ExtractionResult> {
   const client = getClient();
 
-  // Attempt 1: markdown extraction
+  // Attempt 1: Direct HTML fetch — fast path for static HTML sites (saves 15-30s)
+  const directText = await fetchDirectText(url);
+  if (directText) {
+    console.log(`[screenshotone] Direct HTML fetch succeeded (${directText.length} chars)`);
+    return { type: 'text', content: directText };
+  }
+  console.log('[screenshotone] Direct HTML fetch failed or too short, trying Screenshotone markdown');
+
+  // Attempt 2: Screenshotone markdown extraction (handles JS-rendered SPAs)
   const mdOptions = screenshotone.TakeOptions.url(url)
     .format('markdown')
     .waitUntil('networkidle2')
@@ -153,16 +161,8 @@ export async function extractMenuContent(url: string): Promise<ExtractionResult>
     if (text.trim().length >= 50 && !isGarbageMarkdown(text)) {
       return { type: 'text', content: text };
     }
-    console.log('[screenshotone] Markdown extraction returned garbage, trying direct HTML fetch');
+    console.log('[screenshotone] Markdown extraction returned garbage, falling back to screenshot');
   }
-
-  // Attempt 2: Direct HTML fetch — often works when Screenshotone markdown fails
-  const directText = await fetchDirectText(url);
-  if (directText) {
-    console.log(`[screenshotone] Direct HTML fetch succeeded (${directText.length} chars)`);
-    return { type: 'text', content: directText };
-  }
-  console.log('[screenshotone] Direct HTML fetch failed or too short, falling back to screenshot');
 
   // Attempt 3: PNG screenshot for Vision OCR (last resort)
   const imgOptions = screenshotone.TakeOptions.url(url)

@@ -164,8 +164,16 @@ export async function getOrParseMenu(
   }
 
   // Step 4: Cache MISS — use pre-parsed result or call fast LLM parse (no translations)
+  // Truncate rawText sent to LLM to avoid timeouts on large menus (80+ plats)
+  // DB stores the full rawText — only the LLM input is truncated
+  const LLM_TEXT_LIMIT = 12_000;
+  let llmText = rawText;
+  if (llmText.length > LLM_TEXT_LIMIT) {
+    console.warn(`[getOrParseMenu] Truncating rawText from ${llmText.length} to ${LLM_TEXT_LIMIT} chars for LLM`);
+    llmText = llmText.slice(0, LLM_TEXT_LIMIT);
+  }
   const parseStart = Date.now();
-  const parsed = preParseResult ?? await parseDishesFromMenuFast(rawText, config.llm_model);
+  const parsed = preParseResult ?? await parseDishesFromMenuFast(llmText, config.llm_model);
   const parseTimeMs = preParseResult ? null : Date.now() - parseStart;
 
   // Guard: if LLM returned 0 dishes, throw instead of storing an empty menu
