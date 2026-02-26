@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { LanguageProvider, useLanguage } from '@/lib/i18n';
 import type { Lang } from '@/lib/i18n';
@@ -180,48 +180,57 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
   const [menuData, setMenuData] = useState<MenuWithItems>(initialMenu);
   const [isTranslating, setIsTranslating] = useState(false);
   const translatedLangs = useRef(new Set<Lang>());
+  const menuItemsRef = useRef(initialMenu.menu_items);
+  const menuIdRef = useRef(initialMenu.id);
 
-  const triggerTranslation = useCallback(async (targetLang: Lang) => {
+  // Keep refs in sync with state
+  useEffect(() => {
+    menuItemsRef.current = menuData.menu_items;
+    menuIdRef.current = menuData.id;
+  }, [menuData]);
+
+  // Trigger translation when language changes or on mount
+  useEffect(() => {
+    const targetLang = lang;
+
     if (translatedLangs.current.has(targetLang)) return;
 
     // Check if translations already exist for this lang
-    const hasTranslation = menuData.menu_items.length > 0 &&
-      menuData.menu_items.every((item) => item.name_translations[targetLang]);
+    const items = menuItemsRef.current;
+    const hasTranslation = items.length > 0 &&
+      items.every((item) => item.name_translations[targetLang]);
 
     if (hasTranslation) {
       translatedLangs.current.add(targetLang);
       return;
     }
 
+    let cancelled = false;
     setIsTranslating(true);
-    try {
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menuId: menuData.id, lang: targetLang }),
+
+    fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menuId: menuIdRef.current, lang: targetLang }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.items) return;
+        setMenuData((prev) => ({
+          ...prev,
+          menu_items: data.items as MenuItem[],
+        }));
+        translatedLangs.current.add(targetLang);
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('[MenuShell] Translation failed:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsTranslating(false);
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.items) {
-          setMenuData((prev) => ({
-            ...prev,
-            menu_items: data.items as MenuItem[],
-          }));
-        }
-        translatedLangs.current.add(targetLang);
-      }
-    } catch (err) {
-      console.error('[MenuShell] Translation failed:', err);
-    } finally {
-      setIsTranslating(false);
-    }
-  }, [menuData.id, menuData.menu_items]);
-
-  // Trigger translation when language changes or on mount
-  useEffect(() => {
-    triggerTranslation(lang);
-  }, [lang, triggerTranslation]);
+    return () => { cancelled = true; };
+  }, [lang]); // only re-run when lang changes
 
   return (
     <MenuContent

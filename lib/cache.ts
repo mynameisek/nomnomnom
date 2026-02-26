@@ -161,6 +161,11 @@ export async function getOrParseMenu(
   const parsed = preParseResult ?? await parseDishesFromMenuFast(rawText, config.llm_model);
   const parseTimeMs = preParseResult ? null : Date.now() - parseStart;
 
+  // Guard: if LLM returned 0 dishes, throw instead of storing an empty menu
+  if (parsed.dishes.length === 0) {
+    throw new Error('No dishes found on this page. The URL may not contain a menu.');
+  }
+
   // Detect source language from fast parse result
   const sourceLanguage = 'source_language' in parsed ? parsed.source_language : null;
 
