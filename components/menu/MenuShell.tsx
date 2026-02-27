@@ -190,8 +190,21 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     menuIdRef.current = menuData.id;
   }, [menuData]);
 
-  // Trigger translation when language changes or on mount
+  // Only translate on explicit user language switch, not on mount/browser detection
+  const hasSettledRef = useRef(false);
+
+  // Mark as settled after initial browser language detection completes
   useEffect(() => {
+    // Runs after LanguageProvider's useEffect sets browser/localStorage lang
+    const id = requestAnimationFrame(() => { hasSettledRef.current = true; });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // Trigger translation when user explicitly switches language
+  useEffect(() => {
+    // Skip auto-translation on mount (browser language detection)
+    if (!hasSettledRef.current) return;
+
     const targetLang = lang;
     const items = menuItemsRef.current;
 
