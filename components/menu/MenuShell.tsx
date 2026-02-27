@@ -214,8 +214,10 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     const catTransForLang = storedCatTrans[targetLang];
 
     // Check if translations already exist for this lang
+    // Guard against stale data where "translations" are just the original text copied verbatim
     const hasTranslation = items.length > 0 &&
-      items.every((item) => item.name_translations[targetLang]);
+      items.every((item) => item.name_translations[targetLang]) &&
+      !items.every((item) => item.name_translations[targetLang] === item.name_original);
 
     if (hasTranslation) {
       translatedLangs.current.add(targetLang);
