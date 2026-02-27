@@ -8,7 +8,7 @@
 // =============================================================================
 
 import 'server-only';
-import type { DishResponse } from '@/lib/types/llm';
+import type { DishParse } from '@/lib/types/llm';
 import { allergenEnum } from '@/lib/types/llm';
 
 type Allergen = (typeof allergenEnum)['options'][number];
@@ -82,8 +82,9 @@ export function getEazeeLinkStickerId(url: string): string | null {
  * Returns structured dish data — no LLM call needed.
  */
 export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
-  dishes: DishResponse[];
+  dishes: DishParse[];
   rawText: string;
+  sourceLanguage: string;
 }> {
   const apiUrl = `${EAZEE_API_BASE}/${stickerId}/menu`;
   const response = await fetch(apiUrl);
@@ -184,7 +185,7 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   const enabledProducts = data.products.filter((p) => p.status === 'ENABLED');
   enabledProducts.sort((a, b) => categorySort(a.categoryId) - categorySort(b.categoryId));
 
-  const dishes: DishResponse[] = enabledProducts.map((product) => {
+  const dishes: DishParse[] = enabledProducts.map((product) => {
     const price = product.price1 ?? product.price2 ?? product.price3 ?? null;
     const priceLabel = product.price1Label ?? '';
     const priceStr = price ? `${price}€${priceLabel ? ` (${priceLabel})` : ''}` : null;
@@ -197,21 +198,7 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
 
     return {
       name_original: product.label,
-      name_translations: {
-        fr: product.label,
-        en: product.label,
-        tr: product.label,
-        de: product.label,
-      },
       description_original: product.description ?? null,
-      description_translations: product.description
-        ? {
-            fr: product.description,
-            en: product.description,
-            tr: product.description,
-            de: product.description,
-          }
-        : null,
       price: priceStr,
       allergens: allergens.length > 0 ? allergens : [],
       dietary_tags: [],
@@ -227,5 +214,8 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
     .map((p) => `${p.label}: ${p.description ?? ''} - ${p.price1 ?? ''}€`)
     .join('\n');
 
-  return { dishes, rawText };
+  // Eazee-link is a French platform — menus are virtually always in French
+  const sourceLanguage = 'fr';
+
+  return { dishes, rawText, sourceLanguage };
 }

@@ -14,7 +14,7 @@ import { openai } from '@ai-sdk/openai';
 import { menuParseSchema } from '@/lib/types/llm';
 import { getOrParseMenu, getAdminConfig, getCachedMenu } from '@/lib/cache';
 import { extractMenuContent } from '@/lib/screenshotone';
-import { MENU_PARSE_FAST_PROMPT, translateEazeeLinkDishes } from '@/lib/openai';
+import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
 import { getEazeeLinkStickerId, fetchEazeeLinkMenu } from '@/lib/menu-providers/eazee-link';
 
 // Vercel Pro plan: pipeline can take 6–15s total
@@ -61,24 +61,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ menuId: cachedMenu.id });
       }
 
-      // Step 2: Cache MISS — fetch raw dishes from eazee-link API
-      const { dishes, rawText } = await fetchEazeeLinkMenu(eazeeStickerId);
+      // Step 2: Cache MISS — fetch structured dishes from eazee-link API
+      // No LLM call needed — translations happen lazily per language on demand
+      const { dishes, rawText, sourceLanguage } = await fetchEazeeLinkMenu(eazeeStickerId);
 
-      // Step 3: Translate dishes with LLM (single batched call for all 4 languages)
-      // Falls back to untranslated dishes on LLM failure — user still gets a menu
-      const config = await getAdminConfig();
-      let preParseResult: { dishes: typeof dishes; source_language?: string } = { dishes };
-
-      try {
-        const { translatedDishes, sourceLanguage } = await translateEazeeLinkDishes(dishes, config.llm_model);
-        preParseResult = { dishes: translatedDishes, source_language: sourceLanguage };
-      } catch (translateError) {
-        console.error('[POST /api/scan/url] eazee-link translation failed, falling back to untranslated dishes:', translateError);
-        // preParseResult stays as { dishes } — untranslated fallback (acceptable per CONTEXT.md)
-      }
-
-      // Step 4: Store in cache and return
-      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, preParseResult);
+      // Step 3: Store in cache and return (no upfront translation — lazy translate handles it)
+      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage });
       return NextResponse.json({ menuId: menu.id });
     }
 
