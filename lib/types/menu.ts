@@ -65,6 +65,7 @@ export interface Menu {
   source_language: string | null; // detected menu language (e.g. 'fr', 'en', 'tr')
   parse_time_ms: number | null;   // LLM parse duration in ms (null for cache hits)
   hit_count: number;              // number of cache hits since first parse (default 0)
+  category_translations: Record<string, Record<string, string>> | null; // {"de":{"A BOIRE":"GETRÄNKE",...},...}
   parsed_at: string;          // timestamptz as ISO string
   expires_at: string;         // timestamptz as ISO string
   created_at: string;         // timestamptz as ISO string

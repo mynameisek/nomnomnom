@@ -9,6 +9,7 @@ interface FilterBarProps {
   filters: FilterState;
   onChange: (f: FilterState) => void;
   categories: string[];
+  categoryTranslations?: Record<string, string>;
 }
 
 const DIETARY_TAGS: DietaryTag[] = ['vegetarian', 'vegan', 'spicy'];
@@ -23,7 +24,7 @@ const ALLERGEN_EXCLUSIONS: Allergen[] = [
   'shellfish',
 ];
 
-export default function FilterBar({ filters, onChange, categories }: FilterBarProps) {
+export default function FilterBar({ filters, onChange, categories, categoryTranslations }: FilterBarProps) {
   const { t } = useLanguage();
   const [allergensOpen, setAllergensOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -113,7 +114,7 @@ export default function FilterBar({ filters, onChange, categories }: FilterBarPr
                 : 'bg-white/5 border-white/10 text-brand-muted hover:bg-white/8'
             }`}
           >
-            {cat}
+            {categoryTranslations?.[cat] ?? cat}
           </button>
         ))}
 

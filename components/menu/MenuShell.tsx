@@ -32,6 +32,7 @@ interface MenuContentProps {
   filters: FilterState;
   onFiltersChange: (f: FilterState) => void;
   isTranslating: boolean;
+  categoryTranslations: Record<string, string>;
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -41,7 +42,7 @@ const EMPTY_FILTERS: FilterState = {
   excludeAllergens: [],
 };
 
-function MenuContent({ menu, filters, onFiltersChange, isTranslating }: MenuContentProps) {
+function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTranslations }: MenuContentProps) {
   const { t } = useLanguage();
 
   const filteredItems = useFilteredDishes(menu.menu_items, filters);
@@ -106,7 +107,7 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating }: MenuCont
       )}
 
       {/* Filter bar with search + categories + dietary + allergens */}
-      <FilterBar filters={filters} onChange={onFiltersChange} categories={categories} />
+      <FilterBar filters={filters} onChange={onFiltersChange} categories={categories} categoryTranslations={categoryTranslations} />
 
       {/* Result count */}
       {hasActiveFilters && filteredItems.length > 0 && (
@@ -155,7 +156,7 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating }: MenuCont
             </div>
           )
         ) : (
-          <MenuAccordion items={menu.menu_items} />
+          <MenuAccordion items={menu.menu_items} categoryTranslations={categoryTranslations} />
         )}
       </div>
 
@@ -179,6 +180,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [menuData, setMenuData] = useState<MenuWithItems>(initialMenu);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [catTranslations, setCatTranslations] = useState<Record<string, string>>({});
   const translatedLangs = useRef(new Set<Lang>());
   const menuItemsRef = useRef(initialMenu.menu_items);
   const menuIdRef = useRef(initialMenu.id);
@@ -190,21 +192,8 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     menuIdRef.current = menuData.id;
   }, [menuData]);
 
-  // Only translate on explicit user language switch, not on mount/browser detection
-  const hasSettledRef = useRef(false);
-
-  // Mark as settled after initial browser language detection completes
+  // Trigger translation when lang changes (including initial mount)
   useEffect(() => {
-    // Runs after LanguageProvider's useEffect sets browser/localStorage lang
-    const id = requestAnimationFrame(() => { hasSettledRef.current = true; });
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  // Trigger translation when user explicitly switches language
-  useEffect(() => {
-    // Skip auto-translation on mount (browser language detection)
-    if (!hasSettledRef.current) return;
-
     const targetLang = lang;
     const items = menuItemsRef.current;
 
@@ -216,8 +205,13 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     // Skip if menu source language matches — name_original is already in user's lang
     if (sourceLangRef.current === targetLang) {
       translatedLangs.current.add(targetLang);
+      setCatTranslations({});
       return;
     }
+
+    // Load stored category translations for this lang if available
+    const storedCatTrans = (initialMenu.category_translations ?? {}) as Record<string, Record<string, string>>;
+    const catTransForLang = storedCatTrans[targetLang];
 
     // Check if translations already exist for this lang
     const hasTranslation = items.length > 0 &&
@@ -225,6 +219,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
 
     if (hasTranslation) {
       translatedLangs.current.add(targetLang);
+      if (catTransForLang) setCatTranslations(catTransForLang);
       return;
     }
 
@@ -243,6 +238,9 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
           ...prev,
           menu_items: data.items as MenuItem[],
         }));
+        if (data.categoryTranslations) {
+          setCatTranslations(data.categoryTranslations as Record<string, string>);
+        }
         translatedLangs.current.add(targetLang);
       })
       .catch((err) => {
@@ -261,6 +259,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
       filters={filters}
       onFiltersChange={setFilters}
       isTranslating={isTranslating}
+      categoryTranslations={catTranslations}
     />
   );
 }

@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Fetch menu and its items
     const { data: menu, error: menuError } = await supabaseAdmin
       .from('menus')
-      .select('source_language')
+      .select('source_language, category_translations')
       .eq('id', menuId)
       .single();
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const { data: items, error: itemsError } = await supabaseAdmin
       .from('menu_items')
-      .select('id, name_original, name_translations, description_original, description_translations, sort_order')
+      .select('id, name_original, name_translations, description_original, description_translations, category, subcategory, sort_order')
       .eq('menu_id', menuId)
       .order('sort_order', { ascending: true });
 
@@ -111,6 +111,46 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(updatePromises);
 
+    // Step 4b: Translate unique category/subcategory labels
+    const existingCatTranslations = (menu.category_translations ?? {}) as Record<string, Record<string, string>>;
+    const existingForLang = existingCatTranslations[lang as string] ?? {};
+
+    // Collect unique category labels from ALL items (not just needsTranslation)
+    const uniqueLabels = new Set<string>();
+    for (const item of items) {
+      if (item.category) uniqueLabels.add(item.category);
+      if (item.subcategory) uniqueLabels.add(item.subcategory);
+    }
+    // Filter out already-translated labels
+    const labelsToTranslate = [...uniqueLabels].filter((l) => !existingForLang[l]);
+
+    let categoryTranslations = existingForLang;
+    if (labelsToTranslate.length > 0) {
+      const translatedLabels = await translateBatch(
+        labelsToTranslate.map((label) => ({ name: label, description: null })),
+        sourceLang,
+        lang as string,
+        config.llm_model,
+      );
+
+      const newMap: Record<string, string> = { ...existingForLang };
+      for (let i = 0; i < labelsToTranslate.length; i++) {
+        newMap[labelsToTranslate[i]] = translatedLabels[i].name;
+      }
+      categoryTranslations = newMap;
+
+      // Persist to menus table
+      await supabaseAdmin
+        .from('menus')
+        .update({
+          category_translations: {
+            ...existingCatTranslations,
+            [lang as string]: newMap,
+          },
+        })
+        .eq('id', menuId);
+    }
+
     // Step 5: Fetch updated items to return
     const { data: updatedItems } = await supabaseAdmin
       .from('menu_items')
@@ -118,7 +158,7 @@ export async function POST(req: NextRequest) {
       .eq('menu_id', menuId)
       .order('sort_order', { ascending: true });
 
-    return NextResponse.json({ items: updatedItems });
+    return NextResponse.json({ items: updatedItems, categoryTranslations });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[POST /api/translate] Error:', message);

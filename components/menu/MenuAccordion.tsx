@@ -85,7 +85,7 @@ function ChevronDown({ open, className }: { open: boolean; className?: string })
 
 // ─── Sub-accordion (nested inside a parent group like "Boissons") ────────────
 
-function SubAccordion({ subGroup }: { subGroup: SubGroup }) {
+function SubAccordion({ subGroup, categoryTranslations }: { subGroup: SubGroup; categoryTranslations?: Record<string, string> }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -97,7 +97,7 @@ function SubAccordion({ subGroup }: { subGroup: SubGroup }) {
       >
         <div className="flex items-center gap-2">
           <span className="text-brand-white/80 font-medium text-xs">
-            {subGroup.subcategory}
+            {(subGroup.subcategory && categoryTranslations?.[subGroup.subcategory]) ?? subGroup.subcategory}
           </span>
           <span className="text-brand-muted/60 text-xs">
             {subGroup.items.length}
@@ -118,7 +118,7 @@ function SubAccordion({ subGroup }: { subGroup: SubGroup }) {
 
 // ─── Top-level section accordion ─────────────────────────────────────────────
 
-function SectionAccordion({ section, defaultOpen }: { section: Section; defaultOpen: boolean }) {
+function SectionAccordion({ section, defaultOpen, categoryTranslations }: { section: Section; defaultOpen: boolean; categoryTranslations?: Record<string, string> }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -130,7 +130,7 @@ function SectionAccordion({ section, defaultOpen }: { section: Section; defaultO
       >
         <div className="flex items-center gap-3">
           <span className="text-brand-white font-semibold text-sm">
-            {section.category}
+            {categoryTranslations?.[section.category] ?? section.category}
           </span>
           <span className="text-brand-muted text-xs">
             {section.totalItems}
@@ -144,7 +144,7 @@ function SectionAccordion({ section, defaultOpen }: { section: Section; defaultO
           {section.hasSubcategories
             ? section.subGroups.map((sg, sgIdx) =>
                 sg.subcategory ? (
-                  <SubAccordion key={`${sg.key}-${sgIdx}`} subGroup={sg} />
+                  <SubAccordion key={`${sg.key}-${sgIdx}`} subGroup={sg} categoryTranslations={categoryTranslations} />
                 ) : (
                   // Items without subcategory rendered directly
                   sg.items.map((item) => <DishCard key={item.id} item={item} />)
@@ -161,7 +161,7 @@ function SectionAccordion({ section, defaultOpen }: { section: Section; defaultO
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export default function MenuAccordion({ items }: { items: MenuItem[] }) {
+export default function MenuAccordion({ items, categoryTranslations }: { items: MenuItem[]; categoryTranslations?: Record<string, string> }) {
   const sorted = [...items].sort((a, b) => a.sort_order - b.sort_order);
   const sections = buildSections(sorted);
 
@@ -177,7 +177,7 @@ export default function MenuAccordion({ items }: { items: MenuItem[] }) {
   return (
     <div className="flex flex-col gap-3">
       {sections.map((section, i) => (
-        <SectionAccordion key={`${section.category}-${i}`} section={section} defaultOpen={i === 0} />
+        <SectionAccordion key={`${section.category}-${i}`} section={section} defaultOpen={i === 0} categoryTranslations={categoryTranslations} />
       ))}
     </div>
   );
