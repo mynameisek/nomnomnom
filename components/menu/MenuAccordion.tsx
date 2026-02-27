@@ -142,9 +142,9 @@ function SectionAccordion({ section, defaultOpen }: { section: Section; defaultO
       {open && (
         <div className="flex flex-col gap-2 p-3">
           {section.hasSubcategories
-            ? section.subGroups.map((sg) =>
+            ? section.subGroups.map((sg, sgIdx) =>
                 sg.subcategory ? (
-                  <SubAccordion key={sg.key} subGroup={sg} />
+                  <SubAccordion key={`${sg.key}-${sgIdx}`} subGroup={sg} />
                 ) : (
                   // Items without subcategory rendered directly
                   sg.items.map((item) => <DishCard key={item.id} item={item} />)
@@ -177,7 +177,7 @@ export default function MenuAccordion({ items }: { items: MenuItem[] }) {
   return (
     <div className="flex flex-col gap-3">
       {sections.map((section, i) => (
-        <SectionAccordion key={section.category} section={section} defaultOpen={i === 0} />
+        <SectionAccordion key={`${section.category}-${i}`} section={section} defaultOpen={i === 0} />
       ))}
     </div>
   );
