@@ -180,6 +180,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [menuData, setMenuData] = useState<MenuWithItems>(initialMenu);
   const [isTranslating, setIsTranslating] = useState(false);
+  const catTranslationsRef = useRef<Record<string, Record<string, string>>>({});
   const [catTranslations, setCatTranslations] = useState<Record<string, string>>({});
   const translatedLangs = useRef(new Set<Lang>());
   const menuItemsRef = useRef(initialMenu.menu_items);
@@ -200,7 +201,10 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     // Skip if no items to translate
     if (items.length === 0) return;
 
-    if (translatedLangs.current.has(targetLang)) return;
+    if (translatedLangs.current.has(targetLang)) {
+      setCatTranslations(catTranslationsRef.current[targetLang] ?? {});
+      return;
+    }
 
     // Skip if menu source language matches — name_original is already in user's lang
     if (sourceLangRef.current === targetLang) {
@@ -221,7 +225,10 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
 
     if (hasTranslation) {
       translatedLangs.current.add(targetLang);
-      if (catTransForLang) setCatTranslations(catTransForLang);
+      if (catTransForLang) {
+        catTranslationsRef.current[targetLang] = catTransForLang;
+        setCatTranslations(catTransForLang);
+      }
       return;
     }
 
@@ -241,6 +248,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
           menu_items: data.items as MenuItem[],
         }));
         if (data.categoryTranslations) {
+          catTranslationsRef.current[targetLang] = data.categoryTranslations as Record<string, string>;
           setCatTranslations(data.categoryTranslations as Record<string, string>);
         }
         translatedLangs.current.add(targetLang);
