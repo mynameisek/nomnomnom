@@ -3,38 +3,17 @@
 // =============================================================================
 // Translates menu items into a single target language on-demand.
 // Called from MenuShell when user's language isn't available in translations.
-// Batches all untranslated items into a single LLM call for efficiency.
+// Uses free translation providers first (DeepL → Google → Azure → MyMemory),
+// falling back to LLM only when all free tiers are exhausted.
 // =============================================================================
 
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
-import { generateText, Output, NoObjectGeneratedError } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getAdminConfig } from '@/lib/cache';
+import { translateBatch } from '@/lib/translate';
 
 export const maxDuration = 60;
-
-/** Schema for the LLM translation response */
-const translationResponseSchema = z.object({
-  translations: z.array(
-    z.object({
-      index: z.number(),
-      name: z.string(),
-      description: z.string().nullable(),
-    })
-  ),
-});
-
-const TRANSLATE_SYSTEM_PROMPT = `You are a professional food translator. You will receive a list of dish names and descriptions from a restaurant menu. Translate each one into the specified target language.
-
-Rules:
-- Preserve the meaning and culinary terminology
-- Keep proper nouns and brand names unchanged
-- Return translations in the same order as the input
-- If a description is null, return null for the description translation
-- The "index" field must match the input index exactly`;
 
 export async function POST(req: NextRequest) {
   let menuId: unknown;
@@ -88,32 +67,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ items, alreadyTranslated: true });
     }
 
-    // Step 3: Build prompt for batch translation
+    // Step 3: Translate via provider cascade (free APIs → LLM fallback)
     const sourceLang = menu.source_language ?? 'unknown';
-    const langNames: Record<string, string> = {
-      fr: 'French', en: 'English', tr: 'Turkish', de: 'German',
-    };
-    const targetLangName = langNames[lang as string] ?? lang;
-
-    const dishList = needsTranslation.map((item, idx) => ({
-      index: idx,
-      name: item.name_original,
-      description: item.description_original,
-    }));
-
     const config = await getAdminConfig();
 
-    const { experimental_output: output } = await generateText({
-      model: openai(config.llm_model),
-      output: Output.object({ schema: translationResponseSchema }),
-      maxRetries: 2,
-      system: TRANSLATE_SYSTEM_PROMPT,
-      prompt: `Source language: ${sourceLang}\nTarget language: ${targetLangName}\n\nDishes to translate:\n${JSON.stringify(dishList, null, 2)}`,
-    });
+    const translated = await translateBatch(
+      needsTranslation.map((item) => ({
+        name: item.name_original,
+        description: item.description_original,
+      })),
+      sourceLang,
+      lang as string,
+      config.llm_model,
+    );
 
     // Step 4: Update each item with the new translation (merge into existing JSONB)
-    const updatePromises = output.translations.map(async (translation) => {
-      const item = needsTranslation[translation.index];
+    const updatePromises = translated.map(async (translation, idx) => {
+      const item = needsTranslation[idx];
       if (!item) return;
 
       const existingNameTranslations = (item.name_translations ?? {}) as Record<string, string>;
@@ -153,16 +123,9 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[POST /api/translate] Error:', message);
 
-    if (error instanceof NoObjectGeneratedError) {
-      return NextResponse.json(
-        { error: 'Translation failed. Please try again.' },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
       { error: 'Translation failed. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
