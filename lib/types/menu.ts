@@ -102,6 +102,13 @@ export interface MenuItem {
   canonical_source: string | null;   // 'seed_match' | 'llm_generated'
   is_beverage: boolean;
   enrichment_status: string;         // 'pending' | 'enriched' | 'skipped' | 'failed'
+  enrichment_origin: string | null;
+  enrichment_ingredients: string[] | null;
+  enrichment_cultural_note: string | null;
+  enrichment_eating_tips: string | null;
+  enrichment_depth: string | null;        // 'full' | 'minimal'
+  enrichment_model: string | null;
+  enriched_at: string | null;             // ISO string
   embedding_model: string | null;
   created_at: string;         // timestamptz as ISO string
 }

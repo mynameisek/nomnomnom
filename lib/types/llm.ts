@@ -150,6 +150,41 @@ export const canonicalBatchSchema = z.object({
   dishes: z.array(canonicalDishResultSchema),
 });
 
+// =============================================================================
+// Enrichment batch schema — LLM output for batch cultural enrichment
+// =============================================================================
+
+/**
+ * Schema for a single dish's enrichment result from the batch LLM call.
+ * depth_tier drives which fields are populated: 'full' for exotic dishes,
+ * 'minimal' for self-explanatory French dishes.
+ *
+ * Note: .nullable() used throughout (not .optional()) per OpenAI structured outputs requirement.
+ */
+export const enrichmentDishResultSchema = z.object({
+  index: z.number(),
+  depth_tier: z.enum(['full', 'minimal']),
+  origin: z.string().nullable(),            // null for minimal depth
+  typical_ingredients: z.array(z.string()), // always present, 3-6 items in French
+  cultural_note: z.string().nullable(),     // null for minimal depth
+  eating_tips: z.string().nullable(),       // null for minimal depth
+});
+
+/**
+ * Top-level batch schema — wraps array of enrichment results.
+ * Passed to AI SDK Output.object() in enrichDishBatch.
+ */
+export const enrichmentBatchSchema = z.object({
+  dishes: z.array(enrichmentDishResultSchema),
+});
+
+export type EnrichmentDishResult = z.infer<typeof enrichmentDishResultSchema>;
+export type EnrichmentBatchResult = z.infer<typeof enrichmentBatchSchema>;
+
+// =============================================================================
+// Inferred TypeScript types from Zod schemas
+// =============================================================================
+
 /**
  * Inferred TypeScript types from Zod schemas.
  * Use these types throughout the app — they are guaranteed to match the Zod schema.
