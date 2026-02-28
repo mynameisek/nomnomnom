@@ -22,6 +22,7 @@ import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkPlaceData } fr
 import { enrichWithGooglePlaces } from '@/lib/google-places';
 import { generateCanonicalNames } from '@/lib/canonical';
 import { enrichDishBatch } from '@/lib/enrichment';
+import { fetchDishImages } from '@/lib/images';
 
 // Vercel Pro plan: pipeline can take 6–15s total
 export const maxDuration = 120;
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
       after(async () => {
         await generateCanonicalNames(menu.id);
         await enrichDishBatch(menu.id);
+        await fetchDishImages(menu.id);
       });
       return NextResponse.json({ menuId: menu.id });
     }
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest) {
       after(async () => {
         await generateCanonicalNames(menu.id);
         await enrichDishBatch(menu.id);
+        await fetchDishImages(menu.id);
       });
       return NextResponse.json({ menuId: menu.id });
     }
@@ -142,6 +145,7 @@ export async function POST(req: NextRequest) {
       after(async () => {
         await generateCanonicalNames(menu.id);
         await enrichDishBatch(menu.id);
+        await fetchDishImages(menu.id);
       });
       return NextResponse.json({ menuId: menu.id });
     }
@@ -176,9 +180,10 @@ export async function POST(req: NextRequest) {
     const menu = await getOrParseMenu(url, 'url', '[screenshot fallback]', output);
     after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
     after(async () => {
-        await generateCanonicalNames(menu.id);
-        await enrichDishBatch(menu.id);
-      });
+      await generateCanonicalNames(menu.id);
+      await enrichDishBatch(menu.id);
+      await fetchDishImages(menu.id);
+    });
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
