@@ -79,6 +79,12 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTr
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <SourceBadge sourceType={menu.source_type} />
+              <a
+                href="/scan"
+                className="inline-flex items-center px-3 py-1 rounded-full bg-white/5 border border-white/10 text-brand-muted text-xs font-medium hover:text-brand-orange hover:border-brand-orange/30 transition-colors"
+              >
+                + {t('scan_another')}
+              </a>
             </div>
             <h1 className="text-2xl font-bold text-brand-white mb-1 truncate">
               {restaurantName}
@@ -160,17 +166,9 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTr
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-2 pb-8">
-        <a
-          href="/"
-          className="text-brand-muted/50 hover:text-brand-orange/60 text-xs transition-colors"
-        >
-          {t('scan_another')}
-        </a>
-        <p className="text-brand-muted/40 text-xs">
-          Dish data parsed by NOM AI — translations may vary
-        </p>
-      </div>
+      <p className="text-brand-muted/40 text-xs text-center pb-8">
+        Dish data parsed by NOM AI — translations may vary
+      </p>
     </>
   );
 }
