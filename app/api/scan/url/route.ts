@@ -13,9 +13,10 @@ import { generateText, Output, NoObjectGeneratedError } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { menuParseSchema } from '@/lib/types/llm';
 import { getOrParseMenu, getAdminConfig, getCachedMenu } from '@/lib/cache';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { extractMenuContent } from '@/lib/screenshotone';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
-import { getEazeeLinkStickerId, fetchEazeeLinkMenu } from '@/lib/menu-providers/eazee-link';
+import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkRestaurantName } from '@/lib/menu-providers/eazee-link';
 import { enrichWithGooglePlaces } from '@/lib/google-places';
 
 // Vercel Pro plan: pipeline can take 6–15s total
@@ -59,9 +60,16 @@ export async function POST(req: NextRequest) {
       // Step 1: Check cache BEFORE translation — avoid LLM cost on cache hits
       const cachedMenu = await getCachedMenu(canonicalUrl);
       if (cachedMenu) {
-        // Enrich with Places if not yet done (e.g. menu created before this feature)
-        if (!cachedMenu.google_place_id) {
-          enrichWithGooglePlaces(cachedMenu.restaurant_name, canonicalUrl, cachedMenu.id).catch(() => {});
+        // Backfill restaurant_name + Places data for menus created before this feature
+        if (!cachedMenu.restaurant_name || !cachedMenu.google_place_id) {
+          const name = cachedMenu.restaurant_name ?? await fetchEazeeLinkRestaurantName(eazeeStickerId);
+          if (name && !cachedMenu.restaurant_name) {
+            // Fire-and-forget: patch restaurant_name in DB
+            supabaseAdmin.from('menus').update({ restaurant_name: name }).eq('id', cachedMenu.id).then(() => {});
+          }
+          if (!cachedMenu.google_place_id) {
+            enrichWithGooglePlaces(name, canonicalUrl, cachedMenu.id).catch(() => {});
+          }
         }
         return NextResponse.json({ menuId: cachedMenu.id });
       }

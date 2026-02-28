@@ -225,6 +225,21 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
 }
 
 /**
+ * Lightweight fetch: only gets the restaurant name from eazee-link API.
+ * Used on cache hits to backfill restaurant_name without re-parsing the full menu.
+ */
+export async function fetchEazeeLinkRestaurantName(stickerId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${EAZEE_API_BASE}/${stickerId}/menu`);
+    if (!res.ok) return null;
+    const data: EazeeMenuResponse = await res.json();
+    return extractRestaurantName(data.categories);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Heuristic: extract restaurant name from eazee-link category labels.
  * Common patterns: "Menu Umaï Ramen", "Menu Le Café Grognon", "La carte du Petit Bistrot"
  */
