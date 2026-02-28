@@ -70,28 +70,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KNOW-01 | - | Pending |
-| KNOW-02 | - | Pending |
-| KNOW-03 | - | Pending |
-| KNOW-04 | - | Pending |
-| ENRI-01 | - | Pending |
-| ENRI-02 | - | Pending |
-| ENRI-03 | - | Pending |
-| ENRI-04 | - | Pending |
-| ENRI-05 | - | Pending |
-| SRCH-01 | - | Pending |
-| SRCH-02 | - | Pending |
-| SRCH-03 | - | Pending |
-| TOP3-01 | - | Pending |
-| TOP3-02 | - | Pending |
-| TOP3-03 | - | Pending |
-| TOP3-04 | - | Pending |
+| KNOW-01 | Phase 10 | Pending |
+| KNOW-02 | Phase 10 | Pending |
+| KNOW-03 | Phase 10 | Pending |
+| KNOW-04 | Phase 10 | Pending |
+| ENRI-01 | Phase 11 | Pending |
+| ENRI-02 | Phase 11 | Pending |
+| ENRI-03 | Phase 11 | Pending |
+| ENRI-04 | Phase 11 | Pending |
+| ENRI-05 | Phase 12 | Pending |
+| SRCH-01 | Phase 14 | Pending |
+| SRCH-02 | Phase 14 | Pending |
+| SRCH-03 | Phase 14 | Pending |
+| TOP3-01 | Phase 13 | Pending |
+| TOP3-02 | Phase 13 | Pending |
+| TOP3-03 | Phase 13 | Pending |
+| TOP3-04 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16
+- Mapped to phases: 16
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 — traceability complete, all 16 requirements mapped to Phases 10-14*
