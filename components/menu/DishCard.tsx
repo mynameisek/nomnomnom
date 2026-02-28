@@ -8,9 +8,11 @@ interface DishCardProps {
   item: MenuItem;
   /** When true, allergen chips are shown expanded (e.g. when allergen filter is active) */
   showAllergens?: boolean;
+  /** Called when user taps the full-depth enrichment preview row to open detail sheet */
+  onTapDetail?: (item: MenuItem) => void;
 }
 
-export default function DishCard({ item, showAllergens = false }: DishCardProps) {
+export default function DishCard({ item, showAllergens = false, onTapDetail }: DishCardProps) {
   const { lang, t } = useLanguage();
   const [allergensExpanded, setAllergensExpanded] = useState(false);
 
@@ -30,6 +32,11 @@ export default function DishCard({ item, showAllergens = false }: DishCardProps)
 
   const hasAllergens = (item.allergens ?? []).length > 0;
   const allergensVisible = showAllergens || allergensExpanded;
+
+  // Enrichment state helpers
+  const isPendingFood = !item.is_beverage && item.enrichment_status === 'pending';
+  const isFullDepth = item.enrichment_status === 'enriched' && item.enrichment_depth === 'full';
+  const isMinimalDepth = item.enrichment_status === 'enriched' && item.enrichment_depth === 'minimal';
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/8">
@@ -56,6 +63,38 @@ export default function DishCard({ item, showAllergens = false }: DishCardProps)
       {translatedDescription && (
         <p className="text-brand-muted text-xs leading-relaxed">
           {translatedDescription}
+        </p>
+      )}
+
+      {/* Enrichment states */}
+      {isPendingFood && (
+        // State 1: Pending skeleton shimmer
+        <div className="h-3 w-3/4 rounded-full bg-white/10 animate-pulse mt-1" />
+      )}
+
+      {isFullDepth && item.enrichment_origin && (
+        // State 2: Full-depth preview — tappable row with origin pill + cultural hint
+        <button
+          type="button"
+          onClick={() => onTapDetail?.(item)}
+          className="flex items-center gap-2 mt-1 text-left w-full"
+        >
+          <span className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-brand-orange/10 border border-brand-orange/20 text-brand-orange/70 text-[10px] font-medium">
+            {item.enrichment_origin.split(',')[0].trim()}
+          </span>
+          {item.enrichment_cultural_note && (
+            <span className="text-brand-muted/70 text-xs truncate">
+              {item.enrichment_cultural_note.slice(0, 60)}
+              {item.enrichment_cultural_note.length > 60 ? '...' : ''}
+            </span>
+          )}
+        </button>
+      )}
+
+      {isMinimalDepth && item.enrichment_ingredients && item.enrichment_ingredients.length > 0 && (
+        // State 3: Minimal-depth — show first 3 ingredients inline
+        <p className="text-brand-muted/60 text-xs mt-1">
+          {item.enrichment_ingredients.slice(0, 3).join(', ')}
         </p>
       )}
 

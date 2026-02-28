@@ -85,7 +85,7 @@ function ChevronDown({ open, className }: { open: boolean; className?: string })
 
 // ─── Sub-accordion (nested inside a parent group like "Boissons") ────────────
 
-function SubAccordion({ subGroup, categoryTranslations }: { subGroup: SubGroup; categoryTranslations?: Record<string, string> }) {
+function SubAccordion({ subGroup, categoryTranslations, onTapDetail }: { subGroup: SubGroup; categoryTranslations?: Record<string, string>; onTapDetail?: (item: MenuItem) => void }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -108,7 +108,7 @@ function SubAccordion({ subGroup, categoryTranslations }: { subGroup: SubGroup; 
       {open && (
         <div className="flex flex-col gap-2 p-2">
           {subGroup.items.map((item) => (
-            <DishCard key={item.id} item={item} />
+            <DishCard key={item.id} item={item} onTapDetail={onTapDetail} />
           ))}
         </div>
       )}
@@ -118,7 +118,7 @@ function SubAccordion({ subGroup, categoryTranslations }: { subGroup: SubGroup; 
 
 // ─── Top-level section accordion ─────────────────────────────────────────────
 
-function SectionAccordion({ section, defaultOpen, categoryTranslations }: { section: Section; defaultOpen: boolean; categoryTranslations?: Record<string, string> }) {
+function SectionAccordion({ section, defaultOpen, categoryTranslations, onTapDetail }: { section: Section; defaultOpen: boolean; categoryTranslations?: Record<string, string>; onTapDetail?: (item: MenuItem) => void }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -144,14 +144,14 @@ function SectionAccordion({ section, defaultOpen, categoryTranslations }: { sect
           {section.hasSubcategories
             ? section.subGroups.map((sg, sgIdx) =>
                 sg.subcategory ? (
-                  <SubAccordion key={`${sg.key}-${sgIdx}`} subGroup={sg} categoryTranslations={categoryTranslations} />
+                  <SubAccordion key={`${sg.key}-${sgIdx}`} subGroup={sg} categoryTranslations={categoryTranslations} onTapDetail={onTapDetail} />
                 ) : (
                   // Items without subcategory rendered directly
-                  sg.items.map((item) => <DishCard key={item.id} item={item} />)
+                  sg.items.map((item) => <DishCard key={item.id} item={item} onTapDetail={onTapDetail} />)
                 )
               )
             : section.subGroups.flatMap((sg) =>
-                sg.items.map((item) => <DishCard key={item.id} item={item} />)
+                sg.items.map((item) => <DishCard key={item.id} item={item} onTapDetail={onTapDetail} />)
               )}
         </div>
       )}
@@ -161,7 +161,7 @@ function SectionAccordion({ section, defaultOpen, categoryTranslations }: { sect
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export default function MenuAccordion({ items, categoryTranslations }: { items: MenuItem[]; categoryTranslations?: Record<string, string> }) {
+export default function MenuAccordion({ items, categoryTranslations, onTapDetail }: { items: MenuItem[]; categoryTranslations?: Record<string, string>; onTapDetail?: (item: MenuItem) => void }) {
   const sorted = [...items].sort((a, b) => a.sort_order - b.sort_order);
   const sections = buildSections(sorted);
 
@@ -177,7 +177,7 @@ export default function MenuAccordion({ items, categoryTranslations }: { items: 
   return (
     <div className="flex flex-col gap-3">
       {sections.map((section, i) => (
-        <SectionAccordion key={`${section.category}-${i}`} section={section} defaultOpen={i === 0} categoryTranslations={categoryTranslations} />
+        <SectionAccordion key={`${section.category}-${i}`} section={section} defaultOpen={i === 0} categoryTranslations={categoryTranslations} onTapDetail={onTapDetail} />
       ))}
     </div>
   );

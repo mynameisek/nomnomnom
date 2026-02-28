@@ -7,12 +7,14 @@ import type { Lang } from '@/lib/i18n';
 import { useFilteredDishes } from '@/hooks/useFilteredDishes';
 import type { FilterState } from '@/hooks/useFilteredDishes';
 import type { MenuWithItems, MenuItem } from '@/lib/types/menu';
+import { useEnrichmentPolling } from '@/hooks/useEnrichmentPolling';
 import AllergenBanner from '@/components/menu/AllergenBanner';
 import FilterBar from '@/components/menu/FilterBar';
 import DishCard from '@/components/menu/DishCard';
 import LangSwitcher from '@/components/menu/LangSwitcher';
 import MenuAccordion from '@/components/menu/MenuAccordion';
 import RestaurantCard from '@/components/menu/RestaurantCard';
+import DishDetailSheet from '@/components/menu/DishDetailSheet';
 
 function SourceBadge({ sourceType }: { sourceType: string | null }) {
   const labels: Record<string, string> = {
@@ -34,6 +36,7 @@ interface MenuContentProps {
   onFiltersChange: (f: FilterState) => void;
   isTranslating: boolean;
   categoryTranslations: Record<string, string>;
+  onTapDetail: (item: MenuItem) => void;
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -43,7 +46,7 @@ const EMPTY_FILTERS: FilterState = {
   excludeAllergens: [],
 };
 
-function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTranslations }: MenuContentProps) {
+function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTranslations, onTapDetail }: MenuContentProps) {
   const { t } = useLanguage();
 
   const filteredItems = useFilteredDishes(menu.menu_items, filters);
@@ -153,14 +156,14 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTr
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
                   >
-                    <DishCard item={item} showAllergens={hasActiveAllergenFilters} />
+                    <DishCard item={item} showAllergens={hasActiveAllergenFilters} onTapDetail={onTapDetail} />
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
           )
         ) : (
-          <MenuAccordion items={menu.menu_items} categoryTranslations={categoryTranslations} />
+          <MenuAccordion items={menu.menu_items} categoryTranslations={categoryTranslations} onTapDetail={onTapDetail} />
         )}
       </div>
 
@@ -184,12 +187,44 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [menuData, setMenuData] = useState<MenuWithItems>(initialMenu);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [detailDish, setDetailDish] = useState<MenuItem | null>(null);
   const catTranslationsRef = useRef<Record<string, Record<string, string>>>({});
   const [catTranslations, setCatTranslations] = useState<Record<string, string>>({});
   const translatedLangs = useRef(new Set<Lang>());
   const menuItemsRef = useRef(initialMenu.menu_items);
   const menuIdRef = useRef(initialMenu.id);
   const sourceLangRef = useRef(initialMenu.source_language);
+
+  // Polling hook: progressively updates enrichment fields on food items.
+  // Uses menuData.menu_items as the base so translation updates are visible.
+  // The hook merges enrichment fields (from polling) on top of whatever the
+  // current translation state is. This avoids polling restart on lang change
+  // because we only pass menuId (stable) and initialItems (used only for
+  // hasPendingFoodItems check + initial state).
+  const enrichedItems = useEnrichmentPolling(initialMenu.id, initialMenu.menu_items);
+
+  // Merge enrichment fields from polling onto the current translation state.
+  // Enrichment fields don't overlap with translation fields, so a simple Object.spread
+  // works: translation updates win for name/desc fields; enrichment polling wins for
+  // enrichment_* fields.
+  const mergedItems = useMemo(() => {
+    const enrichmentById = new Map(enrichedItems.map(i => [i.id, i]));
+    return menuData.menu_items.map(item => {
+      const enriched = enrichmentById.get(item.id);
+      if (!enriched) return item;
+      return {
+        ...item,
+        enrichment_status: enriched.enrichment_status,
+        enrichment_origin: enriched.enrichment_origin,
+        enrichment_ingredients: enriched.enrichment_ingredients,
+        enrichment_cultural_note: enriched.enrichment_cultural_note,
+        enrichment_eating_tips: enriched.enrichment_eating_tips,
+        enrichment_depth: enriched.enrichment_depth,
+        enrichment_model: enriched.enrichment_model,
+        enriched_at: enriched.enriched_at,
+      };
+    });
+  }, [menuData.menu_items, enrichedItems]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -273,14 +308,28 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     return () => { cancelled = true; };
   }, [lang]); // only re-run when lang changes
 
+  // Build the merged menu to pass to MenuContent
+  const mergedMenu = useMemo(() => ({
+    ...menuData,
+    menu_items: mergedItems,
+  }), [menuData, mergedItems]);
+
   return (
-    <MenuContent
-      menu={menuData}
-      filters={filters}
-      onFiltersChange={setFilters}
-      isTranslating={isTranslating}
-      categoryTranslations={catTranslations}
-    />
+    <>
+      <MenuContent
+        menu={mergedMenu}
+        filters={filters}
+        onFiltersChange={setFilters}
+        isTranslating={isTranslating}
+        categoryTranslations={catTranslations}
+        onTapDetail={setDetailDish}
+      />
+      <DishDetailSheet
+        item={detailDish}
+        isOpen={!!detailDish}
+        onClose={() => setDetailDish(null)}
+      />
+    </>
   );
 }
 
