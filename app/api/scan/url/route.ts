@@ -16,7 +16,7 @@ import { getOrParseMenu, getAdminConfig, getCachedMenu } from '@/lib/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { extractMenuContent } from '@/lib/screenshotone';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
-import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkRestaurantName } from '@/lib/menu-providers/eazee-link';
+import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkPlaceName } from '@/lib/menu-providers/eazee-link';
 import { enrichWithGooglePlaces } from '@/lib/google-places';
 
 // Vercel Pro plan: pipeline can take 6–15s total
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       if (cachedMenu) {
         // Backfill restaurant_name + Places data for menus created before this feature
         if (!cachedMenu.restaurant_name || !cachedMenu.google_place_id) {
-          const name = cachedMenu.restaurant_name ?? await fetchEazeeLinkRestaurantName(eazeeStickerId);
+          const name = cachedMenu.restaurant_name ?? await fetchEazeeLinkPlaceName(eazeeStickerId);
           if (name && !cachedMenu.restaurant_name) {
             // Fire-and-forget: patch restaurant_name in DB
             supabaseAdmin.from('menus').update({ restaurant_name: name }).eq('id', cachedMenu.id).then(() => {});

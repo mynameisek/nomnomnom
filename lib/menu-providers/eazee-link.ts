@@ -87,8 +87,11 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   sourceLanguage: string;
   restaurantName: string | null;
 }> {
-  const apiUrl = `${EAZEE_API_BASE}/${stickerId}/menu`;
-  const response = await fetch(apiUrl);
+  // Fetch menu data and restaurant name in parallel
+  const [response, restaurantName] = await Promise.all([
+    fetch(`${EAZEE_API_BASE}/${stickerId}/menu`),
+    fetchEazeeLinkPlaceName(stickerId),
+  ]);
 
   if (!response.ok) {
     throw new Error(
@@ -218,42 +221,20 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   // Eazee-link is a French platform — menus are virtually always in French
   const sourceLanguage = 'fr';
 
-  // Try to extract restaurant name from category labels (common pattern: "Menu {Name}")
-  const restaurantName = extractRestaurantName(data.categories);
-
   return { dishes, rawText, sourceLanguage, restaurantName };
 }
 
 /**
- * Lightweight fetch: only gets the restaurant name from eazee-link API.
- * Used on cache hits to backfill restaurant_name without re-parsing the full menu.
+ * Fetches the restaurant/place name from eazee-link's /place endpoint.
+ * Used both during full menu fetch and for cache hit backfill.
  */
-export async function fetchEazeeLinkRestaurantName(stickerId: string): Promise<string | null> {
+export async function fetchEazeeLinkPlaceName(stickerId: string): Promise<string | null> {
   try {
-    const res = await fetch(`${EAZEE_API_BASE}/${stickerId}/menu`);
+    const res = await fetch(`${EAZEE_API_BASE}/${stickerId}/place`);
     if (!res.ok) return null;
-    const data: EazeeMenuResponse = await res.json();
-    return extractRestaurantName(data.categories);
+    const data = await res.json();
+    return data.name ?? null;
   } catch {
     return null;
   }
-}
-
-/**
- * Heuristic: extract restaurant name from eazee-link category labels.
- * Common patterns: "Menu Umaï Ramen", "Menu Le Café Grognon", "La carte du Petit Bistrot"
- */
-function extractRestaurantName(categories: EazeeCategory[]): string | null {
-  for (const cat of categories) {
-    const match = cat.label.match(/^Menu\s+(.+)/i);
-    if (match) {
-      const name = match[1].trim();
-      // Filter out generic labels like "Menu enfant", "Menu midi"
-      const generic = /^(enfant|midi|soir|du jour|déjeuner|dîner|formule|complet)/i;
-      if (!generic.test(name) && name.length > 2) {
-        return name;
-      }
-    }
-  }
-  return null;
 }
