@@ -20,6 +20,7 @@ import { extractMenuContent } from '@/lib/screenshotone';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
 import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkPlaceData } from '@/lib/menu-providers/eazee-link';
 import { enrichWithGooglePlaces } from '@/lib/google-places';
+import { generateCanonicalNames } from '@/lib/canonical';
 
 // Vercel Pro plan: pipeline can take 6–15s total
 export const maxDuration = 120;
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
       // Step 3: Store in cache and return (no upfront translation — lazy translate handles it)
       const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage, restaurant_name: restaurantName });
       after(() => enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id, placeSearchHint));
+      after(async () => { await generateCanonicalNames(menu.id); });
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
       // Clean markdown → text-based LLM parse
       const menu = await getOrParseMenu(url, 'url', result.content);
       after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
+      after(async () => { await generateCanonicalNames(menu.id); });
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -129,6 +132,7 @@ export async function POST(req: NextRequest) {
 
       const menu = await getOrParseMenu(url, 'url', '[pdf menu]', output);
       after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
+      after(async () => { await generateCanonicalNames(menu.id); });
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -161,6 +165,7 @@ export async function POST(req: NextRequest) {
 
     const menu = await getOrParseMenu(url, 'url', '[screenshot fallback]', output);
     after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
+    after(async () => { await generateCanonicalNames(menu.id); });
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

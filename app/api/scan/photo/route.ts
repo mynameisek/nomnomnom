@@ -15,6 +15,7 @@ import { menuParseSchema } from '@/lib/types/llm';
 import { getOrParseMenu, getAdminConfig } from '@/lib/cache';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
 import { enrichWithGooglePlaces } from '@/lib/google-places';
+import { generateCanonicalNames } from '@/lib/canonical';
 
 // Vercel Pro plan: Vision OCR can take 6–15s total
 export const maxDuration = 60;
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
     const photoUrl = `photo:${Date.now()}`;
     const menu = await getOrParseMenu(photoUrl, 'photo', '[photo upload]', output);
     after(() => enrichWithGooglePlaces(menu.restaurant_name, photoUrl, menu.id));
+    after(async () => { await generateCanonicalNames(menu.id); });
 
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
