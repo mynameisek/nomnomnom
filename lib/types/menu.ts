@@ -110,6 +110,11 @@ export interface MenuItem {
   enrichment_model: string | null;
   enriched_at: string | null;             // ISO string
   embedding_model: string | null;
+  image_url: string | null;
+  image_source: string | null;       // 'unsplash' | 'pexels'
+  image_credit: string | null;
+  image_credit_url: string | null;
+  image_placeholder: string | null;  // data:image/bmp;base64,... for blur-up
   created_at: string;         // timestamptz as ISO string
 }
 
