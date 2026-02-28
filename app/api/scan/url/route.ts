@@ -79,8 +79,10 @@ export async function POST(req: NextRequest) {
             }
           });
         }
-        // Backfill images for enriched dishes that don't have images yet
+        // Backfill enrichment pipeline for menus cached before v1.2
         after(async () => {
+          await generateCanonicalNames(cachedMenu.id);
+          await enrichDishBatch(cachedMenu.id);
           await fetchDishImages(cachedMenu.id);
         });
         return NextResponse.json({ menuId: cachedMenu.id });
