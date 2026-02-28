@@ -33,14 +33,16 @@ interface PlacesResult {
  * Fire-and-forget: does not throw — logs errors and returns silently.
  *
  * Search strategy:
- * 1. Restaurant name known → search by name (best signal)
- * 2. No name but real restaurant URL → search by domain (e.g. "lepetitbistrot.fr")
- * 3. No name + platform URL (eazee-link etc) → skip (would find the platform)
+ * 1. Name + website hint → "UMAÏ RAMEN umai-ramen.fr" (best precision)
+ * 2. Name only → "restaurant UMAÏ RAMEN" with France bias
+ * 3. No name but real restaurant URL → search by domain (e.g. "lepetitbistrot.fr")
+ * 4. No name + platform URL (eazee-link etc) → skip (would find the platform)
  */
 export async function enrichWithGooglePlaces(
   restaurantName: string | null,
   menuUrl: string,
   menuId: string,
+  websiteHint?: string | null,
 ): Promise<void> {
   if (!PLACES_API_KEY) return;
 
@@ -54,9 +56,14 @@ export async function enrichWithGooglePlaces(
 
     if (existing?.google_place_id) return;
 
-    // Build search query
+    // Build search query — cascade from best to weakest signal
     let searchQuery: string | null = null;
-    if (restaurantName) {
+    const websiteDomain = websiteHint ? extractDomain(websiteHint) : null;
+
+    if (restaurantName && websiteDomain) {
+      // Best: name + website domain → near-perfect precision
+      searchQuery = `${restaurantName} ${websiteDomain}`;
+    } else if (restaurantName) {
       searchQuery = `restaurant ${restaurantName}`;
     } else {
       const domain = extractDomain(menuUrl);

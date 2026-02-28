@@ -17,7 +17,7 @@ import { getOrParseMenu, getAdminConfig, getCachedMenu } from '@/lib/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { extractMenuContent } from '@/lib/screenshotone';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
-import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkPlaceName } from '@/lib/menu-providers/eazee-link';
+import { getEazeeLinkStickerId, fetchEazeeLinkMenu, fetchEazeeLinkPlaceData } from '@/lib/menu-providers/eazee-link';
 import { enrichWithGooglePlaces } from '@/lib/google-places';
 
 // Vercel Pro plan: pipeline can take 6–15s total
@@ -63,13 +63,15 @@ export async function POST(req: NextRequest) {
       if (cachedMenu) {
         // Backfill restaurant_name + Places data for menus created before this feature
         if (!cachedMenu.restaurant_name || !cachedMenu.google_place_id) {
-          const name = cachedMenu.restaurant_name ?? await fetchEazeeLinkPlaceName(eazeeStickerId);
+          const placeData = cachedMenu.restaurant_name ? null : await fetchEazeeLinkPlaceData(eazeeStickerId);
+          const name = cachedMenu.restaurant_name ?? placeData?.name ?? null;
+          const website = placeData?.websiteUrl ?? null;
           after(async () => {
             if (name && !cachedMenu.restaurant_name) {
               await supabaseAdmin.from('menus').update({ restaurant_name: name }).eq('id', cachedMenu.id);
             }
             if (!cachedMenu.google_place_id) {
-              await enrichWithGooglePlaces(name, canonicalUrl, cachedMenu.id);
+              await enrichWithGooglePlaces(name, canonicalUrl, cachedMenu.id, website);
             }
           });
         }
@@ -78,11 +80,11 @@ export async function POST(req: NextRequest) {
 
       // Step 2: Cache MISS — fetch structured dishes from eazee-link API
       // No LLM call needed — translations happen lazily per language on demand
-      const { dishes, rawText, sourceLanguage, restaurantName } = await fetchEazeeLinkMenu(eazeeStickerId);
+      const { dishes, rawText, sourceLanguage, restaurantName, websiteUrl } = await fetchEazeeLinkMenu(eazeeStickerId);
 
       // Step 3: Store in cache and return (no upfront translation — lazy translate handles it)
       const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage, restaurant_name: restaurantName });
-      after(() => enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id));
+      after(() => enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id, websiteUrl));
       return NextResponse.json({ menuId: menu.id });
     }
 

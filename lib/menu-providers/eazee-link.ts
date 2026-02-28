@@ -86,12 +86,14 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   rawText: string;
   sourceLanguage: string;
   restaurantName: string | null;
+  websiteUrl: string | null;
 }> {
-  // Fetch menu data and restaurant name in parallel
-  const [response, restaurantName] = await Promise.all([
+  // Fetch menu data and place metadata in parallel
+  const [response, placeData] = await Promise.all([
     fetch(`${EAZEE_API_BASE}/${stickerId}/menu`),
-    fetchEazeeLinkPlaceName(stickerId),
+    fetchPlaceRaw(stickerId),
   ]);
+  const restaurantName = (placeData?.name as string) ?? null;
 
   if (!response.ok) {
     throw new Error(
@@ -221,20 +223,48 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   // Eazee-link is a French platform — menus are virtually always in French
   const sourceLanguage = 'fr';
 
-  return { dishes, rawText, sourceLanguage, restaurantName };
+  // Extract website URL from place data
+  const websiteUrl = placeData ? extractWidgetUrl(placeData, 'website') : null;
+
+  return { dishes, rawText, sourceLanguage, restaurantName, websiteUrl };
 }
 
 /**
- * Fetches the restaurant/place name from eazee-link's /place endpoint.
- * Used both during full menu fetch and for cache hit backfill.
+ * Fetches raw /place JSON. Used internally by both fetchEazeeLinkMenu and fetchEazeeLinkPlaceData.
  */
-export async function fetchEazeeLinkPlaceName(stickerId: string): Promise<string | null> {
+async function fetchPlaceRaw(stickerId: string): Promise<Record<string, unknown> | null> {
   try {
     const res = await fetch(`${EAZEE_API_BASE}/${stickerId}/place`);
     if (!res.ok) return null;
-    const data = await res.json();
-    return data.name ?? null;
+    return await res.json();
   } catch {
     return null;
   }
+}
+
+interface EazeePlaceData {
+  name: string | null;
+  websiteUrl: string | null;
+}
+
+/**
+ * Fetches restaurant metadata from eazee-link's /place endpoint.
+ * Returns name + website URL for Google Places search precision.
+ */
+export async function fetchEazeeLinkPlaceData(stickerId: string): Promise<EazeePlaceData> {
+  const data = await fetchPlaceRaw(stickerId);
+  return {
+    name: (data?.name as string) ?? null,
+    websiteUrl: data ? extractWidgetUrl(data, 'website') : null,
+  };
+}
+
+/**
+ * Extracts a URL from an eazee-link widget by type.
+ */
+function extractWidgetUrl(placeData: Record<string, unknown>, widgetType: string): string | null {
+  const widgets = placeData?.widgets as Array<{ type: string; activated: boolean; widgetDetails?: { url?: string } }> | undefined;
+  if (!widgets) return null;
+  const widget = widgets.find((w) => w.type === widgetType && w.activated);
+  return widget?.widgetDetails?.url ?? null;
 }
