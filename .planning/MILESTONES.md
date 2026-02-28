@@ -17,3 +17,23 @@
 
 ---
 
+
+## v1.1 MVP App (Shipped: 2026-02-28)
+
+**Phases completed:** 6 phases, 10 plans
+**Timeline:** 2026-02-25 → 2026-02-28 (4 days)
+**Stack:** Next.js 16 + React 19 + Supabase + OpenAI (AI SDK 6) + Screenshotone
+
+**Key accomplishments:**
+- 3 scan methods (QR camera, URL paste, photo OCR) through LLM pipeline to parsed menu pages
+- PDF menu support via native GPT-4o file input (no screenshot needed)
+- Eazee-link provider: structured API integration with Instagram/Facebook-based Places hints
+- Dish cards with 4-language translation (FR/EN/TR/DE), EU 14 allergen detection, dietary tags
+- Free-tier translation cascade (DeepL → Google → Azure → MyMemory → LLM fallback)
+- Client-side instant filters: dietary preference, allergen exclusion, spice level, text search
+- Google Places enrichment: address, phone, rating, photo for restaurant context
+- Protected admin dashboard with LLM model selector and scan statistics
+- URL hash caching with TTL — repeat scans return instantly without LLM cost
+
+---
+
