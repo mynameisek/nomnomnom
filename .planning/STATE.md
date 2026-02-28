@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 11 of 14 (Dish Enrichment)
-Plan: 1 of 2 complete in current phase
-Status: Phase 11 Plan 01 complete — enrichment backend pipeline shipped
-Last activity: 2026-02-28 — Phase 11 Plan 01 complete: enrichment pipeline, adaptive depth, scan wiring, status endpoint
+Plan: 2 of 2 complete in current phase — Phase 11 COMPLETE
+Status: Phase 11 complete — enrichment UI shipped (polling, bottom sheet, DishCard states, admin regen)
+Last activity: 2026-02-28 — Phase 11 Plan 02 complete: polling hook, DishDetailSheet, enriched DishCard, admin Server Actions
 
-Progress: [███░░░░░░░░░░░] 18% (v1.2 — 3/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
+Progress: [████░░░░░░░░░░] 25% (v1.2 — 4/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
 
 ## Performance Metrics
 
@@ -30,9 +30,14 @@ Progress: [███░░░░░░░░░░░] 18% (v1.2 — 3/16 plans)
 | 1-3 | v1.0 | 5 |
 | 4-9 | v1.1 | 10 |
 | 10 | v1.2 | 2 |
-| 11 | v1.2 | 1 (ongoing) |
+| 11 | v1.2 | 2 (complete) |
 
 *v1.2 metrics start fresh from Phase 10*
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 11 P01 | ~5 minutes | 2 | 7 |
+| Phase 11 P02 | ~7 minutes | 2 | 8 |
 
 ## Accumulated Context
 
@@ -55,6 +60,9 @@ Key decisions affecting v1.2:
 - Chunk size 40 for enrichment batches (vs 80 for canonical names) — enrichment JSON output is longer per dish
 - Beverages marked skipped immediately in enrichDishBatch (before LLM call) — prevents front-end polling stall
 - Status endpoint uses anon Supabase client — enrichment fields contain no PII
+- [Phase 11]: Named import { Sheet } from react-modal-sheet — v5 uses named export, not default
+- [Phase 11]: Enrichment and translation state merged at render via useMemo — avoids polling restart on lang change
+- [Phase 11]: Confirm swap UX for per-menu bulk regen — one extra click prevents accidental slow ops
 
 ### Pending Todos
 
@@ -71,5 +79,5 @@ Key decisions affecting v1.2:
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 11 Plan 01 complete — enrichment pipeline (lib/enrichment.ts), adaptive depth system prompt, scan route chaining, GET /api/enrichment/status endpoint
+Stopped at: Phase 11 Plan 02 complete — enrichment UI (useEnrichmentPolling, DishDetailSheet, enriched DishCard, admin regeneration Server Actions). Phase 11 fully complete.
 Resume file: None
