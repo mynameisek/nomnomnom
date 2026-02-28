@@ -65,6 +65,7 @@ export interface Menu {
   source_language: string | null; // detected menu language (e.g. 'fr', 'en', 'tr')
   parse_time_ms: number | null;   // LLM parse duration in ms (null for cache hits)
   hit_count: number;              // number of cache hits since first parse (default 0)
+  dish_names_hash: string | null;    // SHA-256 of sorted dish names for re-scan diff
   category_translations: Record<string, Record<string, string>> | null; // {"de":{"A BOIRE":"GETRÄNKE",...},...}
   google_place_id: string | null;
   google_place_name: string | null;
@@ -96,6 +97,12 @@ export interface MenuItem {
   category: string | null;    // top-level category (e.g. "Entrées", "Boissons")
   subcategory: string | null; // sub-category (e.g. "Bières", "Cocktails")
   sort_order: number;         // preserves original menu order
+  canonical_name: string | null;
+  canonical_confidence: number | null;
+  canonical_source: string | null;   // 'seed_match' | 'llm_generated'
+  is_beverage: boolean;
+  enrichment_status: string;         // 'pending' | 'enriched' | 'skipped' | 'failed'
+  embedding_model: string | null;
   created_at: string;         // timestamptz as ISO string
 }
 

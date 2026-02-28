@@ -127,6 +127,29 @@ export const eazeeLinkMenuTranslationSchema = z.object({
   dishes: z.array(eazeeLinkDishTranslationSchema),
 });
 
+// =============================================================================
+// Canonical name batch schema — LLM output for batch canonical name generation
+// =============================================================================
+
+/**
+ * Schema for a single dish's canonical name result from the batch LLM call.
+ * Index matches the input array position for merging results back.
+ */
+export const canonicalDishResultSchema = z.object({
+  index: z.number(),
+  canonical_name: z.string().nullable(),    // null if LLM cannot determine
+  confidence: z.number(),                    // 0.0–1.0
+  is_beverage: z.boolean(),
+});
+
+/**
+ * Top-level batch schema — wraps array of canonical results.
+ * Passed to AI SDK Output.object() in generateCanonicalNames.
+ */
+export const canonicalBatchSchema = z.object({
+  dishes: z.array(canonicalDishResultSchema),
+});
+
 /**
  * Inferred TypeScript types from Zod schemas.
  * Use these types throughout the app — they are guaranteed to match the Zod schema.
@@ -137,3 +160,5 @@ export type DishParse = z.infer<typeof dishParseSchema>;
 export type MenuParse = z.infer<typeof menuParseSchema>;
 export type EazeeLinkDishTranslation = z.infer<typeof eazeeLinkDishTranslationSchema>;
 export type EazeeLinkMenuTranslation = z.infer<typeof eazeeLinkMenuTranslationSchema>;
+export type CanonicalDishResult = z.infer<typeof canonicalDishResultSchema>;
+export type CanonicalBatchResult = z.infer<typeof canonicalBatchSchema>;
