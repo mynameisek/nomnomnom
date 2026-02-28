@@ -86,7 +86,7 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   rawText: string;
   sourceLanguage: string;
   restaurantName: string | null;
-  websiteUrl: string | null;
+  placeSearchHint: string | null;
 }> {
   // Fetch menu data and place metadata in parallel
   const [response, placeData] = await Promise.all([
@@ -223,10 +223,10 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   // Eazee-link is a French platform — menus are virtually always in French
   const sourceLanguage = 'fr';
 
-  // Extract website URL from place data
-  const websiteUrl = placeData ? extractWidgetUrl(placeData, 'website') : null;
+  // Extract best search hint for Google Places: website > instagram > facebook
+  const placeSearchHint = placeData ? extractPlaceSearchHint(placeData) : null;
 
-  return { dishes, rawText, sourceLanguage, restaurantName, websiteUrl };
+  return { dishes, rawText, sourceLanguage, restaurantName, placeSearchHint };
 }
 
 /**
@@ -244,27 +244,51 @@ async function fetchPlaceRaw(stickerId: string): Promise<Record<string, unknown>
 
 interface EazeePlaceData {
   name: string | null;
-  websiteUrl: string | null;
+  placeSearchHint: string | null;
 }
 
 /**
  * Fetches restaurant metadata from eazee-link's /place endpoint.
- * Returns name + website URL for Google Places search precision.
+ * Returns name + search hint (website/social handle) for Google Places precision.
  */
 export async function fetchEazeeLinkPlaceData(stickerId: string): Promise<EazeePlaceData> {
   const data = await fetchPlaceRaw(stickerId);
   return {
     name: (data?.name as string) ?? null,
-    websiteUrl: data ? extractWidgetUrl(data, 'website') : null,
+    placeSearchHint: data ? extractPlaceSearchHint(data) : null,
   };
 }
 
 /**
- * Extracts a URL from an eazee-link widget by type.
+ * Extracts the best search hint from eazee-link widgets for Google Places.
+ * Priority: website domain > instagram handle > facebook handle.
+ * These help Google disambiguate generic restaurant names.
  */
-function extractWidgetUrl(placeData: Record<string, unknown>, widgetType: string): string | null {
+function extractPlaceSearchHint(placeData: Record<string, unknown>): string | null {
   const widgets = placeData?.widgets as Array<{ type: string; activated: boolean; widgetDetails?: { url?: string } }> | undefined;
   if (!widgets) return null;
-  const widget = widgets.find((w) => w.type === widgetType && w.activated);
-  return widget?.widgetDetails?.url ?? null;
+
+  // 1. Website domain (best signal)
+  const website = widgets.find((w) => w.type === 'website' && w.activated)?.widgetDetails?.url;
+  if (website) {
+    try {
+      return new URL(website).hostname.replace(/^www\./, '');
+    } catch { /* ignore */ }
+  }
+
+  // 2. Instagram handle
+  const insta = widgets.find((w) => w.type === 'instagram' && w.activated)?.widgetDetails?.url;
+  if (insta) {
+    const handle = insta.replace(/\/$/, '').split('/').pop();
+    if (handle) return handle;
+  }
+
+  // 3. Facebook handle
+  const fb = widgets.find((w) => w.type === 'facebook' && w.activated)?.widgetDetails?.url;
+  if (fb) {
+    const handle = fb.replace(/\/$/, '').split('/').pop();
+    if (handle) return handle;
+  }
+
+  return null;
 }
