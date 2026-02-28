@@ -112,7 +112,13 @@ export async function POST(req: NextRequest) {
     if (needsTranslation.length === 0) {
       // All items already have this translation — but categories may still need it
       const catResult = await translateCategories(items, menu, menuId as string, lang as string, sourceLang, config.llm_model);
-      return NextResponse.json({ items, alreadyTranslated: true, categoryTranslations: catResult });
+      // Fetch full items (the query above only selected specific columns)
+      const { data: fullItems } = await supabaseAdmin
+        .from('menu_items')
+        .select('*')
+        .eq('menu_id', menuId)
+        .order('sort_order', { ascending: true });
+      return NextResponse.json({ items: fullItems ?? items, alreadyTranslated: true, categoryTranslations: catResult });
     }
 
     const translated = await translateBatch(
