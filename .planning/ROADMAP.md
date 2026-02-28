@@ -69,11 +69,11 @@ Plans:
   2. A DishCard for "steak frites" shows minimal enrichment; a DishCard for "Mantı" shows full cultural context
   3. Tapping "Régénérer" on an enriched dish fetches fresh LLM data and replaces the stored enrichment
   4. While enrichment is pending, each DishCard shows a visual in-progress indicator
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: lib/enrichment.ts + enrichDish() batch LLM call + after() integration in scan routes
-- [ ] 11-02: Status polling endpoint + DishCard progressive enhancement + regeneration action
+- [ ] 11-01-PLAN.md — SQL migration + enrichment Zod schema + lib/enrichment.ts batch LLM pipeline + scan route wiring + status polling endpoint
+- [ ] 11-02-PLAN.md — DishCard progressive enhancement (shimmer/preview/detail sheet) + polling hook + admin regen Server Actions
 
 ### Phase 12: Dish Images
 **Goal**: Each enriched dish card displays a relevant licensed photo, falling back gracefully to gradient+emoji when no image is found
