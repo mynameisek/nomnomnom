@@ -42,7 +42,12 @@ export async function translateBatch(
     ? 'These are section names from a restaurant menu (e.g. starters, mains, desserts, drinks).'
     : 'These are dish names and descriptions from a restaurant menu.';
 
-  const providers: Array<{
+  // Provider order depends on context:
+  // - Categories: DeepL first (context param disambiguates "Entrée" → "Starter")
+  // - Items: Google first (saves DeepL 500K free quota for categories)
+  const useDeepLFirst = context === 'menu_categories';
+
+  const allProviders: Array<{
     name: string;
     available: boolean;
     fn: (texts: string[], src: string, tgt: string, ctx?: string) => Promise<(string | null)[]>;
@@ -68,6 +73,15 @@ export async function translateBatch(
       fn: translateWithMyMemory,
     },
   ];
+
+  // Reorder: for items, move Google before DeepL to preserve DeepL quota
+  const providers = useDeepLFirst
+    ? allProviders
+    : [...allProviders].sort((a, b) => {
+        if (a.name === 'Google') return -1;
+        if (b.name === 'Google') return 1;
+        return 0;
+      });
 
   // Try each free provider in order
   for (const provider of providers) {
