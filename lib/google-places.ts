@@ -4,6 +4,7 @@
 // Uses Google Places API (New) Text Search to find restaurant info.
 // Called after menu parse — updates menus row with place data asynchronously.
 // Gracefully skips if GOOGLE_PLACES_API_KEY is not set or API fails.
+// Only searches when a restaurant name is available — no guessing.
 // =============================================================================
 
 import 'server-only';
@@ -24,9 +25,9 @@ interface PlacesResult {
 /**
  * Enriches a menu row with Google Places data (address, rating, phone, etc.).
  * Fire-and-forget: does not throw — logs errors and returns silently.
+ * Only searches when restaurantName is provided — avoids false positives.
  *
- * @param restaurantName - LLM-extracted restaurant name (may be null)
- * @param menuUrl - Original menu URL (used as search hint if no name)
+ * @param restaurantName - Restaurant name (from LLM or eazee-link heuristic). Skips if null.
  * @param menuId - Supabase menu row ID to update
  */
 export async function enrichWithGooglePlaces(
@@ -35,6 +36,7 @@ export async function enrichWithGooglePlaces(
   menuId: string,
 ): Promise<void> {
   if (!PLACES_API_KEY) return;
+  if (!restaurantName) return; // No name = no search. Better than false positives.
 
   try {
     // Skip if already enriched
@@ -46,11 +48,7 @@ export async function enrichWithGooglePlaces(
 
     if (existing?.google_place_id) return;
 
-    // Build search query: prefer restaurant name, fallback to URL domain
-    const searchQuery = restaurantName ?? extractDomain(menuUrl);
-    if (!searchQuery) return;
-
-    const result = await searchPlace(searchQuery);
+    const result = await searchPlace(`restaurant ${restaurantName}`);
     if (!result) return;
 
     // Update menu row with Places data
@@ -64,8 +62,6 @@ export async function enrichWithGooglePlaces(
         google_rating: result.rating,
         google_photo_ref: result.photo_ref,
         google_url: result.google_url,
-        // Also set restaurant_name from Places if LLM didn't extract one
-        ...(!restaurantName ? { restaurant_name: result.name } : {}),
       })
       .eq('id', menuId);
 
@@ -126,18 +122,4 @@ async function searchPlace(query: string): Promise<PlacesResult | null> {
     photo_ref: place.photos?.[0]?.name ?? null,
     google_url: place.googleMapsUri ?? null,
   };
-}
-
-/**
- * Extracts a human-readable domain from a URL for Places search fallback.
- * e.g. "https://menu.eazee-link.com/?id=123" → "eazee-link.com"
- */
-function extractDomain(url: string): string | null {
-  try {
-    const hostname = new URL(url).hostname;
-    // Strip common subdomains
-    return hostname.replace(/^(www|menu|order|app)\./, '');
-  } catch {
-    return null;
-  }
 }
