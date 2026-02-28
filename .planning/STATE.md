@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 10 of 14 (DB Foundation + Canonical Names)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-28 — Phase 10 Plan 01 complete: SQL migration + TypeScript types
+Plan: 2 of 2 in current phase — PHASE COMPLETE
+Status: Phase 10 complete, ready for Phase 11
+Last activity: 2026-02-28 — Phase 10 Plan 02 complete: canonical name pipeline, cache recycling, seed data
 
-Progress: [█░░░░░░░░░░░░░] 6% (v1.2 — 1/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
+Progress: [██░░░░░░░░░░░░] 12% (v1.2 — 2/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
 
 ## Performance Metrics
 
@@ -47,6 +47,9 @@ Key decisions affecting v1.2:
 - Top 3 rate gate: localStorage (no account), 3x/day free
 - embedding column is DB-only (not in TypeScript types) — vectors never transported as JSON
 - canonicalDishResultSchema uses .nullable() on canonical_name (not .optional()) per OpenAI structured output requirement
+- All items (food + beverages) get enrichment_status='pending' — is_beverage flag signals Phase 11 to deprioritize beverages, not skip them (KNOW-04)
+- Cache HIT paths skip generateCanonicalNames — canonical names survive re-scan via canonicalCache recycling in getOrParseMenu
+- Two separate after() calls per scan path (Places + Canonical) run concurrently — not chained
 
 ### Pending Todos
 
@@ -56,11 +59,11 @@ Key decisions affecting v1.2:
 
 ### Blockers/Concerns
 
-- Canonical name seed table (100-200 entries for Turkish/Alsatian/North African dishes) is a content task, not code — must be ready before first production enrichment fires in Phase 11
+- Canonical name seed table RESOLVED — 124 entries seeded across 7 cuisines in Phase 10 Plan 02
 - Reverse search (Phase 14) requires 50+ canonical records in the database before results are meaningful; promote UI only after data threshold is met
 
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 10 Plan 01 complete — SQL migration + TypeScript types committed
+Stopped at: Phase 10 Plan 02 complete — canonical name pipeline, cache recycling, 124-entry known_dishes seed
 Resume file: None
