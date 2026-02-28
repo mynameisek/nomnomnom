@@ -10,13 +10,16 @@
 // 2. Pexels REST API (fallback) — square food photos, simpler attribution
 // 3. null (no result) — UI renders cuisine-based gradient + emoji fallback
 //
+// Relevance check: each candidate photo's alt_description is matched against
+// dish keywords. Irrelevant photos are rejected before storing.
+//
 // Deduplication: dishes sharing the same canonical_name share one image fetch.
 // Beverages: skipped (enrichment_depth = 'full' filter excludes them already).
 // =============================================================================
 
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { hexToDataURL, buildImageQuery } from '@/lib/image-utils';
+import { hexToDataURL, buildImageQuery, isImageRelevant } from '@/lib/image-utils';
 
 // =============================================================================
 // Internal types
@@ -31,19 +34,17 @@ interface ImageResult {
 }
 
 // =============================================================================
-// fetchFromUnsplash
+// fetchFromUnsplash — with relevance filtering
 // =============================================================================
 
 /**
- * Fetches a squarish food photo from Unsplash.
- * Returns null if: key missing, API error, rate limit low (<5 remaining), or no results.
+ * Fetches a relevant food photo from Unsplash.
+ * Returns null if: key missing, API error, rate limit low, no results, or no relevant match.
  *
- * API compliance:
- * - Always fires download tracking request (required by Unsplash guidelines)
- * - Returns hotlink URL from photo.urls.small — never re-hosts
- * - UTM params on photographer credit URL (required by attribution guidelines)
+ * Iterates up to 5 results and picks the first whose alt_description
+ * contains keywords matching the dish name.
  */
-async function fetchFromUnsplash(query: string): Promise<ImageResult | null> {
+async function fetchFromUnsplash(query: string, dishKeywords: string[]): Promise<ImageResult | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return null;
 
@@ -78,42 +79,47 @@ async function fetchFromUnsplash(query: string): Promise<ImageResult | null> {
   const data = await res.json() as { results?: Array<{
     urls: { small: string };
     color: string;
+    alt_description: string | null;
+    description: string | null;
     user: { name: string; username: string };
     links: { download_location: string };
   }> };
 
-  const photo = data.results?.[0];
-  if (!photo) return null;
+  if (!data.results || data.results.length === 0) return null;
 
-  // Fire-and-forget download tracking — required by Unsplash API guidelines
-  // (constitutes "selection" of the photo per their terms)
-  fetch(photo.links.download_location, {
-    headers: { Authorization: `Client-ID ${key}` },
-  }).catch(() => {});
+  // Find the first relevant photo — check alt_description + description against dish keywords
+  for (const photo of data.results) {
+    const photoText = [photo.alt_description, photo.description].filter(Boolean).join(' ');
+    if (!isImageRelevant(photoText, dishKeywords)) continue;
 
-  return {
-    url: photo.urls.small,
-    placeholder: hexToDataURL(photo.color),
-    credit: `Photo by ${photo.user.name} on Unsplash`,
-    creditUrl: `https://unsplash.com/@${photo.user.username}?utm_source=nomnomnom&utm_medium=referral`,
-    source: 'unsplash',
-  };
+    // Fire-and-forget download tracking — required by Unsplash API guidelines
+    fetch(photo.links.download_location, {
+      headers: { Authorization: `Client-ID ${key}` },
+    }).catch(() => {});
+
+    return {
+      url: photo.urls.small,
+      placeholder: hexToDataURL(photo.color),
+      credit: `Photo by ${photo.user.name} on Unsplash`,
+      creditUrl: `https://unsplash.com/@${photo.user.username}?utm_source=nomnomnom&utm_medium=referral`,
+      source: 'unsplash',
+    };
+  }
+
+  // No relevant photo found among results
+  return null;
 }
 
 // =============================================================================
-// fetchFromPexels
+// fetchFromPexels — with relevance filtering
 // =============================================================================
 
 /**
- * Fetches a square food photo from Pexels.
- * Used as fallback when Unsplash returns no result or is rate limited.
- *
- * API compliance:
- * - Raw API key in Authorization header (no "Client-ID" prefix — Pexels differs from Unsplash)
- * - Returns hotlink URL from photo.src.medium — never re-hosts
- * - avg_color used as blur placeholder (Pexels provides this in response)
+ * Fetches a relevant food photo from Pexels.
+ * Iterates up to 5 results and picks the first whose alt text
+ * contains keywords matching the dish name.
  */
-async function fetchFromPexels(query: string): Promise<ImageResult | null> {
+async function fetchFromPexels(query: string, dishKeywords: string[]): Promise<ImageResult | null> {
   const key = process.env.PEXELS_API_KEY;
   if (!key) return null;
 
@@ -140,20 +146,28 @@ async function fetchFromPexels(query: string): Promise<ImageResult | null> {
   const data = await res.json() as { photos?: Array<{
     src: { medium: string };
     avg_color: string;
+    alt: string | null;
     photographer: string;
     photographer_url: string;
   }> };
 
-  const photo = data.photos?.[0];
-  if (!photo) return null;
+  if (!data.photos || data.photos.length === 0) return null;
 
-  return {
-    url: photo.src.medium,
-    placeholder: hexToDataURL(photo.avg_color),
-    credit: `Photo by ${photo.photographer} on Pexels`,
-    creditUrl: `${photo.photographer_url}?utm_source=nomnomnom`,
-    source: 'pexels',
-  };
+  // Find first relevant photo
+  for (const photo of data.photos) {
+    if (!isImageRelevant(photo.alt ?? '', dishKeywords)) continue;
+
+    return {
+      url: photo.src.medium,
+      placeholder: hexToDataURL(photo.avg_color),
+      credit: `Photo by ${photo.photographer} on Pexels`,
+      creditUrl: `${photo.photographer_url}?utm_source=nomnomnom`,
+      source: 'pexels',
+    };
+  }
+
+  // No relevant photo found among results
+  return null;
 }
 
 // =============================================================================
@@ -168,7 +182,7 @@ async function fetchFromPexels(query: string): Promise<ImageResult | null> {
  * Flow:
  * 1. Fetch full-depth enriched food items with no image_url
  * 2. For each item: check canonical_name deduplication (share existing image, zero API cost)
- * 3. Build search query and fetch: Unsplash → Pexels → null
+ * 3. Build search query + dish keywords, fetch with relevance check: Unsplash → Pexels → null
  * 4. Update menu_items with all 5 image fields
  * 5. Per-item try/catch — one failure never stops the batch
  *
@@ -178,7 +192,7 @@ export async function fetchDishImages(menuId: string): Promise<void> {
   try {
     const { data: items, error: fetchError } = await supabaseAdmin
       .from('menu_items')
-      .select('id, canonical_name, name_original, enrichment_origin')
+      .select('id, canonical_name, name_original, enrichment_origin, enrichment_ingredients')
       .eq('menu_id', menuId)
       .eq('is_beverage', false)
       .eq('enrichment_status', 'enriched')
@@ -197,10 +211,12 @@ export async function fetchDishImages(menuId: string): Promise<void> {
 
     console.log(`[fetchDishImages] Fetching images for ${items.length} items in menu ${menuId}`);
 
+    let storedCount = 0;
+    let skippedCount = 0;
+
     for (const item of items) {
       try {
         // Step 1: Canonical name deduplication — before any external API call
-        // If another menu_item with the same canonical_name already has an image, reuse it
         if (item.canonical_name) {
           const { data: existing } = await supabaseAdmin
             .from('menu_items')
@@ -211,7 +227,6 @@ export async function fetchDishImages(menuId: string): Promise<void> {
             .single();
 
           if (existing?.image_url) {
-            // Copy from sibling — zero API cost
             await supabaseAdmin
               .from('menu_items')
               .update({
@@ -224,13 +239,21 @@ export async function fetchDishImages(menuId: string): Promise<void> {
               .eq('id', item.id);
 
             console.log(`[fetchDishImages] Reused image for "${item.canonical_name}" (item ${item.id})`);
+            storedCount++;
             continue;
           }
         }
 
-        // Step 2: Build search query and fetch from APIs
-        const query = buildImageQuery(item.canonical_name, item.name_original, item.enrichment_origin);
-        const result = (await fetchFromUnsplash(query)) ?? (await fetchFromPexels(query));
+        // Step 2: Build search query and dish keywords for relevance check
+        const { query, keywords } = buildImageQuery(
+          item.canonical_name,
+          item.name_original,
+          item.enrichment_origin,
+          item.enrichment_ingredients,
+        );
+
+        // Step 3: Fetch with relevance filtering — Unsplash → Pexels → null
+        const result = (await fetchFromUnsplash(query, keywords)) ?? (await fetchFromPexels(query, keywords));
 
         if (result) {
           const { error: updateError } = await supabaseAdmin
@@ -247,14 +270,14 @@ export async function fetchDishImages(menuId: string): Promise<void> {
           if (updateError) {
             console.error(`[fetchDishImages] DB update failed for item ${item.id}:`, updateError.message);
           } else {
+            storedCount++;
             console.log(`[fetchDishImages] Stored ${result.source} image for "${item.name_original}" (item ${item.id})`);
           }
         } else {
-          // No result — leave image_url null; UI renders gradient+emoji fallback
-          console.log(`[fetchDishImages] No image found for "${item.name_original}" — will use gradient fallback`);
+          skippedCount++;
+          console.log(`[fetchDishImages] No relevant image for "${item.name_original}" — will use gradient fallback`);
         }
       } catch (itemError) {
-        // Per-item catch — one failure never stops processing remaining items
         console.error(
           `[fetchDishImages] Error for item ${item.id}:`,
           itemError instanceof Error ? itemError.message : itemError
@@ -262,9 +285,8 @@ export async function fetchDishImages(menuId: string): Promise<void> {
       }
     }
 
-    console.log(`[fetchDishImages] Completed image fetch for menu ${menuId}`);
+    console.log(`[fetchDishImages] Completed for menu ${menuId}: ${storedCount} stored, ${skippedCount} no relevant match`);
   } catch (error) {
-    // Top-level catch — NEVER throw from after() context
     console.error(
       '[fetchDishImages] Fatal error:',
       error instanceof Error ? error.message : error
