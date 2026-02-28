@@ -222,8 +222,13 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
         enrichment_depth: enriched.enrichment_depth,
         enrichment_model: enriched.enrichment_model,
         enriched_at: enriched.enriched_at,
-        // Enrichment translations
-        enrichment_translations: enriched.enrichment_translations,
+        // Enrichment translations — merge both sources: translate API (item) + polling (enriched)
+        // Translate API writes per-lang keys; polling returns the DB state at poll time.
+        // Spread item first (has fresh translations), then enriched (may have newer enrichment data).
+        enrichment_translations: {
+          ...(enriched.enrichment_translations ?? {}),
+          ...(item.enrichment_translations ?? {}),
+        },
         // Image fields — added for Phase 12 image display
         image_url: enriched.image_url,
         image_source: enriched.image_source,
