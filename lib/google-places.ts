@@ -34,7 +34,7 @@ interface PlacesResult {
  *
  * Search strategy:
  * 1. Name + search hint (website/social) → "UMAÏ RAMEN umai-ramen.fr" (best precision)
- * 2. Name only → "restaurant UMAÏ RAMEN" with France restriction
+ * 2. Name only without hint → skip (too ambiguous, would match wrong restaurant)
  * 3. No name but real restaurant URL → search by domain (e.g. "lepetitbistrot.fr")
  * 4. No name + platform URL (eazee-link etc) → skip (would find the platform)
  */
@@ -62,8 +62,11 @@ export async function enrichWithGooglePlaces(
     if (restaurantName && searchHint) {
       // Best: name + hint (website domain, instagram handle, etc.)
       searchQuery = `${restaurantName} ${searchHint}`;
-    } else if (restaurantName) {
-      searchQuery = `restaurant ${restaurantName}`;
+    } else if (restaurantName && !searchHint) {
+      // Name only without a disambiguating hint — skip to avoid matching the wrong restaurant
+      // (e.g. "LA VIGIE" matches dozens of restaurants across France)
+      console.log(`[google-places] Skipped: "${restaurantName}" has no search hint — too ambiguous`);
+      return;
     } else {
       const domain = extractDomain(menuUrl);
       if (domain && !PLATFORM_DOMAINS.some((p) => domain.includes(p))) {

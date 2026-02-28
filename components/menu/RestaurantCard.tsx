@@ -1,10 +1,31 @@
 import type { Menu } from '@/lib/types/menu';
+import { useLanguage } from '@/lib/i18n';
+import type { Lang } from '@/lib/i18n';
+
+const GOOGLE_MAPS_DOMAIN: Record<Lang, string> = {
+  fr: 'maps.google.fr',
+  en: 'maps.google.com',
+  tr: 'maps.google.com.tr',
+  de: 'maps.google.de',
+};
+
+function localizeGoogleUrl(url: string, lang: Lang): string {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.startsWith('maps.google')) return url;
+    parsed.hostname = GOOGLE_MAPS_DOMAIN[lang];
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
 
 interface RestaurantCardProps {
   menu: Menu;
 }
 
 export default function RestaurantCard({ menu }: RestaurantCardProps) {
+  const { lang } = useLanguage();
   const name = menu.restaurant_name ?? menu.google_place_name ?? 'Menu';
   const hasPlacesData = menu.google_address || menu.google_rating || menu.google_phone;
 
@@ -23,7 +44,7 @@ export default function RestaurantCard({ menu }: RestaurantCardProps) {
         <h1 className="text-xl font-bold text-brand-white truncate">
           {menu.google_url ? (
             <a
-              href={menu.google_url}
+              href={localizeGoogleUrl(menu.google_url, lang)}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-brand-orange transition-colors"
