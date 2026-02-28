@@ -41,6 +41,7 @@ async function translateCategories(
     sourceLang,
     lang,
     llmModel,
+    'menu_categories',
   );
 
   const newMap: Record<string, string> = { ...existingForLang };
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
       sourceLang,
       lang as string,
       config.llm_model,
+      'menu_items',
     );
 
     // Step 4: Update each item with the new translation (merge into existing JSONB)

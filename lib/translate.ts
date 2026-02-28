@@ -30,16 +30,22 @@ export async function translateBatch(
   sourceLang: string,
   targetLang: string,
   llmModel?: string,
+  context?: 'menu_categories' | 'menu_items',
 ): Promise<TranslatedItem[]> {
   if (items.length === 0) return [];
 
   // Flatten names + descriptions into a single text array for batch providers
   const { texts, nullMap } = flatten(items);
 
+  // Context hint for disambiguation (e.g. "Entrée" → "Starter" not "Input")
+  const contextHint = context === 'menu_categories'
+    ? 'These are section names from a restaurant menu (e.g. starters, mains, desserts, drinks).'
+    : 'These are dish names and descriptions from a restaurant menu.';
+
   const providers: Array<{
     name: string;
     available: boolean;
-    fn: (texts: string[], src: string, tgt: string) => Promise<(string | null)[]>;
+    fn: (texts: string[], src: string, tgt: string, ctx?: string) => Promise<(string | null)[]>;
   }> = [
     {
       name: 'DeepL',
@@ -69,7 +75,7 @@ export async function translateBatch(
 
     try {
       const start = Date.now();
-      const results = await provider.fn(texts, sourceLang, targetLang);
+      const results = await provider.fn(texts, sourceLang, targetLang, contextHint);
       const elapsed = Date.now() - start;
       console.log(`[translate] ${provider.name}: ${items.length} items in ${elapsed}ms`);
 
@@ -184,6 +190,7 @@ async function translateWithDeepL(
   texts: string[],
   sourceLang: string,
   targetLang: string,
+  context?: string,
 ): Promise<(string | null)[]> {
   const key = process.env.DEEPL_API_KEY!;
   const src = sourceLang.toUpperCase();
@@ -203,6 +210,9 @@ async function translateWithDeepL(
         text: chunk,
         source_lang: src,
         target_lang: tgt,
+        // Context helps disambiguate short texts (e.g. "Entrée" → "Starter" not "Input")
+        // Not billed — only text parameter counts toward character usage
+        ...(context ? { context } : {}),
       }),
     });
 
@@ -234,6 +244,7 @@ async function translateWithGoogle(
   texts: string[],
   sourceLang: string,
   targetLang: string,
+  _context?: string,
 ): Promise<(string | null)[]> {
   const key = process.env.GOOGLE_TRANSLATE_API_KEY!;
   const results: string[] = [];
@@ -278,6 +289,7 @@ async function translateWithAzure(
   texts: string[],
   sourceLang: string,
   targetLang: string,
+  _context?: string,
 ): Promise<(string | null)[]> {
   const key = process.env.AZURE_TRANSLATOR_KEY!;
   const region = process.env.AZURE_TRANSLATOR_REGION ?? 'westeurope';
@@ -322,6 +334,7 @@ async function translateWithMyMemory(
   texts: string[],
   sourceLang: string,
   targetLang: string,
+  _context?: string,
 ): Promise<(string | null)[]> {
   const langpair = `${sourceLang.toLowerCase()}|${targetLang.toLowerCase()}`;
   const email = 'contact@nomnomnom.app';
