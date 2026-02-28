@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from('menu_items')
     .select(
-      'id, enrichment_status, enrichment_origin, enrichment_ingredients, enrichment_cultural_note, enrichment_eating_tips, enrichment_depth'
+      'id, name_original, enrichment_status, enrichment_origin, enrichment_ingredients, enrichment_cultural_note, enrichment_eating_tips, enrichment_depth'
     )
     .eq('menu_id', menuId)
     .eq('is_beverage', false); // food items only — beverages are 'skipped' and don't need polling

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { saveAdminModel } from '@/app/actions/admin';
+import { regenerateDishEnrichment, regenerateMenuEnrichment } from '@/app/actions/enrichment';
 import { ALLOWED_MODELS } from '@/lib/models';
 
 // =============================================================================
@@ -48,6 +49,172 @@ function formatRelativeTime(iso: string): string {
 function truncateUrl(url: string, maxLen = 60): string {
   if (url.length <= maxLen) return url;
   return url.slice(0, maxLen) + '…';
+}
+
+// =============================================================================
+// MenuRegenButton — per-menu "Ré-enrichir tout" with confirm swap
+// =============================================================================
+
+function MenuRegenButton({ menuId }: { menuId: string }) {
+  const [isPending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  function handleClick() {
+    if (!confirming) {
+      setConfirming(true);
+      // Auto-cancel confirm after 4s if not clicked
+      setTimeout(() => setConfirming(false), 4000);
+      return;
+    }
+
+    setConfirming(false);
+    setResult(null);
+
+    startTransition(async () => {
+      const res = await regenerateMenuEnrichment(menuId);
+      if ('error' in res) {
+        setResult(`Erreur: ${res.error}`);
+      } else {
+        setResult(`Enrichi (${res.count} plats)`);
+        setTimeout(() => setResult(null), 5000);
+      }
+    });
+  }
+
+  if (result) {
+    return (
+      <span className={`text-xs ${result.startsWith('Erreur') ? 'text-red-400' : 'text-green-400'}`}>
+        {result}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={isPending}
+      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed ${
+        confirming
+          ? 'bg-brand-orange text-white border border-brand-orange'
+          : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:border-zinc-500 hover:text-brand-white'
+      }`}
+    >
+      {isPending ? 'En cours...' : confirming ? 'Confirmer?' : 'Ré-enrichir tout'}
+    </button>
+  );
+}
+
+// =============================================================================
+// DishRegenButton — per-dish "Régénérer"
+// =============================================================================
+
+function DishRegenButton({ dishId, dishName }: { dishId: string; dishName: string }) {
+  const [isPending, startTransition] = useTransition();
+  const [result, setResult] = useState<string | null>(null);
+
+  function handleClick() {
+    setResult(null);
+    startTransition(async () => {
+      const res = await regenerateDishEnrichment(dishId);
+      if ('error' in res) {
+        setResult('Erreur');
+      } else {
+        setResult('Enrichi');
+        setTimeout(() => setResult(null), 3000);
+      }
+    });
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50">
+      <span className="text-zinc-300 text-xs truncate flex-1" title={dishName}>
+        {dishName}
+      </span>
+      {result ? (
+        <span className={`text-xs flex-shrink-0 ${result === 'Erreur' ? 'text-red-400' : 'text-green-400'}`}>
+          {result}
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={isPending}
+          className="flex-shrink-0 px-2 py-0.5 rounded text-xs bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-brand-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          {isPending ? 'En cours...' : 'Régénérer'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// MenuDishesExpander — expandable row showing per-dish regen buttons
+// =============================================================================
+
+function MenuDishesExpander({ menuId }: { menuId: string }) {
+  const [open, setOpen] = useState(false);
+  const [dishes, setDishes] = useState<{ id: string; name_original: string }[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleToggle() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+
+    if (!dishes) {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/enrichment/status?menuId=${menuId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDishes(
+            (data.items ?? []).map((d: { id: string; name_original: string }) => ({
+              id: d.id,
+              name_original: d.name_original,
+            }))
+          );
+        } else {
+          setError('Erreur de chargement');
+        }
+      } catch {
+        setError('Erreur de chargement');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    setOpen(true);
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors underline-offset-2 hover:underline"
+      >
+        {open ? 'Masquer plats' : 'Plats ▾'}
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-1.5">
+          {loading && <p className="text-zinc-500 text-xs">Chargement...</p>}
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {dishes && dishes.length === 0 && (
+            <p className="text-zinc-500 text-xs italic">Aucun plat alimentaire</p>
+          )}
+          {dishes && dishes.map((dish) => (
+            <DishRegenButton key={dish.id} dishId={dish.id} dishName={dish.name_original} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // =============================================================================
@@ -210,7 +377,7 @@ export default function AdminDashboard({
         </section>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Section 3: Recent scans                                             */}
+        {/* Section 3: Recent scans with enrichment controls                    */}
         {/* ------------------------------------------------------------------ */}
         <section>
           <h2 className="text-lg font-semibold text-brand-white mb-1">
@@ -232,23 +399,29 @@ export default function AdminDashboard({
                       <th className="text-left px-4 py-3 text-zinc-400 font-medium">Source</th>
                       <th className="text-left px-4 py-3 text-zinc-400 font-medium">Parse</th>
                       <th className="text-left px-4 py-3 text-zinc-400 font-medium">Il y a</th>
+                      <th className="text-left px-4 py-3 text-zinc-400 font-medium">Enrichissement</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentScans.map((scan, i) => (
                       <tr
                         key={scan.id}
-                        className={`border-b border-zinc-800/50 hover:bg-zinc-800/40 transition-colors ${
+                        className={`border-b border-zinc-800/50 ${
                           i === recentScans.length - 1 ? 'border-b-0' : ''
                         }`}
                       >
                         <td className="px-4 py-3">
-                          <span
-                            className="font-mono text-xs text-zinc-300"
-                            title={scan.url}
-                          >
-                            {truncateUrl(scan.url)}
-                          </span>
+                          <div>
+                            <span
+                              className="font-mono text-xs text-zinc-300"
+                              title={scan.url}
+                            >
+                              {truncateUrl(scan.url)}
+                            </span>
+                            <div className="mt-1.5">
+                              <MenuDishesExpander menuId={scan.id} />
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span className="px-2 py-0.5 bg-zinc-800 text-zinc-300 text-xs rounded border border-zinc-700">
@@ -262,6 +435,9 @@ export default function AdminDashboard({
                         </td>
                         <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">
                           {formatRelativeTime(scan.parsed_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <MenuRegenButton menuId={scan.id} />
                         </td>
                       </tr>
                     ))}
