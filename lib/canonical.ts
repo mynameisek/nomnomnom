@@ -136,7 +136,6 @@ export async function generateCanonicalNames(menuId: string): Promise<void> {
         // Step 5: Process results and build upsert payload
         const updates: Array<{
           id: string;
-          menu_id: string;
           canonical_name: string | null;
           canonical_confidence: number | null;
           canonical_source: string;
@@ -163,7 +162,6 @@ export async function generateCanonicalNames(menuId: string): Promise<void> {
 
           updates.push({
             id: item.id,
-            menu_id: menuId,
             canonical_name: result.canonical_name,
             canonical_confidence: result.confidence,
             canonical_source: 'llm_generated',
@@ -177,18 +175,23 @@ export async function generateCanonicalNames(menuId: string): Promise<void> {
           continue;
         }
 
-        // Step 6: Batch upsert — one round-trip per chunk
-        const { error: upsertError } = await supabaseAdmin
-          .from('menu_items')
-          .upsert(updates, { onConflict: 'id' });
-
-        if (upsertError) {
-          console.error(`[generateCanonicalNames] Batch ${batchIdx + 1}/${batches.length}: Upsert failed:`, upsertError.message);
-          continue;
+        // Step 6: Update each item individually (upsert fails on NOT NULL columns)
+        let updateCount = 0;
+        for (const update of updates) {
+          const { id, ...fields } = update;
+          const { error: updateError } = await supabaseAdmin
+            .from('menu_items')
+            .update(fields)
+            .eq('id', id);
+          if (updateError) {
+            console.error(`[generateCanonicalNames] Update failed for ${id}:`, updateError.message);
+          } else {
+            updateCount++;
+          }
         }
 
         console.log(
-          `[generateCanonicalNames] Batch ${batchIdx + 1}/${batches.length}: Upserted ${updates.length} canonical names for menu ${menuId} (offset ${batchOffset})`
+          `[generateCanonicalNames] Batch ${batchIdx + 1}/${batches.length}: Updated ${updateCount} canonical names for menu ${menuId} (offset ${batchOffset})`
         );
       } catch (batchError) {
         // Catch per-batch errors — don't abort remaining batches

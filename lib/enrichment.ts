@@ -104,17 +104,10 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
     // CRITICAL: if beverages stay 'pending', the polling hook never resolves
     const beverages = items.filter(item => item.is_beverage);
     if (beverages.length > 0) {
-      const { error: skipError } = await supabaseAdmin
-        .from('menu_items')
-        .upsert(
-          beverages.map(b => ({ id: b.id, menu_id: menuId, enrichment_status: 'skipped' })),
-          { onConflict: 'id' }
-        );
-      if (skipError) {
-        console.error('[enrichDishBatch] Failed to mark beverages as skipped:', skipError.message);
-      } else {
-        console.log(`[enrichDishBatch] Marked ${beverages.length} beverages as skipped for menu ${menuId}`);
+      for (const b of beverages) {
+        await supabaseAdmin.from('menu_items').update({ enrichment_status: 'skipped' }).eq('id', b.id);
       }
+      console.log(`[enrichDishBatch] Marked ${beverages.length} beverages as skipped for menu ${menuId}`);
     }
 
     // Step 3: Filter to food items only
@@ -163,12 +156,9 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
         if (!output?.dishes) {
           console.error(`[enrichDishBatch] Batch ${batchIdx + 1}/${batches.length}: LLM returned no output`);
           // Mark batch items as failed
-          await supabaseAdmin
-            .from('menu_items')
-            .upsert(
-              batch.map(item => ({ id: item.id, menu_id: menuId, enrichment_status: 'failed' })),
-              { onConflict: 'id' }
-            );
+          for (const item of batch) {
+            await supabaseAdmin.from('menu_items').update({ enrichment_status: 'failed' }).eq('id', item.id);
+          }
           continue;
         }
 
@@ -185,7 +175,6 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
 
           updates.push({
             id: item.id,
-            menu_id: menuId,
             enrichment_origin: result.origin,
             enrichment_ingredients: result.typical_ingredients,
             enrichment_cultural_note: result.cultural_note,
@@ -197,30 +186,28 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
           });
         }
 
-        // Step 7: Upsert enriched items
+        // Step 7: Update enriched items individually
         if (updates.length > 0) {
-          const { error: upsertError } = await supabaseAdmin
-            .from('menu_items')
-            .upsert(updates, { onConflict: 'id' });
-
-          if (upsertError) {
-            console.error(`[enrichDishBatch] Batch ${batchIdx + 1}/${batches.length}: Upsert failed:`, upsertError.message);
-          } else {
-            console.log(
-              `[enrichDishBatch] Batch ${batchIdx + 1}/${batches.length}: Enriched ${updates.length} food items for menu ${menuId}`
-            );
+          let enrichedCount = 0;
+          for (const update of updates) {
+            const { id, ...fields } = update;
+            const { error: updateError } = await supabaseAdmin
+              .from('menu_items')
+              .update(fields)
+              .eq('id', id as string);
+            if (!updateError) enrichedCount++;
           }
+          console.log(
+            `[enrichDishBatch] Batch ${batchIdx + 1}/${batches.length}: Enriched ${enrichedCount} food items for menu ${menuId}`
+          );
         }
 
         // Step 8: Mark items not returned by LLM as failed
         const missingItems = batch.filter((_, idx) => !returnedIndexes.has(idx));
         if (missingItems.length > 0) {
-          await supabaseAdmin
-            .from('menu_items')
-            .upsert(
-              missingItems.map(item => ({ id: item.id, menu_id: menuId, enrichment_status: 'failed' })),
-              { onConflict: 'id' }
-            );
+          for (const item of missingItems) {
+            await supabaseAdmin.from('menu_items').update({ enrichment_status: 'failed' }).eq('id', item.id);
+          }
           console.warn(`[enrichDishBatch] Batch ${batchIdx + 1}: Marked ${missingItems.length} items as failed (not returned by LLM)`);
         }
       } catch (batchError) {
@@ -231,12 +218,9 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
         );
         // Mark all batch items as failed so they don't stay 'pending'
         try {
-          await supabaseAdmin
-            .from('menu_items')
-            .upsert(
-              batch.map(item => ({ id: item.id, menu_id: menuId, enrichment_status: 'failed' })),
-              { onConflict: 'id' }
-            );
+          for (const item of batch) {
+            await supabaseAdmin.from('menu_items').update({ enrichment_status: 'failed' }).eq('id', item.id);
+          }
         } catch {
           // Ignore secondary failure
         }
