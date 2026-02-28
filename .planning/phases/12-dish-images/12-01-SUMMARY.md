@@ -152,6 +152,15 @@ PEXELS_API_KEY=your_pexels_api_key
 - Phase 12 Plan 02 can build DishImage component, DishCard image zone, and DishDetailSheet attribution
 - Prerequisite: Apply SQL migration to Supabase and configure UNSPLASH_ACCESS_KEY / PEXELS_API_KEY
 
+## Self-Check: PASSED
+
+- supabase/migrations/20260228230000_dish_images.sql: FOUND
+- lib/images.ts: FOUND
+- lib/image-utils.ts: FOUND
+- .planning/phases/12-dish-images/12-01-SUMMARY.md: FOUND
+- Commit 587ced8: FOUND
+- Commit 9b6e1dd: FOUND
+
 ---
 *Phase: 12-dish-images*
 *Completed: 2026-02-28*
