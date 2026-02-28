@@ -4,6 +4,7 @@
 // Strategy:
 // 1. Known providers (eazee-link.com) → direct API call, no screenshot/LLM
 // 2. Other URLs → Screenshotone markdown extraction → LLM parse
+// 2b. PDF URLs → download raw bytes → LLM file input
 // 3. Fallback → Screenshotone PNG screenshot → Vision OCR
 // =============================================================================
 
@@ -94,6 +95,39 @@ export async function POST(req: NextRequest) {
     if (result.type === 'text') {
       // Clean markdown → text-based LLM parse
       const menu = await getOrParseMenu(url, 'url', result.content);
+      after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
+      return NextResponse.json({ menuId: menu.id });
+    }
+
+    // ─── Path B2: PDF → send raw bytes to LLM via file content part ───
+    if (result.type === 'pdf') {
+      const config = await getAdminConfig();
+      const { experimental_output: output } = await generateText({
+        model: openai(config.llm_model),
+        output: Output.object({
+          schema: menuParseSchema,
+        }),
+        system: MENU_PARSE_FAST_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'file',
+                data: result.buffer,
+                mediaType: 'application/pdf',
+              },
+              {
+                type: 'text',
+                text: 'This is a restaurant menu PDF. Extract all dishes with their names, descriptions, prices, and allergens. Process every visible dish.',
+              },
+            ],
+          },
+        ],
+        maxRetries: 2,
+      });
+
+      const menu = await getOrParseMenu(url, 'url', '[pdf menu]', output);
       after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
       return NextResponse.json({ menuId: menu.id });
     }

@@ -123,12 +123,72 @@ async function fetchDirectText(url: string): Promise<string | null> {
 }
 
 // =============================================================================
+// PDF detection — download raw bytes when URL points to a PDF
+// =============================================================================
+
+/**
+ * Detects if a URL points to a PDF and downloads the raw bytes.
+ * Fast path: checks `.pdf` extension first (no network).
+ * Slow path: HEAD request to check content-type.
+ * Returns { type: 'pdf', buffer } or null.
+ */
+async function fetchPdfIfApplicable(url: string): Promise<{ type: 'pdf'; buffer: ArrayBuffer } | null> {
+  try {
+    const parsedUrl = new URL(url);
+    let isPdf = parsedUrl.pathname.toLowerCase().endsWith('.pdf');
+
+    if (!isPdf) {
+      // HEAD request to check content-type without downloading the body
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const headRes = await fetch(url, {
+          method: 'HEAD',
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; NomNomNom/1.0; menu parser)',
+          },
+        });
+        clearTimeout(timeout);
+        const contentType = headRes.headers.get('content-type') ?? '';
+        isPdf = contentType.includes('application/pdf');
+      } catch {
+        clearTimeout(timeout);
+        return null;
+      }
+    }
+
+    if (!isPdf) return null;
+
+    // Download the full PDF bytes
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; NomNomNom/1.0; menu parser)',
+      },
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) return null;
+
+    const buffer = await response.arrayBuffer();
+    console.log(`[screenshotone] PDF detected and downloaded (${buffer.byteLength} bytes)`);
+    return { type: 'pdf', buffer };
+  } catch {
+    return null;
+  }
+}
+
+// =============================================================================
 // extractMenuText — try markdown first, fallback to screenshot
 // =============================================================================
 
 export type ExtractionResult =
   | { type: 'text'; content: string }
-  | { type: 'image'; buffer: ArrayBuffer };
+  | { type: 'image'; buffer: ArrayBuffer }
+  | { type: 'pdf'; buffer: ArrayBuffer };
 
 /**
  * Extracts menu content from a URL. Tries markdown extraction first.
@@ -136,6 +196,10 @@ export type ExtractionResult =
  * a PNG screenshot for Vision OCR processing.
  */
 export async function extractMenuContent(url: string): Promise<ExtractionResult> {
+  // Attempt 0: PDF detection — download raw bytes before any HTML/screenshot attempt
+  const pdfResult = await fetchPdfIfApplicable(url);
+  if (pdfResult) return pdfResult;
+
   const client = getClient();
 
   // Attempt 1: Direct HTML fetch — fast path for static HTML sites (saves 15-30s)
