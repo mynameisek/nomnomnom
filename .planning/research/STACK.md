@@ -1,191 +1,357 @@
 # Stack Research
 
-**Domain:** Restaurant menu scanning / AI translation web app — MVP feature additions to existing Next.js app
-**Researched:** 2026-02-25
-**Confidence:** MEDIUM-HIGH (versions verified via npm registry search and GitHub; framework choices verified via official docs and multiple sources)
+**Domain:** Restaurant menu scanning / AI intelligence layer — v1.2 additions to existing Next.js app
+**Researched:** 2026-02-28
+**Confidence:** HIGH (embeddings/Supabase pgvector via official docs; Unsplash via official docs; DeepL via official docs; AI SDK embed via Context7/official docs)
 
 ---
 
 ## Context: What Already Exists (Do Not Re-add)
 
-The project already has these packages — do not propose reinstalling them:
+These packages are installed and working in v1.1. Do NOT propose reinstalling them:
 
 | Package | Version | Notes |
 |---------|---------|-------|
 | `next` | 16.1.6 | App Router |
 | `react` / `react-dom` | 19.2.3 | |
 | `@supabase/supabase-js` | ^2.97.0 | |
+| `ai` (Vercel AI SDK) | ^6.0.99 | `generateText`, `streamText`, `useChat` |
+| `@ai-sdk/openai` | ^3.0.33 | GPT-4o, GPT-4o-mini, GPT-4.1-mini |
+| `zod` | 3.25.76 | Schema validation |
 | `motion` | ^12.34.3 | Framer Motion successor |
 | `tailwindcss` | ^4 | CSS-first `@theme` |
 | `typescript` | ^5 | |
-| `eslint` / `eslint-config-next` | ^9 / 16.1.6 | |
+| `screenshotone-api-sdk` | ^1.1.21 | SPA screenshot capture |
+| `qr-scanner` | ^1.4.2 | QR code decoding |
+| `browser-image-compression` | ^2.0.2 | Client-side image downscaling |
+| `server-only` | ^0.0.1 | Server Action guard |
 
-Everything below is new, additive, and scoped to the MVP feature set.
+**Translation cascade already implemented:** DeepL → Google Translate → Azure → MyMemory → LLM fallback.
+**Google Places enrichment already implemented** (restaurant-level only).
+**URL hash caching in Supabase already implemented.**
 
----
-
-## Recommended Stack (New Additions Only)
-
-### Feature 1: QR Code Scanning (Camera)
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `@yudiel/react-qr-scanner` | ^2.5.1 | Camera-based QR code detection | The only actively maintained React QR scanning library as of Feb 2026. Built on the native Barcode Detection API with ZXing WASM fallback. Supports torch, zoom, front/back camera switching. Last published ~1 month ago. Requires `dynamic()` with `ssr: false` in Next.js. |
-
-**What to avoid:** `html5-qrcode` and the un-scoped `react-qr-scanner` are both unmaintained (2+ years, no fixes). `@yudiel/react-qr-scanner` is the direct replacement.
+Everything below is new and additive for v1.2 only.
 
 ---
 
-### Feature 2: Photo OCR (Camera Fallback)
+## v1.2 Feature Scope
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `react-webcam` | ^7.2.0 | Camera capture UI for photo mode | Lightweight, `facingMode: "environment"` for mobile rear camera, returns base64 still frames. Stable, ~113K weekly downloads. Requires `ssr: false`. |
-| `tesseract.js` | ^7.0.0 | Client-side OCR on captured photos | Pure JS, runs entirely in the browser via WASM, no server cost per image. Supports 100+ languages including FR/EN/TR/DE. v7.0.0 (Dec 2024) adds 15-35% faster recognition via `relaxedsimd` build. |
+| Feature | What Needs to Change |
+|---------|---------------------|
+| (1) Dish enrichment — cultural explanations, canonical names | Prompt engineering only. Zero new packages. Extend existing `gpt-4o-mini` structured output schema. |
+| (2) Reverse search across scanned menus | Supabase pgvector (enable extension + schema). AI SDK `embed` / `embedMany` (already in `ai` package). No new npm packages. |
+| (3) AI Top 3 recommendations | Prompt engineering only. Existing `gpt-4o-mini` + `useChat` hook already in stack. No new packages. |
+| (4) Dish images from web | Unsplash REST API — direct `fetch` from Server Action. No npm package needed (official JS SDK archived). |
+| (5) ES/IT translation support | Locale JSON files only. `next-intl` is already installed. No new packages. |
 
-**Architecture decision:** Run `tesseract.js` client-side first (free, instant). If extracted text quality is low (confidence score < threshold), route the image to GPT-4o Vision via a Server Action as fallback. This avoids paying OpenAI API costs for every scan while maintaining quality.
-
-**Accuracy reality:** Tesseract.js on menu photos produces ~60-70% accurate extraction without preprocessing. GPT-4o Vision achieves ~80%+ AND returns structured JSON with dish names, descriptions, and allergens in one pass. The dual-path approach is the pragmatic tradeoff.
-
----
-
-### Feature 3: Generic Menu Web Parsing (URL input)
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `cheerio` | ^1.2.0 | Server-side HTML parsing for static/SSR menus | jQuery-like API, runs in Next.js Server Actions and Route Handlers, zero browser overhead, fast. Works for static/server-rendered HTML menu pages. |
-
-**Critical finding on the test menu (`https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q`):** Direct fetch returns only `"You need to enable JavaScript to run this app"`. This is a React SPA. Cheerio CANNOT parse it — there is no HTML content without JavaScript execution.
-
-**Do NOT use Playwright or Puppeteer on Vercel.** Chromium binary alone exceeds 280 MB. Vercel's serverless function limit is 250 MB unzipped. Deployment will fail.
-
-**Two-tier URL parsing strategy (no headless browser required):**
-1. `cheerio` fetch-and-parse — works for ~40-50% of menus (static HTML, server-rendered pages)
-2. For JavaScript SPAs: call a screenshot API (e.g., Screenshotone, APIFlash) from a Server Action → pass the resulting image to GPT-4o Vision for structured extraction
-
-This pattern handles both cases with no bundle size risk, no headless browser, and predictable behavior.
+**Summary: Zero new npm packages required. v1.2 is entirely database schema + prompt + API call additions.**
 
 ---
 
-### Feature 4: LLM Integration (OpenAI — dish structuring, translation, Top 3 AI assistant)
+## Feature 1: Dish Enrichment — Cultural Explanations + Canonical Names
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `ai` (Vercel AI SDK) | ^6.0.97 | Streaming AI responses, `generateText`, `useChat` hooks | Purpose-built for Next.js App Router. Abstracts OpenAI streaming over Server Actions. Eliminates manual ReadableStream / SSE boilerplate. Last published 4 days ago (highly active). |
-| `@ai-sdk/openai` | ^3.0.31 | OpenAI provider for Vercel AI SDK | Official Vercel-maintained provider. Typed model selection. Supports GPT-4o, GPT-4o-mini, GPT-4.1, GPT-4.1-mini. Last published 15 hours ago (very active). |
+**No new packages.** Extend the existing `gpt-4o-mini` structured output schema in the LLM parsing prompt.
 
-**Do NOT use** the raw `openai` npm package (currently v6.x) directly in Server Actions — it requires manual streaming and lacks the App Router integration that Vercel AI SDK provides.
+### What Changes
 
-**Model strategy:**
+Extend the dish JSON schema returned by `gpt-4o-mini` from:
 
-| Model | Use Case | Rationale |
-|-------|----------|-----------|
-| `gpt-4o-mini` | Dish structuring from Cheerio-extracted text, FR/EN/TR/DE translation, allergen tagging | Cheap (~$0.15/1M tokens), fast, excellent multilingual performance for short culinary text |
-| `gpt-4o` | Vision-based parsing (photo OCR fallback, SPA screenshot parsing) | Vision input capability; balance of cost and quality for image tasks |
-| `gpt-4.1-mini` | Configurable upgrade path for Top 3 AI assistant | Outperforms GPT-4o across benchmarks; available as drop-in swap via `@ai-sdk/openai` config |
-
-**Key pattern:** All OpenAI calls are Server Actions (`"use server"`). The API key lives in `OPENAI_API_KEY` env var only. Never call the API from the browser.
-
----
-
-### Feature 5: Translation (FR / EN / TR / DE)
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `next-intl` | ^4.8.3 | UI string localization (labels, filters, navigation, error messages) | Purpose-built for Next.js App Router. Server Components and Client Components both supported. Last published 8 days ago. **Note:** Next.js 16 renamed middleware to `proxy.ts` — this is a breaking change from pre-16 next-intl tutorials. |
-
-**Translation architecture split:**
-
-- `next-intl` handles **static UI strings** — button labels, allergen category names, filter names, navigation. These go in JSON locale files.
-- **GPT-4o-mini** handles **dish name and description translation** — dynamic, AI-generated, stored in Supabase after first translation.
-
-**Do NOT add Google Translate API or DeepL** — adds another paid service when GPT-4o-mini is already in the stack, cheaper, and produces higher-quality culinary translations with cultural context (e.g., "magret de canard" stays as-is in FR but gets a proper translation in EN/TR/DE, not a literal word-by-word rendering).
-
----
-
-### Feature 6: Menu Caching (Supabase)
-
-No new packages — `@supabase/supabase-js` is already installed.
-
-**Caching schema:**
-
-```sql
-CREATE TABLE menu_cache (
-  url_hash      TEXT PRIMARY KEY,        -- SHA-256 of input URL or image fingerprint
-  raw_content   JSONB,                   -- cheerio-extracted or GPT-extracted raw data
-  parsed_dishes JSONB,                   -- structured dish cards array
-  translations  JSONB,                   -- { "fr": [...], "en": [...], "tr": [...], "de": [...] }
-  created_at    TIMESTAMPTZ DEFAULT now(),
-  expires_at    TIMESTAMPTZ              -- now() + interval '7 days'
-);
-```
-
-**Cache hit flow:** hash input → query Supabase → if found and not expired → return `parsed_dishes` + `translations` directly, skip ALL AI calls.
-
-**Supabase client selection:** Use `@supabase/supabase-js` (not `@supabase/ssr`) for cache operations in Server Actions. The `@supabase/ssr` package uses cookies, which opts out of Next.js fetch caching. Service-role key for cache reads/writes is fine since no user PII is stored.
-
----
-
-### Feature 7: Allergen / Dietary Filters
-
-**No new packages.** Client-side `useState` / `useReducer` is sufficient. The GPT-4o-mini prompt instructs the model to return structured JSON per dish:
-
-```json
+```typescript
 {
-  "name": "...",
-  "description": "...",
-  "allergens": ["gluten", "dairy"],
-  "dietary": ["vegetarian"],
-  "translations": { "en": "...", "tr": "...", "de": "..." }
+  name: string,
+  description: string,
+  allergens: string[],
+  dietary: string[],
+  translations: { en: string, tr: string, de: string }
 }
 ```
 
-Filter logic is pure array intersection on the client — no search library needed.
+To:
 
----
-
-### Feature 8: Reverse Search
-
-**No new packages for MVP.** Client-side fuzzy filter over loaded dish cards. If full-text search at scale is needed later, Supabase's built-in `fts` on the `parsed_dishes` JSONB column covers it — no Algolia or Meilisearch required at this stage.
-
----
-
-## Complete New Dependencies Summary
-
-### Core Libraries
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `@yudiel/react-qr-scanner` | ^2.5.1 | QR scan via device camera | QR code input mode |
-| `react-webcam` | ^7.2.0 | Camera capture UI for photo OCR | Photo input mode |
-| `tesseract.js` | ^7.0.0 | Client-side OCR (browser WASM) | Photo input, free tier path |
-| `cheerio` | ^1.2.0 | Server-side HTML parsing | URL input, static HTML menus |
-| `ai` | ^6.0.97 | Vercel AI SDK (streaming, hooks) | All LLM calls |
-| `@ai-sdk/openai` | ^3.0.31 | OpenAI provider for AI SDK | All LLM calls via OpenAI |
-| `next-intl` | ^4.8.3 | UI string localization | All pages |
-
----
-
-## Installation
-
-```bash
-# Camera + QR scanning
-npm install @yudiel/react-qr-scanner react-webcam
-
-# Client-side OCR
-npm install tesseract.js
-
-# Server-side HTML parsing
-npm install cheerio
-
-# AI / LLM (Vercel AI SDK + OpenAI provider)
-npm install ai @ai-sdk/openai
-
-# UI localization
-npm install next-intl
+```typescript
+{
+  name: string,
+  canonicalName: string,        // NEW: normalized form for cross-restaurant matching
+  description: string,
+  culturalContext: string,      // NEW: 1-2 sentence cultural explanation
+  origin: string,               // NEW: country/region of origin
+  allergens: string[],
+  dietary: string[],
+  translations: { en: string, tr: string, de: string, es: string, it: string }
+}
 ```
 
-No new dev dependencies required — TypeScript types are bundled in all recommended packages.
+### Canonical Name Strategy
+
+The `canonicalName` field is a normalized, transliteration-free name for deduplication and cross-restaurant matching. Examples:
+
+| Raw (from menu) | `canonicalName` |
+|----------------|-----------------|
+| "Magret de canard rôti" | "duck breast" |
+| "Petto d'anatra" | "duck breast" |
+| "Geröstete Entenbrust" | "duck breast" |
+| "Tiramisu maison" | "tiramisu" |
+
+**Implementation:** Instruct `gpt-4o-mini` in the system prompt to produce the English common name. This is cheaper and more accurate than a separate embedding pass for normalization — the LLM already understands the dish during parsing.
+
+**Confidence:** HIGH — GPT-4o-mini handles culinary multilingual normalization well. No external lookup needed.
+
+---
+
+## Feature 2: Reverse Search Across Scanned Menus
+
+### What Changes
+
+Two complementary approaches are needed:
+
+#### 2a. Full-Text Search (keyword, fast, zero cost)
+
+**No new packages.** Supabase's built-in `textSearch` via `@supabase/supabase-js` is sufficient for keyword-style reverse search ("show me all dishes containing 'truffe' across menus I've seen").
+
+**Schema addition — generated `tsvector` column on the dishes table:**
+
+```sql
+-- Enable if not already enabled
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- Add FTS column to menu_cache or a dedicated dishes table
+ALTER TABLE dishes ADD COLUMN fts tsvector
+  GENERATED ALWAYS AS (
+    to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(canonical_name, '') || ' ' || coalesce(description, ''))
+  ) STORED;
+
+CREATE INDEX dishes_fts_idx ON dishes USING GIN (fts);
+```
+
+**Query from JS:**
+
+```typescript
+const { data } = await supabase
+  .from('dishes')
+  .select('*')
+  .textSearch('fts', query, { type: 'websearch', config: 'simple' });
+```
+
+Use `config: 'simple'` (not `'english'`) because dish names are multilingual. `'simple'` skips stop-word removal and stemming — more appropriate for names.
+
+**Confidence:** HIGH — Supabase official docs, verified pattern.
+
+#### 2b. Semantic Search / Canonical Matching (cross-language, similarity-based)
+
+Use `pgvector` + OpenAI embeddings to match "duck breast" with "Magret de canard" stored in another menu.
+
+**No new npm packages.** The `ai` package already installed (v6.0.99) exposes `embed` and `embedMany` functions. The `@ai-sdk/openai` package exposes `openai.embeddingModel()`.
+
+**Model:** `text-embedding-3-small`
+- Dimensions: 1536 (default) or 512 (reduced, sufficient for dish names)
+- Cost: $0.02 per 1M tokens (batch: $0.01 per 1M tokens)
+- A dish name + canonical name is ~10-20 tokens → cost is negligible
+- **Recommendation:** Use 512 dimensions to halve storage and query latency with minimal accuracy loss
+
+**Usage pattern (Server Action):**
+
+```typescript
+import { embed, embedMany } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+// At scan time — embed canonical name and store
+const { embedding } = await embed({
+  model: openai.embeddingModel('text-embedding-3-small'),
+  value: dish.canonicalName,  // already normalized by LLM
+});
+
+// At search time — embed query, find nearest neighbors
+const { embedding: queryEmbedding } = await embed({
+  model: openai.embeddingModel('text-embedding-3-small'),
+  value: userQuery,
+});
+```
+
+**Schema addition:**
+
+```sql
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Add embedding column to dishes table
+ALTER TABLE dishes ADD COLUMN embedding vector(512);
+
+-- HNSW index for fast approximate nearest neighbor search (cosine distance)
+CREATE INDEX dishes_embedding_idx ON dishes
+  USING hnsw (embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
+```
+
+**RPC function for semantic search (required — PostgREST doesn't support pgvector operators directly):**
+
+```sql
+CREATE OR REPLACE FUNCTION search_dishes_semantic(
+  query_embedding vector(512),
+  match_threshold float,
+  match_count int
+)
+RETURNS TABLE (id uuid, name text, canonical_name text, menu_id text, similarity float)
+LANGUAGE sql STABLE
+AS $$
+  SELECT id, name, canonical_name, menu_id,
+    1 - (embedding <=> query_embedding) AS similarity
+  FROM dishes
+  WHERE 1 - (embedding <=> query_embedding) > match_threshold
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+```
+
+**Hybrid search option (keyword + semantic, merged via RRF):** Supabase docs confirm this pattern works. For v1.2, start with FTS only for initial launch (zero embedding cost), add semantic search in a sub-phase once the dishes table is populated.
+
+**Confidence:** HIGH — Supabase official docs (pgvector, HNSW, hybrid search), AI SDK official docs.
+
+---
+
+## Feature 3: AI Top 3 Recommendations
+
+**No new packages.** This is prompt engineering over the existing dish array in memory.
+
+### What Changes
+
+The existing `useChat` hook + a Server Action calling `gpt-4o-mini` is all that's needed. The dish array (already loaded for display) is passed as context.
+
+```typescript
+// Server Action pattern (already established in v1.1)
+const { text } = await generateText({
+  model: openai('gpt-4o-mini'),
+  system: TOP3_SYSTEM_PROMPT,
+  messages: [{
+    role: 'user',
+    content: JSON.stringify({
+      dishes: dishArray.slice(0, 50),  // cap context to avoid token bloat
+      preferences: { dietary, allergenFree, language }
+    })
+  }]
+});
+```
+
+**Model choice:** `gpt-4o-mini` is sufficient — recommendations are ranking + brief explanation, not complex reasoning. `gpt-4.1-mini` is available as a configurable upgrade via existing admin model switcher.
+
+**Confidence:** HIGH — no new capabilities required beyond existing stack.
+
+---
+
+## Feature 4: Dish Images from Web
+
+### What Changes
+
+**No new npm packages.** The `unsplash-js` official package is archived and unmaintained. Use direct REST fetch from a Server Action instead.
+
+**Approach:** Unsplash Search Photos REST endpoint, called server-side with the dish's `canonicalName` as query.
+
+**Why Unsplash over alternatives:**
+- Pexels API: Also works, similar free tier (200 req/hour vs Unsplash's 50 req/hour demo / 5000 req/hour production)
+- Google Custom Search Image API: $5 per 1000 queries after 100/day free — too expensive at scale
+- LogMeal Food AI: Food-specific but requires subscription, adds cost
+- **Decision: Unsplash** — free production tier (5000/hour after approval), no npm package needed, high-quality food photography, requires only `Authorization: Client-ID YOUR_KEY` header
+
+**Free tier limits:**
+- Demo (during development): 50 requests/hour
+- Production (after application approval): 5000 requests/hour
+- Unsplash approval requires following their guidelines (attribution)
+
+**Server Action pattern:**
+
+```typescript
+// lib/images.ts (server-only)
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
+
+export async function fetchDishImage(canonicalName: string): Promise<string | null> {
+  const res = await fetch(
+    `https://api.unsplash.com/search/photos?query=${encodeURIComponent(canonicalName + ' food')}&per_page=1&orientation=landscape`,
+    { headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.results?.[0]?.urls?.regular ?? null;
+}
+```
+
+**Caching critical:** Store the image URL in Supabase alongside the dish record on first fetch. Do NOT call Unsplash on every render. The URL is stable (Unsplash URLs don't expire).
+
+**Attribution requirement:** Unsplash guidelines require displaying photographer credit. A small byline (`Photo by [Name] on Unsplash`) is sufficient. This can be stored as `imageCredit` alongside the URL.
+
+**Environment variable to add:** `UNSPLASH_ACCESS_KEY`
+
+**Confidence:** HIGH — Unsplash official documentation, REST API is stable, no npm dependency risk.
+
+---
+
+## Feature 5: ES/IT Translation Support
+
+**No new packages.** `next-intl` is already installed and supports any ISO 639-1 language code.
+
+### What Changes
+
+1. **Add locale JSON files:**
+   - `messages/es.json` — Spanish UI strings (copy from `messages/en.json`, translate values)
+   - `messages/it.json` — Italian UI strings
+
+2. **Update `next-intl` routing config** to add `'es'` and `'it'` to the locales array.
+
+3. **Extend dish translation schema** — add `es` and `it` fields to the GPT translation output (already proposed in Feature 1 schema).
+
+4. **Translation cascade** — existing DeepL → Google → Azure → MyMemory → LLM cascade already supports ES and IT (DeepL officially supports both, confirmed Feb 2026).
+
+**No prompt changes needed for the cascade** — it's already language-agnostic. Pass `targetLanguage: 'es'` or `'it'` to the existing batch translation function.
+
+**Confidence:** HIGH — next-intl supports all locale codes, DeepL official language list confirms ES/IT support.
+
+---
+
+## Complete v1.2 Change Summary
+
+### New npm packages: NONE
+
+All v1.2 features are delivered through:
+- Database schema additions (pgvector extension, embedding column, FTS column, SQL functions)
+- Prompt additions (canonical name, cultural context, ES/IT translation fields)
+- One new environment variable (`UNSPLASH_ACCESS_KEY`)
+- New locale files (`messages/es.json`, `messages/it.json`)
+- New server-side utility functions using existing packages
+
+### Environment Variables to Add
+
+| Variable | Purpose | Where to get |
+|----------|---------|--------------|
+| `UNSPLASH_ACCESS_KEY` | Dish image search | Unsplash developers portal |
+
+### Database Schema Additions
+
+| Addition | Purpose |
+|---------|---------|
+| `CREATE EXTENSION IF NOT EXISTS vector` | Enable pgvector |
+| `CREATE EXTENSION IF NOT EXISTS unaccent` | Better FTS for accented characters |
+| `dishes.canonical_name TEXT` | Normalized dish name for matching |
+| `dishes.cultural_context TEXT` | Cultural explanation |
+| `dishes.origin TEXT` | Dish origin country/region |
+| `dishes.image_url TEXT` | Cached Unsplash image URL |
+| `dishes.image_credit TEXT` | Photographer attribution |
+| `dishes.embedding vector(512)` | Semantic search vector |
+| `dishes.fts tsvector GENERATED` | Keyword search index |
+| `dishes_embedding_idx` (HNSW) | Fast vector search |
+| `dishes_fts_idx` (GIN) | Fast keyword search |
+| `search_dishes_semantic()` RPC fn | pgvector nearest-neighbor search |
+
+---
+
+## Recommended Phasing
+
+Given that zero npm packages are needed, the risk profile is low. Recommended order:
+
+1. **Schema first** — Add pgvector, FTS, and dish enrichment columns before any feature work
+2. **Canonical names + cultural context** — Prompt change, no infra risk
+3. **FTS keyword search** — Simple, uses existing Supabase client
+4. **ES/IT translation** — Locale files + extend translation fields
+5. **Dish images** — Add `UNSPLASH_ACCESS_KEY`, implement server-side fetch + cache
+6. **AI Top 3** — Prompt + existing AI stack
+7. **Semantic search** — Add embedding generation at scan time, expose search UI last (depends on having populated embeddings in the table)
 
 ---
 
@@ -193,14 +359,14 @@ No new dev dependencies required — TypeScript types are bundled in all recomme
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| QR scanning | `@yudiel/react-qr-scanner` | `html5-qrcode` | Unmaintained since 2022. Uses deprecated ZXing-js. No React 19 support. |
-| QR scanning | `@yudiel/react-qr-scanner` | `react-qr-barcode-scanner` | Wraps deprecated `@zxing/library`. Less maintained. |
-| Web parsing | `cheerio` + screenshot API | `playwright` / `puppeteer` | Chromium binary = 280 MB. Vercel serverless limit = 250 MB. Hard deployment blocker. |
-| LLM client | Vercel AI SDK (`ai` + `@ai-sdk/openai`) | Raw `openai` v6 package | Manual streaming implementation in App Router; more boilerplate; less type-safe; no `useChat` hook. |
-| UI localization | `next-intl` | `next-i18next` | Officially incompatible with App Router — only works with Pages Router. |
-| UI localization | `next-intl` | `react-i18next` directly | Works, but next-intl has better Server Component support and is purpose-built for App Router. |
-| Dish translation | GPT-4o-mini (already in stack) | Google Translate API / DeepL | Adds another paid third-party dependency. GPT-4o-mini is cheaper and handles food vocabulary nuance better. |
-| OCR | Tesseract.js (client) + GPT-4o Vision (fallback) | Tesseract.js only | Single-engine accuracy ~60-70% on restaurant menu photos — insufficient quality for MVP. |
+| Dish image source | Unsplash REST API (direct fetch) | `unsplash-js` npm package | Package is archived and unmaintained as of 2025. Direct REST API is stable and needs only one `fetch` call. |
+| Dish image source | Unsplash | Google Custom Search Images | $5/1000 queries after 100/day free limit. Cost prohibitive for per-dish lookups. |
+| Dish image source | Unsplash | Pexels | Pexels also works (200 req/hr demo). Unsplash preferred for food photography quality and 5000 req/hr production. |
+| Semantic search store | Supabase pgvector | Pinecone / Weaviate / Qdrant | Supabase is already in stack. Adding a dedicated vector DB is operational overhead for dish-scale data (thousands, not millions, of vectors). |
+| Embedding model | `text-embedding-3-small` (512 dims) | `text-embedding-3-large` (3072 dims) | Dish names are short (< 20 tokens). Large model adds cost and storage with marginal accuracy gain for food vocabulary matching. |
+| Canonical name normalization | LLM prompt instruction | Separate embedding + clustering pass | LLM already understands the dish during parsing. Instructing it to output a canonical name is free (zero extra tokens), accurate, and avoids a separate API call. |
+| Dish enrichment (cultural context) | GPT-4o-mini structured output | Wikipedia API lookup | GPT-4o-mini already in stack, produces culinary explanations accurately. Wikipedia API adds latency and parsing complexity for uncertain gain. |
+| ES/IT translations | Existing cascade (DeepL first) | Add Azure Translator | DeepL already supports ES/IT natively. No change to cascade needed. |
 
 ---
 
@@ -208,32 +374,12 @@ No new dev dependencies required — TypeScript types are bundled in all recomme
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `html5-qrcode` | Unmaintained since 2022. Uses deprecated ZXing-js. No bug fixes. | `@yudiel/react-qr-scanner` ^2.5.1 |
-| `react-qr-reader` (un-scoped) | Last published 3+ years ago. Not compatible with React 19. | `@yudiel/react-qr-scanner` ^2.5.1 |
-| `playwright` / `puppeteer` in Vercel serverless | Chromium binary (280 MB) exceeds Vercel 250 MB function limit. Deployment fails. | `cheerio` for static HTML + screenshot service for SPAs |
-| `next-i18next` | Not compatible with Next.js App Router. Well-documented breakage. | `next-intl` ^4.8.3 |
-| Raw `openai` npm package (v6.x) | Requires manual ReadableStream / SSE handling in Server Actions. No `useChat`. | `ai` + `@ai-sdk/openai` |
-| `@supabase/ssr` for caching | Uses cookies, which opts out of Next.js fetch caching entirely. | `@supabase/supabase-js` directly for Server Action cache calls |
-| Google Translate API / DeepL | Additional paid service. GPT-4o-mini covers the same need already. | GPT-4o-mini via `@ai-sdk/openai` |
-
----
-
-## Stack Patterns by Variant
-
-**If menu input is a QR code scan:**
-- `@yudiel/react-qr-scanner` decodes the QR → extracts URL → treat as URL input path below
-
-**If menu input is a URL pointing to static/SSR HTML:**
-- Server Action fetches URL → `cheerio` parses dish names/descriptions → `gpt-4o-mini` structures and translates → cache in Supabase
-
-**If menu input is a URL pointing to a JavaScript SPA (like eazee-link.com):**
-- Server Action calls screenshot API with URL → receives image → `gpt-4o` Vision extracts structured dish data → cache in Supabase
-
-**If menu input is a photo from camera:**
-- `react-webcam` captures image → `tesseract.js` runs client-side OCR in browser → if confidence low, upload to Server Action → `gpt-4o` Vision → cache result
-
-**Top 3 AI Assistant:**
-- Client sends current dish array → Server Action calls `gpt-4o-mini` (or `gpt-4.1-mini`) with user dietary/allergen prefs → streams back ranked recommendations via `useChat`
+| `unsplash-js` npm package | Officially archived by Unsplash. No updates since 2022. | Direct `fetch` to `api.unsplash.com` |
+| Pinecone / Qdrant / Weaviate | Separate vector DB service when Supabase pgvector is already available | `pgvector` extension on existing Supabase instance |
+| `text-embedding-3-large` | 3072 dimensions = 6x storage vs 512-dim for negligible accuracy gain on dish names (< 20 tokens) | `text-embedding-3-small` with `dimensions: 512` |
+| Dedicated search service (Algolia, Meilisearch, Typesense) | Overkill for dish-count scale; adds monthly cost; Supabase FTS + pgvector covers the need | Supabase `textSearch` + pgvector RPC |
+| Client-side embedding generation | Exposes OpenAI API key in browser | Server Action with `embed()` from `ai` package |
+| `IVFFlat` index for pgvector | Requires pre-seeded data to build; not suitable for tables that grow incrementally | `HNSW` index — builds incrementally, no data requirement at creation time |
 
 ---
 
@@ -241,76 +387,28 @@ No new dev dependencies required — TypeScript types are bundled in all recomme
 
 | Package | Compatible With | Critical Note |
 |---------|----------------|---------------|
-| `@yudiel/react-qr-scanner` ^2.5.1 | React 18+, React 19 | Must use `dynamic(() => import(...), { ssr: false })` — accesses `navigator.mediaDevices` |
-| `react-webcam` ^7.2.0 | React 18+, React 19 | Must use `dynamic()` with `ssr: false`. HTTPS required on mobile devices. |
-| `tesseract.js` ^7.0.0 | Node.js 16+, modern browsers | Requires webpack config in `next.config.ts` — see integration notes below |
-| `next-intl` ^4.8.3 | Next.js 15+, **Next.js 16** | Middleware file must be named `proxy.ts` in Next.js 16 (was `middleware.ts` in older versions) |
-| `ai` ^6.0.97 | Next.js App Router, React 18+ | Use `generateText` in Server Actions; `useChat` is client-only |
-| `@ai-sdk/openai` ^3.0.31 | `ai` ^6.x | Must match `ai` SDK major version — do not mix `ai` v5 with `@ai-sdk/openai` v3 |
-| `cheerio` ^1.2.0 | Node.js 18+ | Server-only. Never import in Client Components or `'use client'` files. |
-
----
-
-## Integration Notes
-
-### Next.js 16 + `next-intl`: Middleware Renamed
-In Next.js 16, the `next-intl` integration middleware must be named `proxy.ts` (previously `middleware.ts`). Pre-16 tutorials will be wrong on this step.
-
-### Camera Components: Always `ssr: false`
-Both `@yudiel/react-qr-scanner` and `react-webcam` access browser-only APIs (`navigator.mediaDevices`). Use dynamic imports:
-
-```typescript
-// In any Next.js page or component
-import dynamic from "next/dynamic";
-
-const QrScanner = dynamic(() => import("@yudiel/react-qr-scanner"), { ssr: false });
-const Webcam = dynamic(() => import("react-webcam"), { ssr: false });
-```
-
-### Tesseract.js: Next.js Webpack Config
-Tesseract.js uses Web Workers and WASM. Add to `next.config.ts`:
-
-```typescript
-const nextConfig = {
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      path: false,
-    };
-    return config;
-  },
-};
-```
-
-### Vercel Function Size Budget
-Estimated bundle additions from new packages:
-- `tesseract.js` — ~2 MB JS (WASM loaded lazily from CDN, not bundled)
-- `cheerio` — ~1 MB
-- `ai` + `@ai-sdk/openai` — ~500 KB
-- `@yudiel/react-qr-scanner` — ~300 KB
-- `react-webcam` — ~100 KB
-- `next-intl` — ~200 KB
-
-Total addition: ~4.1 MB. Well within Vercel's 250 MB serverless function limit. No size risk.
+| `ai` ^6.0.99 | `embed`, `embedMany` functions | `openai.embeddingModel('text-embedding-3-small')` is the correct call syntax in AI SDK v6. The old `openai.embedding()` syntax was renamed. |
+| `@ai-sdk/openai` ^3.0.33 | `ai` ^6.x | Must stay in sync — do not mix ai v5 with @ai-sdk/openai v3 |
+| Supabase pgvector | `@supabase/supabase-js` ^2.97.0 | Use `.rpc('search_dishes_semantic', {...})` — PostgREST does not expose pgvector operators directly |
+| `next-intl` ^4.8.3 | ES/IT locale codes | Adding new locales is additive — no breaking changes to existing FR/EN/TR/DE behavior |
+| Unsplash REST API | `UNSPLASH_ACCESS_KEY` env var | 50 req/hr in demo mode; apply for production approval (5000 req/hr) before launch |
 
 ---
 
 ## Sources
 
-- [github.com/yudielcurbelo/react-qr-scanner](https://github.com/yudielcurbelo/react-qr-scanner) — `@yudiel/react-qr-scanner` v2.5.1 confirmed, last published ~1 month ago (MEDIUM confidence, search result)
-- [github.com/naptha/tesseract.js/releases](https://github.com/naptha/tesseract.js/releases) — v7.0.0 released December 2024, confirmed latest (HIGH confidence, official source)
-- [ai-sdk.dev/docs/introduction](https://ai-sdk.dev/docs/introduction) — Vercel AI SDK v6.0.97, official documentation (HIGH confidence)
-- [npmjs.com/package/@ai-sdk/openai](https://www.npmjs.com/package/@ai-sdk/openai) — `@ai-sdk/openai` v3.0.31, last published 15 hours ago (MEDIUM confidence, search result)
-- [next-intl.dev](https://next-intl.dev/) — v4.8.3, Next.js 16 compatibility and `proxy.ts` rename confirmed (HIGH confidence)
-- [npmjs.com/package/cheerio](https://www.npmjs.com/package/cheerio) — v1.2.0 confirmed (MEDIUM confidence, search result)
-- [vercel.com/docs/functions/limitations](https://vercel.com/docs/functions/limitations) — 250 MB unzipped function limit (HIGH confidence, official docs)
-- [npm-compare.com](https://npm-compare.com/@zxing/library,html5-qrcode,jsqr,qr-scanner,qrcode-reader) — html5-qrcode and @zxing/library maintenance status confirmed unmaintained (MEDIUM confidence)
-- Test menu direct analysis (https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q) — confirmed JavaScript SPA, Cheerio cannot parse it (HIGH confidence, direct HTTP fetch)
-- [roboflow.com/compare/tesseract-vs-gpt-4o](https://roboflow.com/compare/tesseract-vs-gpt-4o) — Tesseract vs GPT-4o accuracy comparison (MEDIUM confidence)
-- [zenrows.com/blog/playwright-vercel](https://www.zenrows.com/blog/playwright-vercel) — Playwright/Playwright Chromium on Vercel size constraints (HIGH confidence, corroborated by Vercel docs)
+- [ai-sdk.dev/docs/ai-sdk-core/embeddings](https://ai-sdk.dev/docs/ai-sdk-core/embeddings) — `embed`, `embedMany` API, `openai.embeddingModel()` syntax confirmed (HIGH confidence, official docs)
+- [supabase.com/docs/guides/ai/hybrid-search](https://supabase.com/docs/guides/ai/hybrid-search) — pgvector + tsvector hybrid search, RRF fusion, HNSW index setup (HIGH confidence, official docs)
+- [supabase.com/docs/guides/database/extensions/pgvector](https://supabase.com/docs/guides/database/extensions/pgvector) — pgvector extension, vector column, `vector_cosine_ops` (HIGH confidence, official docs)
+- [supabase.com/docs/guides/ai/vector-indexes/hnsw-indexes](https://supabase.com/docs/guides/ai/vector-indexes/hnsw-indexes) — HNSW vs IVFFlat recommendation, `m` and `ef_construction` params (HIGH confidence, official docs)
+- [platform.openai.com/docs/models/text-embedding-3-small](https://platform.openai.com/docs/models/text-embedding-3-small) — 1536 dimensions default, reducible to 512, $0.02/1M tokens (HIGH confidence, official docs)
+- [unsplash.com/documentation](https://unsplash.com/documentation) — REST API endpoint, 50 req/hr demo / 5000 req/hr production, attribution requirements (HIGH confidence, official docs)
+- [github.com/unsplash/unsplash-js](https://github.com/unsplash/unsplash-js) — Confirmed archived/unmaintained (HIGH confidence, official repo)
+- [developers.deepl.com/docs/getting-started/supported-languages](https://developers.deepl.com/docs/getting-started/supported-languages) — Spanish (ES) and Italian (IT) confirmed supported (HIGH confidence, official docs)
+- [next-intl.dev](https://next-intl.dev/) — Any ISO 639-1 locale code supported, no package changes needed (HIGH confidence, official docs)
+- [costgoat.com/pricing/openai-embeddings](https://costgoat.com/pricing/openai-embeddings) — text-embedding-3-small batch pricing $0.01/1M tokens (MEDIUM confidence, pricing calculator)
 
 ---
 
-*Stack research for: NOM — restaurant menu scanning / AI translation MVP features (Next.js web app)*
-*Researched: 2026-02-25*
+*Stack research for: NOM v1.2 — dish enrichment, canonical names, reverse search, AI Top 3, dish images, ES/IT translation*
+*Researched: 2026-02-28*

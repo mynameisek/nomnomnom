@@ -1,12 +1,12 @@
 # Feature Research
 
-**Domain:** Food-tech mobile web app — menu scanning, dish card generation, translation, AI recommendation, allergen filtering
-**Researched:** 2026-02-25
-**Confidence:** MEDIUM-HIGH — core scanning/translation patterns are HIGH (verified via MenuGuide, FoodieLens, Yelp Menu Vision, Veryfi OCR); AI recommendation patterns MEDIUM (market-verified, implementation details LOW); allergen UX HIGH (regulatory-backed, well-documented)
+**Domain:** Culinary knowledge enrichment — dish cultural context, canonical naming, reverse search, AI Top 3 recommendation
+**Researched:** 2026-02-28
+**Confidence:** HIGH on enrichment patterns and Top 3 UX (corroborated by Swiggy, Zomato, TasteAtlas, Beli); MEDIUM on canonical naming implementation (academic evidence strong, production pattern inferred); HIGH on reverse search with pgvector (Supabase official docs + Swiggy production data); MEDIUM on image strategy (Unsplash/Pexels API verified, dish-specific lookup patterns inferred)
 
 ---
 
-> **Scope note:** This file covers only the NEW MVP features being added in this milestone. The landing page, waitlist, and referral system are already built and documented. Features below assume the Next.js + Supabase foundation exists.
+> **Scope note:** This file covers ONLY the v1.2 milestone features. The foundation (scan methods, dish cards, translation FR/EN/TR/DE, allergen filters, Google Places enrichment, URL hash caching) is already shipped as v1.1. Every feature below assumes those are in place and stable.
 
 ---
 
@@ -14,163 +14,153 @@
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist in any menu translation/scanning product. Missing these makes NOM feel incomplete compared to MenuGuide, FoodieLens, or Yelp Menu Vision.
+Features that users of any food enrichment or culinary discovery app assume exist. These are non-negotiable for v1.2 to feel complete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Camera/photo scan → menu parsing | Core product promise. Any competitor offers this. Missing = broken | HIGH | OCR pipeline: image → text extraction → dish segmentation. Must handle dark lighting, blurry, angled, handwritten menus. Veryfi and GPT-4o Vision both viable. GPT-4o is simpler to integrate but higher per-call cost |
-| QR code scan → URL → menu parsing | In 2025, most Strasbourg restaurants have QR codes linking to PDFs or menu pages. Users expect one tap | MEDIUM | Two sub-cases: (1) QR → PDF → OCR pipeline, (2) QR → HTML menu page → structured parsing. Both must be handled. jsQR or native camera API for QR detection |
-| URL/link menu parsing | Users find menus on Google before arriving. Paste a link, get dish cards | MEDIUM | Fetch page HTML, extract structured data (schema.org/Restaurant markup if available), fallback to AI extraction. Apify-style scraping or direct GPT-4o with HTML context. Handle: PDFs, dynamic JS-rendered menus, third-party platforms (TheFork, TripAdvisor menu tabs) |
-| Dish cards (image + name + translated description) | Visual format is the universal standard for food in 2026. Text-only menus feel like 2010 | MEDIUM | Each card: dish photo (real or AI-generated), translated name, 2-3 sentence description, dietary icons. FoodieLens confirmed this is the standard format. Swipe or grid layout both work |
-| Translation FR/EN + TR/DE/ES/IT | Strasbourg test market explicitly spans Turkish, German, French, Italian restaurants. Users from any of these backgrounds need their language | MEDIUM | GPT-4o handles all 6 languages with strong culinary context. Do not use Google Translate — lacks food-specific terminology. "Doner" should stay "Doner", not become "Donor" |
-| Dietary/allergen flags on dish cards | EU regulation awareness drives user expectation. Post-2024 French food law tightened allergen disclosure | MEDIUM | Minimum 14 EU allergens (gluten, crustaceans, eggs, fish, peanuts, soybeans, milk, tree nuts, celery, mustard, sesame, sulphites, lupin, molluscs). Vegetarian/vegan markers. Spicy indicator. Budget flag (price relative to menu average) |
-| Allergen disclaimer (never "guaranteed") | Legal and safety standard. Every verified allergen app uses this. Omitting creates liability | LOW | Standard wording: "Allergen info is inferred from dish descriptions. Ingredients may vary. Always inform your server of allergies before ordering." Must appear on every dish card with allergen flags. Non-negotiable |
-| Scan result caching (per restaurant) | Restaurant Wi-Fi is unreliable. Users expect scanned menu to persist during the meal | MEDIUM | Cache in localStorage + Supabase. TTL: 24h for user session, 7 days in shared DB. Each scan contributes to shared menu cache for future users |
-| Trust badges (Verified vs Inferred) | Users need to know when data is confirmed vs AI-guessed. Competitors do not do this — NOM must, per product rules | LOW | Two states: "✅ Menu Verified" (data comes from official restaurant source) vs "⚠ AI Inferred" (extracted/generated by AI). Show on dish card and on scan result header |
-| No account required to scan | Expectation from the product rules. Friction-free first scan is table stakes in 2026 | LOW | Anonymous scanning with session-based credit tracking. Device fingerprint or session cookie for free tier limits. Account creation unlocks history |
+| Cultural explanation per dish | 76% of consumers say detailed menu descriptions build confidence with unfamiliar dishes (Datassential 2025). A tourist scanning a Turkish menu with only translated names gets zero context on what mantı actually is | MEDIUM | 3–5 sentences max: origin, cooking method, typical taste, how it is eaten. Swiggy confirmed this pattern in production with a configuration module providing taxonomy + example descriptions. Avoid culinary Wikipedia walls of text — write for a hungry tourist, not a food scholar |
+| Ingredient summary (typical ingredients) | Any food-allergic user or dietary restriction user expects to see what goes into a dish. Allergen tags alone are insufficient — intolerances extend beyond the EU 14 | MEDIUM | 4–8 key ingredients as a flat list. Not a recipe. "Lamb mince, onion, thin pasta, yogurt, tomato sauce" is enough. This complements allergen tags, not replaces them |
+| Dish origin / cuisine type label | Users use origin to anchor unfamiliar dishes: "Oh, this is Anatolian" gives more context than any description. Every competitor (TasteAtlas, Beli, Zomato) shows this | LOW | Single string: cuisine region, not country (prefer "Anatolian" over "Turkish" for specificity). Stored as part of enrichment object |
+| Visual representation per dish (image or fallback) | Dish cards without images feel like a spreadsheet. Competitors universally use images. Per product Rule 5: gradient+emoji is the defined fallback — this is already partially solved | MEDIUM | Priority: (1) web image found by canonical name via Unsplash/Pexels API, (2) Google image search via Custom Search API, (3) gradient+emoji generated from dish emoji + dominant color. Never AI-generated photorealistic images — they mislead at the table |
+| "How to eat this" field | Particularly valuable for the tourist and expat user journeys. Mantı with yogurt poured on top is not obvious. Döner eaten with a fork versus hands differs by country | LOW | 1–2 sentences. Only populated for dishes where eating method is non-obvious. Empty field is better than a generic filler |
+| Enrichment shown inline on dish card (no extra tap) | Users expect enrichment to be accessible without a modal or navigation. TasteAtlas and Zomato both use inline expand patterns — not deep-link pages | LOW | Accordion/expand below existing dish card content. Tap the card to expand. No navigation away from the menu view |
 
 ### Differentiators (Competitive Advantage)
 
-Features NOM's competitors (MenuGuide, FoodieLens, AnyMenu) do not offer. These are where NOM competes.
+Features that no current competitor in NŌM's space (menu scanning apps) offers. These are where v1.2 wins.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| AI Top 3 assistant ("Ask NOM") | No competitor recommends from scanned menu. They all translate — none suggest. "What should I order?" answered in one tap | HIGH | GPT-4o with context: full parsed menu + user dietary filters + request criteria (diversity, clarity, match). Returns exactly 3 dishes with rationale. 3x/day free, then paywall. The paywall hits after value is demonstrated — correct timing |
-| Reverse search ("I want X") | "I want something vegetarian and not too heavy" → highlighted dishes from scanned menu. Natural language input → dish filter. No competitor does this | HIGH | Client-side: filter scanned dish list by tags/properties. Server-side for nuanced queries: send query + dish list to GPT-4o, get ranked subset back. Simpler than building embeddings — start with GPT-4o ranking |
-| Multilingual allergen phrases | Per product rule: allergen warnings appear in the user's language, always with "ask server" phrasing | MEDIUM | Pre-translated disclaimer phrases for all 6 supported languages. Never AI-generated on the fly for safety text — use fixed, reviewed translations. Store as locale strings |
-| Menu caching as DB enrichment | Each user scan feeds shared restaurant menu database. Second user scanning same restaurant gets instant results | MEDIUM | On scan: check Supabase `menus` table by restaurant_id or URL hash. If fresh (<7 days): return cached, skip AI call. If stale/missing: run pipeline, store result. Network effect compounds value |
-| Photo OCR fallback (camera) | For handwritten menus, chalk boards, paper menus with no QR code. Handles the real-world Strasbourg restaurant that hasn't digitised | HIGH | Harder than PDF OCR. GPT-4o Vision is the current best approach for arbitrary menu photos. Pre-process: straighten, enhance contrast before sending. Set user expectation: "Handwritten menus may have lower accuracy" |
-| Dietary filter UX on dish cards | Most apps show allergen text. NOM filters the card grid in real time — tap "vegetarian" and irrelevant cards grey out or hide | LOW | Client-side filter on dish tag array. Tags set during AI parsing. Instant, no server round-trip |
-| Top 3 criteria transparency | Show WHY each dish was picked: "Diverse — not all meat", "Clear description — no guessing", "Matches your no-gluten filter". Builds trust in the AI | MEDIUM | Include brief rationale string in Top 3 API response. Render as subtitle under each recommended dish card |
+| Canonical dish name normalization | "Mantı" on one menu, "Manti" on another, "Turkish dumplings" on a third — these are the same dish. Canonical naming is what enables reverse search and cross-restaurant matching. No menu scanning app does this today | HIGH | The canonical name is a separate field from the menu display name. Store: `{ menu_name: "Mantı", canonical_name: "manti", canonical_display: "Mantı (Turkish Dumplings)", variants: ["manti", "manti soup", "mantı", "turkish dumplings"] }`. Canonical names are lowercase, Latin-script, no diacritics for matching. Display form retains diacritics and capitalization |
+| Reverse search by dish intent ("je veux des mantı") | Users scan menus before arriving at a restaurant AND when they already know what they want. "I want something like pho" across all scanned restaurants is a zero-competitor feature | HIGH | Two-tier: (1) Client-side tag + canonical name fuzzy match for exact/near-exact dish searches, (2) pgvector semantic similarity on dish descriptions + canonical names for intent queries ("something light and filling"). Supabase has native pgvector — no extra service needed. Use `text-embedding-3-small` (OpenAI) — strong multilingual performance, 44% MIRACL score, cost-effective at $0.02/1M tokens |
+| AI Top 3 with explicit criteria (correspondence, diversity, clarity) | Every food app says "AI recommendations". None explain the logic. NŌM's Top 3 exposes three distinct criteria per selection. This transforms a magic-box recommendation into a trustworthy advisor | HIGH | One GPT-4 call per Top 3 request. Input: full parsed dish list + user dietary filters + any active allergen exclusions. Output: 3 dish objects, each with `match_reason` (why it fits constraints), `diversity_note` (what experience it offers that differs from the other 2), `clarity_score` (confidence in description quality). Rate limit: 3/day free, paywall after |
+| Culinary knowledge graph growing with each scan | Each new scan of a restaurant enriches the canonical dish database. A dish scanned in Strasbourg's Turkish quarter builds the knowledge base that helps the next user recognize the same dish in Istanbul. Long-term moat | HIGH | The `canonical_dishes` table is the growing asset. Every new scan: (1) parse dishes, (2) look up canonical name match, (3) if no match found → generate enrichment via LLM → store as new canonical record, (4) if match found → link menu dish to canonical record. Cost: enrichment LLM call fires only once per canonical dish, never again |
+| Trust badge hierarchy extended to enrichment | v1.1 has "Menu" vs "Inferred". v1.2 adds "Community" — when enrichment has been validated by multiple scans of the same canonical dish. This is the third badge from product Rule 2 | LOW | Simple counter: `enrichment_source: "llm_generated" \| "multi_scan_confirmed"`. Display as ✅ Menu / ⚠ Inferred / 👥 Communauté. Threshold: 3+ independent scans of same canonical dish = Community badge |
+| ES/IT translation parity | Per product Rule 6: FR/EN interface, TR/DE/ES/IT for dish translation. ES and IT complete the Strasbourg test market (Italian restaurants are common, Spanish-speaking expat population exists) | LOW | The translation cascade is already built (DeepL → Google → Azure → MyMemory → LLM fallback). ES and IT are added as target languages in the same pipeline. No new infrastructure — just additional language codes |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
 | Anti-Feature | Why Requested | Why Problematic | Alternative |
 |--------------|---------------|-----------------|-------------|
-| Guaranteed allergen accuracy | Users with severe allergies want certainty | NOM parses menus written by restaurants that are often incomplete. Guaranteeing accuracy creates liability and false safety. Fatal if wrong | Always show "⚠ AI Inferred" badge and "ask server" disclaimer. Never remove this warning, even when confidence is high |
-| Full menu translation for all 100+ languages | "Be global from day 1" | The Strasbourg market is FR/EN/TR/DE/ES/IT. Supporting 100 languages spreads QA surface area, increases prompt complexity, and adds untestable edge cases at launch | Ship 6 languages, validate quality. Add languages based on user demand signals post-launch |
-| Nutrition tracking (calories, macros) | Health-conscious users request it | Requires per-dish nutritional database that restaurants don't maintain. AI-estimated calories are unreliable and create health risk if acted on. Yazio/MyFitnessPal own this space | Allergen flags cover the safety use case. Explicitly out of scope in product rules |
-| User-editable dish descriptions | "Let users correct AI errors" | Opens moderation burden. Bad actors can poison menu data. Trust badge system collapses if community edits are mixed with AI-inferred data | Implement a "flag as incorrect" button instead. Human review before any edit goes live |
-| Real-time menu scraping on every page load | "Always up-to-date menus" | Restaurant websites block scrapers, rate-limit, and change structure constantly. This approach will break silently and frequently | Cache menus with TTL. Show "last updated" timestamp. Manual refresh button for users who want fresh data |
-| AI-generated dish photos for all dishes | "Every dish should have a visual" | AI food photos are visually appealing but misleading — the actual dish will look different. Creates disappointment and trust issues at the table | Use real photos from web search when available (Yelp, Google Images via API). Show AI-generated as last resort with "Illustrative image" label |
-| "Feed" of recent restaurant scans | "Social proof, show what others are scanning" | Violates the product rule: scan = home, never feed. A social feed changes the app's information architecture and creates a maintenance burden | Trust badges and cache-hit counts ("47 people scanned this menu") are sufficient social proof without a feed |
-| Infinite AI Top 3 calls for free | "Remove friction for best experience" | GPT-4o calls cost ~$0.01-0.03 per Top 3 request. At scale this is unsustainable. The paywall is the business model | 3 free/day is the proven freemium threshold (MenuGuide uses 3 scans/day free). Hitting the limit after value is demonstrated converts well |
+| Full culinary encyclopedia per dish | "Give users everything about mantı" — origin story, regional variants, famous restaurants, Wikipedia-style article | Kills the mobile-first experience. Users at a restaurant table have 10 seconds of attention. A 500-word article is an anti-pattern. TasteAtlas works because it is a dedicated discovery tool, not an in-meal tool | 3–5 sentence enrichment maximum. Hardcode a character limit in the LLM prompt. Link to TasteAtlas for users who want depth |
+| AI-generated photorealistic dish images as fallback | "Every dish should look perfect" — DALL-E 3 or Stable Diffusion for dishes without a real photo | AI food images show idealized presentations. The actual dish at the table will look different. Creates trust breakdown when the real dish arrives. Yelp's Menu Vision showed that real photos (even imperfect) convert better than AI renders | gradient+emoji fallback per product Rule 5. Signal "Illustrative" clearly on any image not sourced from the restaurant or verified web source |
+| Nutrition data (calories, macros) per dish | Health-conscious users explicitly ask for this | Restaurant dishes vary wildly in portion size and preparation. Any calorie estimate is unreliable. For celiac or serious medical diets this is dangerous. Yazio and MyFitnessPal own this space with proper databases | The allergen + ingredient list covers the safety use case. Explicitly document that NŌM does not provide calorie estimates |
+| User-submitted dish enrichment corrections | "Crowdsource the knowledge base quality" | Moderation overhead at v1.2 scale is unjustifiable. Bad actors can poison canonical dish data and break reverse search. Trust badge system collapses if unreviewed community edits mix with AI-generated data | "Flag as incorrect" button only. Flagged items get reviewed before any change. Community badge earns trust through volume of independent scans, not through free-form edits |
+| Reverse search as a standalone page with infinite scroll | "Build a food discovery feed" | Violates product Rule 8: scan = home, never feed. A discovery feed is a different product (Beli, Zomato). Building it now creates navigation architecture decisions that will need to be undone | Reverse search is a modal or bottom sheet overlay on the current scan view. No navigation. Returns matches from previously scanned menus only — not a global discovery engine yet |
+| Real-time enrichment on every dish at scan time | "All dishes should be fully enriched immediately" | A typical scanned menu has 30–80 dishes. Enriching all of them synchronously at scan time means 30–80 sequential LLM calls = 15–40 seconds load time + $0.30–$1.00 per scan. Unacceptable | Lazy enrichment: render dish cards immediately with what is parsed (name, description, tags). Enrich on-demand when user taps "learn more" on a specific dish. Cache enrichment permanently in `canonical_dishes` table |
+| Cross-restaurant "best mantı in Strasbourg" ranking | "Use the data you're building to rank restaurants" | Ranking requires statistical significance (multiple scans per restaurant), freshness validation (menus change), and user rating data NŌM does not yet have. Publishing bad rankings destroys trust faster than having no rankings | Build the data first. Rankings emerge from the knowledge graph in v2+ after sufficient scan volume. Reverse search shows "where you can get X" without implying a quality ranking |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[QR Code Scan]
-    └──requires──> [jsQR or native camera API]
-    └──outputs──> [URL]
-                    └──feeds──> [URL Menu Parser]
+[v1.1 Dish Card]
+    └──already has──> [name, description, allergens, dietary tags, translations]
+    └──feeds──> [Dish Enrichment]
+    └──feeds──> [Canonical Name Lookup]
 
-[URL Menu Parser]
-    └──requires──> [HTML fetch + extraction OR PDF download + OCR]
-    └──requires──> [GPT-4o or structured extraction API]
-    └──outputs──> [Raw dish list]
+[Dish Enrichment]
+    └──requires──> [Canonical Name] (enrichment is keyed to canonical dish, not menu name)
+    └──requires──> [LLM call (GPT-4o-mini)] (fires once per canonical dish, cached forever)
+    └──outputs──> [cultural_explanation, origin, typical_ingredients, how_to_eat]
+    └──stored_in──> [canonical_dishes table in Supabase]
+    └──enhances──> [Dish Card] (accordion expansion on tap)
 
-[Photo OCR (camera)]
-    └──requires──> [GPT-4o Vision]
-    └──requires──> [Image pre-processing (contrast, straighten)]
-    └──outputs──> [Raw dish list]
-
-[Raw dish list]
-    └──requires──> [Translation Layer (GPT-4o, 6 languages)]
-    └──requires──> [Allergen Detection (GPT-4o tagging)]
-    └──outputs──> [Structured dish objects: name, description, tags, price]
-                    └──feeds──> [Dish Card Generation]
-                    └──feeds──> [Menu Cache (Supabase)]
-                    └──feeds──> [AI Top 3]
-                    └──feeds──> [Reverse Search / Dietary Filter]
-
-[Dish Card Generation]
-    └──requires──> [Structured dish objects]
-    └──requires──> [Dish photo lookup (Yelp/Google API or AI generation)]
-    └──requires──> [Trust badge assignment (Verified vs Inferred)]
-    └──outputs──> [Rendered dish cards with badges + allergen disclaimers]
-
-[AI Top 3 Assistant]
-    └──requires──> [Structured dish objects]
-    └──requires──> [User dietary filter preferences]
-    └──requires──> [GPT-4o with Top 3 prompt (diversity + clarity + match)]
-    └──requires──> [Daily usage counter (3x/day free gate)]
-    └──outputs──> [3 recommended dishes + rationale strings]
-
-[Dietary / Allergen Filter]
-    └──requires──> [Structured dish objects with allergen tags]
-    └──outputs──> [Filtered/greyed dish card grid]
-    (no server call required — pure client-side filter)
-
-[Menu Cache]
-    └──requires──> [Supabase menus table]
-    └──requires──> [Restaurant identifier (URL hash or place_id)]
-    └──enables──> [Cache hit = skip AI pipeline for returning scans]
-    └──enables──> [Trust badge: "Verified" when cache is confirmed from official source]
+[Canonical Name]
+    └──requires──> [Parsed dish name + description from v1.1 pipeline]
+    └──requires──> [LLM normalization call OR fuzzy match against existing canonical_dishes]
+    └──outputs──> [canonical_key (lowercase, no-diacritic), display_name, variant_aliases]
+    └──enables──> [Cross-restaurant matching]
+    └──enables──> [Reverse Search]
+    └──enables──> [Knowledge Graph enrichment]
 
 [Reverse Search]
-    └──requires──> [Structured dish objects already parsed]
-    └──requires──> [Natural language query from user]
-    └──requires──> [Client filter OR GPT-4o ranking call (for nuanced queries)]
-    (enhances but does not require AI Top 3)
+    └──requires──> [canonical_dishes table populated] (search has nothing to find without it)
+    └──requires──> [pgvector extension on Supabase] (for semantic mode)
+    └──requires──> [Embeddings generated per canonical dish] (text-embedding-3-small)
+    └──two modes──>
+        [Mode 1: Fuzzy text match]
+            └──requires──> [canonical_key + variant_aliases fields]
+            └──no extra cost, fast, client-compatible]
+        [Mode 2: Semantic similarity]
+            └──requires──> [pgvector + stored embeddings]
+            └──requires──> [embedding generated at query time]
+            └──covers "I want something light and spicy" type queries]
 
-[Multilingual Allergen Disclaimers]
-    └──requires──> [Static locale string files (pre-translated, NOT AI-generated)]
-    └──enhances──> [Dish Card Generation]
-    └──conflicts──> [AI-generated safety text — never do this]
+[AI Top 3]
+    └──requires──> [Full dish list from current scanned menu] (must be on same scan context)
+    └──requires──> [User dietary filters + allergen exclusions from v1.1]
+    └──enhanced_by──> [Dish Enrichment] (better context = better Top 3 rationale)
+    └──enhanced_by──> [Canonical Name] (deduplication — same dish appearing twice is one choice)
+    └──requires──> [Daily rate limit counter (3x/day free)] (session-based, no account)
+    └──outputs──> [3 dish picks + match_reason + diversity_note + clarity_score]
+
+[Dish Image]
+    └──requires──> [Canonical Name] (image lookup is by canonical name, not raw menu text)
+    └──lookup_chain──>
+        [1. Unsplash API query by canonical name] → if result → store URL + attribution
+        [2. Pexels API query] → if result → store URL + attribution
+        [3. gradient+emoji fallback] → always available, no external call
+    └──cached_in──> [canonical_dishes.image_url + image_source fields]
+    └──never──> [AI-generated photorealistic images as fallback]
+
+[ES/IT Translation]
+    └──requires──> [Existing translation cascade from v1.1] (DeepL → Google → LLM fallback)
+    └──just adds──> ['es', 'it'] to the target language array
+    └──no new infrastructure]
+
+[Trust Badge: Community]
+    └──requires──> [Canonical Name] (badge is per canonical dish, not per menu entry)
+    └──requires──> [scan_count field on canonical_dishes] (incremented each time dish is matched)
+    └──threshold──> [3+ independent scans → "Communauté" badge]
+    └──extends──> [v1.1 trust badge system (Menu / Inféré)]
 ```
 
 ### Dependency Notes
 
-- **Translation must happen before dish card generation:** Cards cannot render without translated names and descriptions. The AI parsing + translation step is the critical path — everything downstream depends on it.
-- **Allergen detection is a parallel step to translation, not sequential:** The same GPT-4o call can handle both. Request: "translate this dish list to [language] AND tag each with EU allergens present." This halves the API calls.
-- **Menu cache lookup must happen BEFORE the AI pipeline:** Cache hit = instant result, no API cost. Only call AI if cache is cold or stale. This is the cost-control mechanism.
-- **AI Top 3 requires dietary filters to be set first:** Without filters, Top 3 defaults to generic "popular/interesting" mode. With filters, it becomes personalised. Filters should be captured at session start (no account needed — store in sessionStorage).
-- **Reverse search has two modes:** (1) Client-side tag filter (fast, free, covers simple cases: "vegetarian", "no nuts"). (2) GPT-4o ranked query (handles nuanced: "something light but filling"). Start with client-side only for v1.
-- **Trust badges depend on data source, not AI confidence:** "Verified" = data came from official restaurant menu page or PDF. "Inferred" = AI extracted from ambiguous source. This is a source metadata flag, not an accuracy score.
-- **Allergen disclaimer text must be static locale strings:** Never generate safety disclaimers with AI. Pre-translate all 6 languages, store as constants, render from locale file.
+- **Canonical Name is the architectural keystone of v1.2.** Every other feature — enrichment, reverse search, image lookup, community badge, cross-restaurant matching — depends on it. Build canonical naming first, before any other v1.2 feature.
+
+- **Enrichment is lazy by design.** Generating enrichment for all 30–80 dishes at scan time would cost $0.30–$1.00 per scan in LLM calls. The correct pattern is: generate enrichment once when a user first taps "learn more" on a dish, store it permanently in `canonical_dishes`, serve from cache forever after. Cost amortizes to zero quickly.
+
+- **Reverse search has two tiers with different unlock conditions.** Tier 1 (fuzzy text match on canonical keys) requires only the `canonical_dishes` table. Tier 2 (semantic similarity via pgvector) requires stored embeddings — an additional async job that can run after canonical records are created. Build Tier 1 first, add Tier 2 when the dish database has enough records to make semantic search meaningful.
+
+- **Top 3 is enhanced by enrichment but does not require it.** The v1.1 dish card data (name, description, tags) is sufficient for Top 3 to work. Enrichment improves the quality of rationale strings but is not a blocker.
+
+- **ES/IT translation is independent.** It does not depend on any of the above. It can be built in parallel or added as a fast win before the enrichment pipeline is complete.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v1)
+### Launch With (v1.2.0)
 
-Core scan-to-cards loop. Everything else is additive.
+The minimum that makes this milestone meaningful. Users should be able to tap a dish and get cultural context, and be able to ask "where can I get X" across their scan history.
 
-- [ ] QR code scan → URL detection → menu extraction — the fastest path to dish cards
-- [ ] URL/link paste → menu parsing — for users who find menus on Google first
-- [ ] Photo OCR (camera fallback) — essential for Strasbourg restaurants with paper/chalk menus
-- [ ] Translation in 6 languages (FR, EN, TR, DE, ES, IT) — covers Strasbourg test market
-- [ ] Dish cards with image, translated name, 2-sentence description, price
-- [ ] EU allergen tags on each dish card (14 mandatory allergens + vegan/vegetarian/spicy)
-- [ ] Allergen disclaimer in user's language (static locale strings, never AI-generated)
-- [ ] Trust badge per dish card (✅ Verified / ⚠ Inferred)
-- [ ] Dietary filter UI (tap to filter cards: vegetarian, vegan, gluten-free, no nuts)
-- [ ] AI Top 3 assistant — 3x/day free, paywall after — this is the "wow moment"
-- [ ] Menu caching in Supabase — cache each scan result, serve to next user scanning same restaurant
-- [ ] Session-based credit counter (no account required, device fingerprint)
+- [ ] Canonical name normalization — run on every dish at parse time, store in `canonical_dishes` — the foundation everything else requires
+- [ ] Dish enrichment on-demand — tap to expand cultural explanation, origin, ingredients, how to eat — lazy loading, LLM call only on first view, cached forever
+- [ ] Dish image lookup by canonical name — Unsplash → Pexels → gradient+emoji fallback, attribution shown, cached in canonical record
+- [ ] AI Top 3 recommendations — GPT-4 call with full menu + dietary filters + diversity/clarity criteria, 3x/day free rate gate
+- [ ] Top 3 rationale display — show `match_reason` + `diversity_note` per recommendation, not just the dish name
+- [ ] ES/IT translation support — add both languages to the existing translation cascade
+- [ ] Community trust badge trigger — increment scan count per canonical dish, show 👥 badge at 3+ scans
 
-### Add After Validation (v1.x)
+### Add After Validation (v1.2.x)
 
-Add when core loop is stable and first 50 real scans have been done.
+Add when the canonical dish table has 50+ records and the basic enrichment flow is stable.
 
-- [ ] Reverse search ("I want X") — client-side filter first, GPT-4o ranking second
-- [ ] Top 3 rationale display ("Why: high diversity + matches your no-gluten filter")
-- [ ] Real dish photo lookup via Yelp Fusion API or Google Places Photos
-- [ ] Budget filter (flag dishes relative to menu price average)
-- [ ] "Last scanned" timestamp + manual refresh button on cached menus
+- [ ] Reverse search Tier 1 (fuzzy match on canonical keys + aliases) — text input → matching dishes across scanned menus
+- [ ] Reverse search Tier 2 (pgvector semantic similarity) — activate when 100+ canonical dish embeddings are stored
+- [ ] Reverse search UI — bottom sheet, not a page; returns cards from existing scan history
 
 ### Future Consideration (v2+)
 
-Defer until product-market fit confirmed in Strasbourg.
+Defer until product-market fit confirmed and scan volume is meaningful.
 
-- [ ] Expanded language support beyond 6 (add based on user location data)
-- [ ] Account-linked scan history (requires auth flow)
-- [ ] B2B restaurant QR codes (NOM-optimised QR codes for restaurant tables)
-- [ ] Advanced personalisation (Taste Profile feeding Top 3)
-- [ ] Nutrition estimates (only if demand is clear and liability framework established)
+- [ ] "Find this dish near me" — reverse search → map view of restaurants — requires accounts + location permission
+- [ ] Cross-restaurant "serving X today" — real-time menu validity is unverifiable without restaurant partnerships
+- [ ] Bulk enrichment backfill — retroactively enrich all cached menus — worth doing at 500+ canonical dishes, not before
+- [ ] API/RAG endpoint for canonical dish knowledge — explicitly in product vision as Phase 4; requires stable and large enough knowledge base
 
 ---
 
@@ -178,73 +168,119 @@ Defer until product-market fit confirmed in Strasbourg.
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| QR scan → URL → menu parse | HIGH | MEDIUM | P1 |
-| URL paste → menu parse | HIGH | MEDIUM | P1 |
-| Photo OCR camera fallback | HIGH | HIGH | P1 |
-| Translation (6 languages) | HIGH | MEDIUM | P1 |
-| Dish cards (image + name + description) | HIGH | MEDIUM | P1 |
-| EU allergen tags + dietary icons | HIGH | MEDIUM | P1 |
-| Allergen disclaimer (locale strings) | HIGH (legal) | LOW | P1 |
-| Trust badges (Verified / Inferred) | HIGH (trust) | LOW | P1 |
-| Dietary filter UI | HIGH | LOW | P1 |
-| AI Top 3 (free 3x/day) | HIGH | MEDIUM | P1 |
-| Menu cache (Supabase) | HIGH (cost + UX) | MEDIUM | P1 |
-| Session credit counter | MEDIUM | LOW | P1 |
-| Reverse search (client-side) | MEDIUM | LOW | P2 |
-| Top 3 rationale text | MEDIUM | LOW | P2 |
-| Real dish photo lookup (API) | MEDIUM | MEDIUM | P2 |
-| Budget flag on dish cards | LOW | LOW | P2 |
-| Reverse search (GPT-4o ranking) | MEDIUM | MEDIUM | P3 |
-| Account-linked history | MEDIUM | HIGH | P3 |
-| Expanded languages (beyond 6) | LOW | LOW | P3 |
+| Canonical name normalization | HIGH — unlocks everything else | MEDIUM — LLM call + Supabase table | P1 |
+| Dish enrichment (cultural, ingredients, how-to-eat) | HIGH — core of this milestone | MEDIUM — lazy LLM + cache pattern | P1 |
+| AI Top 3 with criteria rationale | HIGH — primary differentiator | MEDIUM — one GPT-4 call + rate limit | P1 |
+| Dish images (web lookup + emoji fallback) | HIGH — cards feel incomplete without | MEDIUM — 2 API calls + fallback | P1 |
+| ES/IT translation | MEDIUM — market coverage | LOW — existing pipeline, new language codes | P1 |
+| Community trust badge (scan count) | MEDIUM — trust + social proof | LOW — counter increment + badge display | P1 |
+| Top 3 rationale display (match/diversity/clarity) | HIGH — differentiates from magic-box AI | LOW — prompt output + render | P1 |
+| Reverse search Tier 1 (fuzzy canonical match) | HIGH — unique cross-restaurant feature | MEDIUM — requires canonical table built | P2 |
+| Reverse search Tier 2 (pgvector semantic) | HIGH — covers intent queries | HIGH — embeddings + pgvector index | P2 |
+| Reverse search UI (bottom sheet) | MEDIUM — UX for the above | LOW — no new data work | P2 |
 
 **Priority key:**
-- P1: Must have for milestone launch
-- P2: Add when P1 is stable
+- P1: Must ship for v1.2.0 milestone to be complete
+- P2: Add when canonical dish table has 50+ records
 - P3: Future milestone
 
 ---
 
 ## Competitor Feature Analysis
 
-| Feature | MenuGuide | FoodieLens | Yelp Menu Vision | NOM (planned) |
-|---------|-----------|------------|-----------------|---------------|
-| QR scan | No (photo only) | No (photo only) | Yes (camera overlay) | Yes — camera + QR detection |
-| URL paste | No | No | No | Yes — unique input vector |
-| Photo OCR | Yes | Yes | Yes | Yes |
-| Translation languages | 100+ | 100+ | English output only | 6 (FR/EN/TR/DE/ES/IT) — quality over quantity |
-| Dish cards | Yes (image + text) | Yes (image + text) | Overlay on camera | Yes — structured card UI |
-| Allergen detection | Yes (basic) | No | No | Yes — EU 14-allergen standard |
-| Allergen disclaimer | Basic text | None | None | Yes — multilingual locale strings |
-| Trust badges | No | No | No | Yes — core product rule |
-| Dietary filter UI | Profile-based | No | No | Yes — real-time card filter |
-| AI recommendation (Top 3) | No | No | No | Yes — primary differentiator |
-| Reverse search | No | No | No | Yes |
-| Menu caching / DB enrichment | No | No | No | Yes — compounding network effect |
-| Free tier | 3 scans/day | Unknown | Free (in Yelp app) | 3 AI Top 3/day + unlimited scans (different gate) |
-| Paywall trigger | After 3 scans | Unknown | None | After 3 AI calls/day — paywall hits after value proven |
+| Feature | TasteAtlas | Beli | Zomato/Swiggy | Yelp Menu Vision | NŌM v1.2 (planned) |
+|---------|-----------|------|---------------|-----------------|---------------------|
+| Cultural dish explanation | Yes — deep editorial content | No | Basic LLM-generated descriptions | No | Yes — 3–5 sentence scan-contextual enrichment |
+| Ingredient listing | Yes | No | Partial (structured menus only) | No | Yes — typical ingredients, complementing allergen tags |
+| Dish origin label | Yes — map-centric | No | Cuisine type label | No | Yes — cuisine region string |
+| Canonical dish naming | Yes — editorial-curated 19K+ dishes | No | No | No | Yes — LLM-generated, auto-growing with each scan |
+| Reverse search (dish → restaurant) | No | No | "Search by dish" in Swiggy (city-level) | No | Yes — within scanned menus, semantic mode via pgvector |
+| AI recommendation Top 3 | No | No | Swiggy: personalized suggestions | No | Yes — with explicit criteria: correspondence + diversity + clarity |
+| Cross-restaurant dish matching | No | No | Partial (same dish, same platform) | No | Yes — via canonical name key |
+| Dish images | Yes — editorial | User-submitted photos | Crowdsourced + scraping | Real menu photos | Web lookup by canonical name + emoji fallback |
+| Scan-to-enrichment flow | No — browse-only tool | No | No — delivery-first | No | Yes — enrichment is triggered by scan, not standalone |
+| No account required | No | No | Delivery requires account | Yelp login preferred | Yes — session-based, no friction |
 
-**Takeaway:** MenuGuide and FoodieLens translate menus. Yelp Menu Vision overlays photos on a live camera view. None of them recommend. None use trust badges. None gate the paywall on the AI recommendation rather than the scan itself. NOM's model — unlimited free scans, paywall only on the AI "wow moment" — is structurally different and more likely to convert users who have already seen value.
+**Takeaway:** TasteAtlas has the deepest culinary knowledge base but is a browse-first tool with no scan integration. Swiggy has production-scale dish enrichment and semantic search (50M dishes) but is delivery-centric and requires an account. Beli is dish-centric but relies entirely on user-submitted content. No competitor combines scan → canonical naming → enrichment → reverse search in a single no-account-required mobile flow. NŌM's v1.2 does.
+
+---
+
+## User Journey Alignment
+
+### Tourist lost in Istanbul (or Strasbourg Turkish quarter)
+**Before v1.2:** Scans menu, gets translated dish names with allergen tags. Names like "Beyran çorbası" are translated but unexplained.
+**After v1.2:** Taps dish card → sees "Slow-cooked lamb soup from Gaziantep, garnished with spiced butter and served with flatbread. Eaten hot, traditionally for breakfast." Dish origin: "Southeastern Anatolian". Image from Unsplash.
+
+### Celiac traveler
+**Before v1.2:** Allergen filter removes gluten dishes. What remains still lacks context.
+**After v1.2:** Top 3 with allergen exclusion active → 3 safe dishes + rationale "Matches gluten-free filter. High diversity: this is the only fish option on this menu. Clear description: ingredients well-listed."
+
+### Expat nostalgic for home cuisine
+**Before v1.2:** Scans a new menu, has no way to find "what they had last time" across restaurants.
+**After v1.2:** Reverse search — types "mantı" — sees every restaurant in their scan history that served it, with canonical matching handling spelling variants.
+
+### Foodie building a culinary vocabulary
+**Before v1.2:** Gets translated dish names. Learns nothing about what makes the cuisine distinctive.
+**After v1.2:** Cultural explanation per dish builds genuine knowledge. Top 3 with diversity criteria ensures they try different culinary experiences, not just the safest-sounding items.
+
+---
+
+## Implementation Patterns (Recommended Approaches)
+
+### Canonical Name Generation
+**Pattern:** On dish parse, send batch of dish names + descriptions to GPT-4o-mini with prompt: "For each dish, return: (1) canonical_key (lowercase, Latin script, no diacritics, no spaces — use hyphens), (2) canonical_display (proper name with diacritics), (3) cuisine_region. Match against these existing canonical keys if similar: [top 20 most common from DB]. Return JSON array." This batches the normalization cost across all dishes in one call.
+
+**Do not:** Build a custom NLP pipeline or use an external dish ontology (FoodOn, FOODS). The LLM handles linguistic normalization better than rule-based systems for the multilingual Strasbourg use case. Academic ontologies are built for nutrition science, not for Turkish/French/German restaurant menus.
+
+### Lazy Enrichment with Permanent Cache
+**Pattern:** Dish card renders immediately at scan time with what v1.1 already produces. When user taps a dish:
+1. Check `canonical_dishes` table for `enrichment` JSONB field — if populated, render immediately.
+2. If null: call GPT-4o-mini with canonical dish name + cuisine region → generate enrichment → store in `canonical_dishes.enrichment` → render.
+
+Once stored, this canonical record is served to every future user who sees this dish on any scanned menu. Cost: one LLM call per unique canonical dish, ever.
+
+### Reverse Search with pgvector
+**Pattern:** At canonical dish creation time, run `text-embedding-3-small` on the canonical display name + cuisine region + first sentence of enrichment → store as `embedding vector(1536)` in `canonical_dishes`. Query: user types search term → embed it → `SELECT * FROM canonical_dishes ORDER BY embedding <=> $1 LIMIT 10`. Supabase has native pgvector — no extra service, no Pinecone.
+
+**Why text-embedding-3-small:** 44% multilingual MIRACL benchmark (40% improvement over ada-002). Cross-language search works — user types "mantı" in French context, finds dishes even if stored with Turkish canonical name. Cost: $0.02/1M tokens — effectively free at NŌM scale.
+
+### Top 3 Rate Limiting Without Accounts
+**Pattern:** Store usage count in `localStorage` with daily reset key `top3_date` + `top3_count`. Gate at 3. On cap: show paywall with "Upgrade for unlimited Top 3" message. No server-side enforcement needed at v1.2 scale — device fingerprinting adds complexity without meaningful abuse protection at this user count. Server-side rate limiting can be added in v2 when account system exists.
+
+**Why this works:** Product Rule 7 — paywall on costly operations, not on the wow moment. The "wow moment" IS the Top 3. The paywall hits after the user has seen value 3 times in a day, not before.
+
+### Image Lookup Strategy
+**Pattern:**
+1. Query Unsplash API with `canonical_key` as search term. If result with relevance score > threshold: store URL + photographer attribution in `canonical_dishes.image_url`.
+2. If no Unsplash result: query Pexels API same way.
+3. If neither: store `null` for `image_url`, render gradient+emoji fallback per product Rule 5.
+
+**Attribution requirement:** Both Unsplash and Pexels APIs require attribution display. Show photographer name as small caption on dish card image. Non-negotiable per their terms of service.
+
+**Never:** Use Google Image Search scraping — ToS violation with real legal risk. Never DALL-E 3 as a fallback — misleading at the restaurant table.
 
 ---
 
 ## Sources
 
-- [MenuGuide official site + pricing](https://menuguide.app/) — feature/pricing verification (HIGH confidence, verified Feb 2026)
-- [FoodieLens feature page](https://foodielens.app/) — competitor feature analysis (HIGH confidence, verified Feb 2026)
-- [TechCrunch: Yelp AI Menu Vision, Oct 2025](https://techcrunch.com/2025/10/21/yelps-ai-assistant-can-now-scan-restaurant-menus-to-show-you-what-dishes-look-like/) — industry direction (HIGH confidence)
-- [Yelp Blog: Fall Product Release 2025](https://blog.yelp.com/news/fall-product-release-2025/) — Menu Vision technical details (HIGH confidence)
-- [Veryfi Restaurant Menu OCR API](https://www.veryfi.com/restaurant-menu-ocr-api/) — OCR capability baseline (MEDIUM confidence)
-- [Klippa: Automatically Scan Menu Cards with OCR & ML](https://www.klippa.com/en/blog/information/automatically-scan-menu-cards-with-ocr-ml-for-market-research-and-competitor-analyses/) — OCR pipeline patterns (MEDIUM confidence)
-- [Medium: Building AI-Powered OCR for Restaurant Menus](https://medium.com/@zafarobad/from-fuzzy-photos-to-perfect-data-building-an-ai-powered-ocr-system-for-restaurant-menus-bb575b16db59) — implementation patterns (MEDIUM confidence)
-- [Allergic Living: Menu Platform Food Allergy Safety, 2025](https://www.allergicliving.com/2025/04/08/menu-platform-aims-to-transform-restaurant-food-allergy-safety/) — allergen UX standards (HIGH confidence)
-- [DineAware: Food Allergy Disclaimer Best Practices](https://www.dineaware.com/blog/whats-the-best-food-allergy-disclaimer) — disclaimer wording (MEDIUM confidence)
-- [Apify Restaurant Menu Scraper](https://apify.com/menus-r-us/restaurant-menu-scraper) — URL menu parsing approach (MEDIUM confidence)
-- [Scanova: Restaurant QR Code Guide 2026](https://scanova.io/blog/restaurant-qr-code/) — QR code menu landscape (MEDIUM confidence)
-- [OpenAI GPT-4o model](https://developers.openai.com/api/docs/models/gpt-4o) — translation and vision capabilities (HIGH confidence)
+- [Datassential: Global Flavors Redefining Restaurant Trends 2025](https://datassential.com/resource/global-flavors-restaurants-growth-2025/) — consumer expectation for detailed menu descriptions (MEDIUM confidence)
+- [Swiggy: Building Comprehensive LLM Platform for Food Delivery](https://www.zenml.io/llmops-database/building-a-comprehensive-llm-platform-for-food-delivery-services) — production pattern for dish description enrichment with taxonomy (HIGH confidence)
+- [Swiggy: Neural Search and Conversational AI for Food Discovery](https://www.zenml.io/llmops-database/neural-search-and-conversational-ai-for-food-delivery-and-restaurant-discovery) — semantic search architecture at scale (HIGH confidence)
+- [Swiggy Bytes: Semantic Embeddings for Food Search Using Siamese Networks](https://bytes.swiggy.com/find-my-food-semantic-embeddings-for-food-search-using-siamese-networks-abb55be0b639) — embedding-based food search production data (HIGH confidence)
+- [TasteAtlas — World Food Atlas](https://www.tasteatlas.com/) — 19K+ dish knowledge base, canonical dish reference model (HIGH confidence, product analysis)
+- [Supabase pgvector Docs](https://supabase.com/docs/guides/database/extensions/pgvector) — native vector search in Postgres (HIGH confidence, official docs)
+- [Supabase Semantic Search Guide](https://supabase.com/docs/guides/ai/semantic-search) — implementation pattern for semantic dish search (HIGH confidence, official docs)
+- [OpenAI text-embedding-3-small](https://platform.openai.com/docs/models/text-embedding-3-small) — multilingual capability + cost ($0.02/1M tokens) (HIGH confidence, official docs)
+- [Pinecone: OpenAI Embeddings v3](https://www.pinecone.io/learn/openai-embeddings-v3/) — MIRACL multilingual benchmark data (MEDIUM confidence)
+- [FoodKG: Semantics-Driven Knowledge Graph for Food Recommendation](https://www.researchgate.net/publication/336599164_FoodKG_A_Semantics-Driven_Knowledge_Graph_for_Food_Recommendation) — food knowledge graph normalization challenges (MEDIUM confidence, academic)
+- [Applications of Knowledge Graphs for Food Science — ScienceDirect](https://www.sciencedirect.com/science/article/pii/S2666389922000691) — canonical naming challenges across languages (MEDIUM confidence, academic)
+- [Unsplash API Docs](https://unsplash.com/developers) — free image API, attribution requirements (HIGH confidence, official)
+- [Pexels API Docs](https://www.pexels.com/api/) — free image API, attribution requirements (HIGH confidence, official)
+- [Kinde: Freemium to Premium Billing Triggers](https://www.kinde.com/learn/billing/conversions/freemium-to-premium-converting-free-ai-tool-users-with-smart-billing-triggers/) — metered paywall UX patterns, 3x/day gate analysis (MEDIUM confidence)
+- [AI-Powered Dining: Text Extraction and ML for Menu Recommendations — ResearchGate](https://www.researchgate.net/publication/383505496_AI-powered_dining_text_information_extraction_and_machine_learning_for_personalized_menu_recommendations_and_food_allergy_management) — allergen + recommendation intersection (MEDIUM confidence, academic)
 
 ---
 
-*Feature research for: NOM MVP — menu scanning, dish cards, translation, AI Top 3, allergen filtering*
-*Researched: 2026-02-25*
-*Milestone: MVP App Features (added to existing Next.js landing page)*
+*Feature research for: NŌM v1.2 — dish enrichment, canonical naming, reverse search, AI Top 3*
+*Researched: 2026-02-28*
+*Milestone: Dish Enrichment (adding to v1.1 scan + dish card foundation)*
