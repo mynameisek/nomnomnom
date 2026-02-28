@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 12 of 14 (Dish Images)
-Plan: 1 of 2 complete in current phase
-Status: Phase 12 Plan 01 complete — image fetch pipeline (fetchDishImages, Unsplash/Pexels, SQL migration, scan route wiring, status endpoint image fields)
-Last activity: 2026-02-28 — Phase 12 Plan 01 complete: image backend pipeline complete
+Plan: 2 of 2 — tasks 1-2 complete, awaiting checkpoint:human-verify (Task 3)
+Status: Phase 12 Plan 02 tasks done — DishImage, DishImageFallback, DishCard image zone, DishDetailSheet 4:3 image + attribution, polling extended for image arrival
+Last activity: 2026-02-28 — Phase 12 Plan 02 auto-tasks complete, visual verification checkpoint pending
 
-Progress: [█████░░░░░░░░░] 31% (v1.2 — 5/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
+Progress: [██████░░░░░░░░] 37% (v1.2 — 6/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [█████░░░░░░░░░] 31% (v1.2 — 5/16 plans)
 | Phase 11 P01 | ~5 minutes | 2 | 7 |
 | Phase 11 P02 | ~7 minutes | 2 | 8 |
 | Phase 12-dish-images P01 | 5 | 2 tasks | 7 files |
+| Phase 12-dish-images P02 | 2 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Key decisions affecting v1.2:
 - [Phase 12-dish-images]: hexToDataURL (1x1 BMP) as server-safe blur placeholder for both Unsplash and Pexels — no canvas, no external deps
 - [Phase 12-dish-images]: Only enrichment_depth='full' dishes get images in automatic pipeline — minimal depth dishes skipped to conserve Unsplash demo rate limit (50 req/hr)
 - [Phase 12-dish-images]: Canonical name deduplication before external API calls — copy existing image from sibling dish (same canonical_name, zero API cost)
+- [Phase 12-dish-images]: Parent-controlled aspect ratio: DishImage/DishImageFallback use className prop — DishCard (square), DishDetailSheet (4:3)
+- [Phase 12-dish-images]: MenuShell merge extended to include 5 image fields so polled images reach DishCard and DishDetailSheet
 
 ### Pending Todos
 
@@ -84,5 +87,5 @@ Key decisions affecting v1.2:
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 12 Plan 01 complete — image fetch pipeline (fetchDishImages, Unsplash/Pexels, canonical dedup, scan route wiring, status endpoint image fields). Phase 12 Plan 02 (UI) is next.
+Stopped at: Phase 12 Plan 02 — Task 3 checkpoint:human-verify (visual verification of dish images in browser). Tasks 1 and 2 committed (cc47bac, e91c2ca). Resume after visual approval.
 Resume file: None
