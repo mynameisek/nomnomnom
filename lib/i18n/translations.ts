@@ -68,6 +68,7 @@ export const translations = {
     filter_allergens: 'Allergènes',
     // Allergen toggle on dish card
     card_allergens: 'Allergènes',
+    card_see_detail: 'Voir la fiche',
     // Lazy translation banner
     translating: 'Traduction en cours...',
     scan_another: 'Scanner un autre menu',
@@ -117,6 +118,7 @@ export const translations = {
     category_all: 'All',
     filter_allergens: 'Allergens',
     card_allergens: 'Allergens',
+    card_see_detail: 'See details',
     translating: 'Translating...',
     scan_another: 'Scan another menu',
   },
@@ -165,6 +167,7 @@ export const translations = {
     category_all: 'Tümü',
     filter_allergens: 'Alerjenler',
     card_allergens: 'Alerjenler',
+    card_see_detail: 'Detayları gör',
     translating: 'Çeviri yapılıyor...',
     scan_another: 'Başka menü tara',
   },
@@ -213,6 +216,7 @@ export const translations = {
     category_all: 'Alle',
     filter_allergens: 'Allergene',
     card_allergens: 'Allergene',
+    card_see_detail: 'Details ansehen',
     translating: 'Wird übersetzt...',
     scan_another: 'Neue Speisekarte scannen',
   },

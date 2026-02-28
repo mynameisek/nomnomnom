@@ -73,21 +73,23 @@ export default function DishCard({ item, showAllergens = false, onTapDetail }: D
       )}
 
       {isFullDepth && item.enrichment_origin && (
-        // State 2: Full-depth preview — tappable row with origin pill + cultural hint
+        // State 2: Full-depth — tappable CTA row to open detail sheet
         <button
           type="button"
           onClick={() => onTapDetail?.(item)}
-          className="flex items-center gap-2 mt-1 text-left w-full"
+          className="flex items-center gap-2 mt-1 px-3 py-2 -mx-1 rounded-lg bg-white/[0.03] border border-white/8 hover:bg-white/[0.06] hover:border-white/12 transition-colors text-left w-[calc(100%+0.5rem)] group"
         >
           <span className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-brand-orange/10 border border-brand-orange/20 text-brand-orange/70 text-[10px] font-medium">
             {item.enrichment_origin.split(',')[0].trim()}
           </span>
-          {item.enrichment_cultural_note && (
-            <span className="text-brand-muted/70 text-xs truncate">
-              {item.enrichment_cultural_note.slice(0, 60)}
-              {item.enrichment_cultural_note.length > 60 ? '...' : ''}
-            </span>
-          )}
+          <span className="text-brand-muted/60 text-xs truncate flex-1">
+            {item.enrichment_cultural_note
+              ? `${item.enrichment_cultural_note.slice(0, 55)}${item.enrichment_cultural_note.length > 55 ? '...' : ''}`
+              : t('card_see_detail')}
+          </span>
+          <svg className="w-4 h-4 text-brand-muted/40 flex-shrink-0 group-hover:text-brand-orange/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       )}
 
