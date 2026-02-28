@@ -54,11 +54,11 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
   2. Re-scanning the same URL returns the cached canonical name without a new LLM call
   3. Beverages receive no enrichment flag; food items are queued as pending enrichment
   4. Scan response time does not increase by more than 3 seconds after canonical name generation is wired in
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: SQL migration + TypeScript types (pgvector, unaccent, new columns, HNSW index, match_dishes RPC)
-- [ ] 10-02: Canonical name generation + seed table + async wiring via after()
+- [ ] 10-01-PLAN.md — SQL migration + TypeScript types (pgvector, unaccent, new columns, known_dishes table, HNSW indexes, match_dishes RPC)
+- [ ] 10-02-PLAN.md — Canonical name generation + seed table + cache recycling + async wiring via after()
 
 ### Phase 11: Dish Enrichment
 **Goal**: Each dish card shows a cultural explanation, origin, and typical ingredients — delivered asynchronously after scan, with a progress indicator and the ability to regenerate
