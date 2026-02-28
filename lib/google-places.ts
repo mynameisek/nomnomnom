@@ -119,8 +119,14 @@ async function searchPlace(query: string): Promise<PlacesResult | null> {
     },
     body: JSON.stringify({
       textQuery: query,
-      languageCode: 'en',
       maxResultCount: 1,
+      // Bias toward France (primary market) — avoids false matches in Canada etc.
+      locationBias: {
+        rectangle: {
+          low: { latitude: 41.3, longitude: -5.2 },
+          high: { latitude: 51.1, longitude: 9.6 },
+        },
+      },
     }),
   });
 
