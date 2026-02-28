@@ -85,6 +85,7 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   dishes: DishParse[];
   rawText: string;
   sourceLanguage: string;
+  restaurantName: string | null;
 }> {
   const apiUrl = `${EAZEE_API_BASE}/${stickerId}/menu`;
   const response = await fetch(apiUrl);
@@ -217,5 +218,27 @@ export async function fetchEazeeLinkMenu(stickerId: string): Promise<{
   // Eazee-link is a French platform — menus are virtually always in French
   const sourceLanguage = 'fr';
 
-  return { dishes, rawText, sourceLanguage };
+  // Try to extract restaurant name from category labels (common pattern: "Menu {Name}")
+  const restaurantName = extractRestaurantName(data.categories);
+
+  return { dishes, rawText, sourceLanguage, restaurantName };
+}
+
+/**
+ * Heuristic: extract restaurant name from eazee-link category labels.
+ * Common patterns: "Menu Umaï Ramen", "Menu Le Café Grognon", "La carte du Petit Bistrot"
+ */
+function extractRestaurantName(categories: EazeeCategory[]): string | null {
+  for (const cat of categories) {
+    const match = cat.label.match(/^Menu\s+(.+)/i);
+    if (match) {
+      const name = match[1].trim();
+      // Filter out generic labels like "Menu enfant", "Menu midi"
+      const generic = /^(enfant|midi|soir|du jour|déjeuner|dîner|formule|complet)/i;
+      if (!generic.test(name) && name.length > 2) {
+        return name;
+      }
+    }
+  }
+  return null;
 }

@@ -68,10 +68,10 @@ export async function POST(req: NextRequest) {
 
       // Step 2: Cache MISS — fetch structured dishes from eazee-link API
       // No LLM call needed — translations happen lazily per language on demand
-      const { dishes, rawText, sourceLanguage } = await fetchEazeeLinkMenu(eazeeStickerId);
+      const { dishes, rawText, sourceLanguage, restaurantName } = await fetchEazeeLinkMenu(eazeeStickerId);
 
       // Step 3: Store in cache and return (no upfront translation — lazy translate handles it)
-      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage });
+      const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage, restaurant_name: restaurantName });
       // Fire-and-forget Places enrichment
       enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id).catch(() => {});
       return NextResponse.json({ menuId: menu.id });

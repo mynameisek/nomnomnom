@@ -130,7 +130,7 @@ export async function getOrParseMenu(
   url: string,
   sourceType: 'url' | 'photo' | 'qr',
   rawText: string,
-  preParseResult?: { dishes: DishResponse[]; source_language?: string } | { dishes: DishParse[]; source_language: string }
+  preParseResult?: { dishes: DishResponse[]; source_language?: string; restaurant_name?: string | null } | { dishes: DishParse[]; source_language: string; restaurant_name?: string | null }
 ): Promise<MenuWithItems> {
   const urlHash = hashUrl(url);
 
