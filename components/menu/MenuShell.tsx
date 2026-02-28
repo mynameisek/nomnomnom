@@ -160,9 +160,17 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTr
         )}
       </div>
 
-      <p className="text-brand-muted/40 text-xs text-center pb-8">
-        Dish data parsed by NOM AI — translations may vary
-      </p>
+      <div className="flex flex-col items-center gap-2 pb-8">
+        <a
+          href="/"
+          className="text-brand-muted/50 hover:text-brand-orange/60 text-xs transition-colors"
+        >
+          {t('scan_another')}
+        </a>
+        <p className="text-brand-muted/40 text-xs">
+          Dish data parsed by NOM AI — translations may vary
+        </p>
+      </div>
     </>
   );
 }

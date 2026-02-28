@@ -70,6 +70,7 @@ export const translations = {
     card_allergens: 'Allergènes',
     // Lazy translation banner
     translating: 'Traduction en cours...',
+    scan_another: 'Scanner un autre menu',
   },
   en: {
     allergen_disclaimer: 'Allergen information is indicative — please confirm with the server.',
@@ -117,6 +118,7 @@ export const translations = {
     filter_allergens: 'Allergens',
     card_allergens: 'Allergens',
     translating: 'Translating...',
+    scan_another: 'Scan another menu',
   },
   tr: {
     allergen_disclaimer: 'Alerjen bilgileri gösterge niteliğindedir — lütfen garsonla teyit edin.',
@@ -164,6 +166,7 @@ export const translations = {
     filter_allergens: 'Alerjenler',
     card_allergens: 'Alerjenler',
     translating: 'Çeviri yapılıyor...',
+    scan_another: 'Başka menü tara',
   },
   de: {
     allergen_disclaimer: 'Allergeninformationen sind indikativ — bitte beim Personal bestätigen.',
@@ -211,6 +214,7 @@ export const translations = {
     filter_allergens: 'Allergene',
     card_allergens: 'Allergene',
     translating: 'Wird übersetzt...',
+    scan_another: 'Neue Speisekarte scannen',
   },
 } as const;
 
