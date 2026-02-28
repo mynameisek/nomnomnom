@@ -222,6 +222,12 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
         enrichment_depth: enriched.enrichment_depth,
         enrichment_model: enriched.enrichment_model,
         enriched_at: enriched.enriched_at,
+        // Image fields — added for Phase 12 image display
+        image_url: enriched.image_url,
+        image_source: enriched.image_source,
+        image_credit: enriched.image_credit,
+        image_credit_url: enriched.image_credit_url,
+        image_placeholder: enriched.image_placeholder,
       };
     });
   }, [menuData.menu_items, enrichedItems]);
