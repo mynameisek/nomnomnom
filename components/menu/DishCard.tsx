@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useLanguage } from '@/lib/i18n';
 import type { MenuItem } from '@/lib/types/menu';
+import DishImage from '@/components/menu/DishImage';
+import DishImageFallback from '@/components/menu/DishImageFallback';
 
 interface DishCardProps {
   item: MenuItem;
@@ -40,6 +42,26 @@ export default function DishCard({ item, showAllergens = false, onTapDetail }: D
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/8">
+      {/* Image zone — full-depth items only */}
+      {isFullDepth && item.image_url && (
+        <button type="button" onClick={() => onTapDetail?.(item)} className="w-full">
+          <DishImage
+            src={item.image_url}
+            alt={item.canonical_name ?? item.name_original}
+            placeholder={item.image_placeholder}
+          />
+        </button>
+      )}
+      {isFullDepth && !item.image_url && (
+        <button type="button" onClick={() => onTapDetail?.(item)} className="w-full">
+          <DishImageFallback
+            origin={item.enrichment_origin}
+            category={item.category}
+            ingredients={item.enrichment_ingredients}
+          />
+        </button>
+      )}
+
       {/* Name row + price */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
