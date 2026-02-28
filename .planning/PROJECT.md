@@ -142,5 +142,21 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 - ES/IT translations
 - Dish images (web search by canonical name)
 
+## Current Milestone: v1.2 Dish Enrichment
+
+**Goal:** Transformer les fiches plats de simples traductions en fiches enrichies — explication culturelle, nom canonique, images, et poser les bases de la recherche inversée et de la base de connaissances culinaire.
+
+**Target features:**
+- Enrichissement par plat : explication culturelle, origine, ingrédients typiques, comment ça se mange
+- Nom canonique normalisé (graphe de connaissances) pour matching cross-restaurant
+- Recherche inversée : "j'ai envie de mantı" → plats correspondants dans les menus scannés
+- Assistant IA Top 3 : recommandation contextuelle sur le menu réel
+- ES/IT translation support
+- Images best-effort par plat (recherche web par nom canonique, gradient+emoji fallback)
+
+**Test references:**
+- `https://menu.eazee-link.com/?id=E7FNRP0ET3&o=q` (menu turc — plats peu connus)
+- `https://menuonline.fr/en/lecomptoirdufaubourg/carte-restaurant.pdf` (menu PDF)
+
 ---
-*Last updated: 2026-02-28 after v1.1 milestone completed*
+*Last updated: 2026-02-28 after v1.2 milestone started*

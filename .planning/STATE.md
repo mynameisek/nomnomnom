@@ -5,13 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** v1.2 Dish Enrichment — planning
+**Current focus:** v1.2 Dish Enrichment — defining requirements
 
 ## Current Position
 
-Phase: None (between milestones)
-Status: v1.1 MVP App shipped. v1.2 Dish Enrichment milestone starting.
-Last activity: 2026-02-28 — v1.1 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-28 — Milestone v1.2 started
 
 ## Accumulated Context
 
