@@ -79,6 +79,10 @@ export async function POST(req: NextRequest) {
             }
           });
         }
+        // Backfill images for enriched dishes that don't have images yet
+        after(async () => {
+          await fetchDishImages(cachedMenu.id);
+        });
         return NextResponse.json({ menuId: cachedMenu.id });
       }
 
