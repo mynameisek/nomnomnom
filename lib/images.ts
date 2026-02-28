@@ -50,8 +50,7 @@ async function fetchFromUnsplash(query: string, dishKeywords: string[]): Promise
 
   const url = new URL('https://api.unsplash.com/search/photos');
   url.searchParams.set('query', query);
-  url.searchParams.set('per_page', '5');
-  url.searchParams.set('orientation', 'squarish');
+  url.searchParams.set('per_page', '10');
   url.searchParams.set('content_filter', 'high');
 
   let res: Response;
@@ -125,8 +124,7 @@ async function fetchFromPexels(query: string, dishKeywords: string[]): Promise<I
 
   const url = new URL('https://api.pexels.com/v1/search');
   url.searchParams.set('query', query);
-  url.searchParams.set('per_page', '5');
-  url.searchParams.set('orientation', 'square');
+  url.searchParams.set('per_page', '10');
 
   let res: Response;
   try {
