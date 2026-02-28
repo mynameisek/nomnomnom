@@ -38,7 +38,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 **Milestone Goal:** Construire la couche intelligence de NŌM — chaque scan alimente une base de connaissances culinaire persistante. Les plats sont enrichis, normalisés (nom canonique), et queryables (recherche inversée + Top 3).
 
 - [x] **Phase 10: DB Foundation + Canonical Names** - Schema migration, pgvector, canonical name generation wired at parse time (completed 2026-02-28)
-- [ ] **Phase 11: Dish Enrichment** - Cultural context, async batch enrichment, regeneration, progress indicator on DishCards
+- [x] **Phase 11: Dish Enrichment** - Cultural context, async batch enrichment, regeneration, progress indicator on DishCards (completed 2026-02-28)
 - [ ] **Phase 12: Dish Images** - Unsplash → Pexels → gradient+emoji fallback chain per dish
 - [ ] **Phase 13: AI Top 3** - UUID-grounded recommendations with rationale and rate limiting
 - [ ] **Phase 14: Reverse Search** - FTS + semantic pgvector search across all scanned menus
@@ -130,7 +130,7 @@ Plans:
 | 8. Eazee-link Translation Fix | v1.1 | 1/1 | Complete | 2026-02-26 |
 | 9. Tech Debt Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
 | 10. DB Foundation + Canonical Names | v1.2 | Complete    | 2026-02-28 | - |
-| 11. Dish Enrichment | v1.2 | 0/2 | Not started | - |
+| 11. Dish Enrichment | v1.2 | Complete    | 2026-02-28 | - |
 | 12. Dish Images | v1.2 | 0/1 | Not started | - |
 | 13. AI Top 3 | v1.2 | 0/2 | Not started | - |
 | 14. Reverse Search | v1.2 | 0/1 | Not started | - |
