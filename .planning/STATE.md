@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 10 of 14 (DB Foundation + Canonical Names)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-02-28 — v1.2 roadmap created, Phase 10 ready
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-28 — Phase 10 Plan 01 complete: SQL migration + TypeScript types
 
-Progress: [░░░░░░░░░░░░░░] 0% (v1.2) | [██████████████] 100% (v1.0+v1.1 complete)
+Progress: [█░░░░░░░░░░░░░] 6% (v1.2 — 1/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
 
 ## Performance Metrics
 
@@ -45,6 +45,8 @@ Key decisions affecting v1.2:
 - Embed model locked to text-embedding-3-small for all of v1.2 — store embedding_model column from day one
 - Images: Unsplash REST API (no unsplash-js, it's archived) → Pexels → gradient+emoji; no AI-generated, no SerpAPI
 - Top 3 rate gate: localStorage (no account), 3x/day free
+- embedding column is DB-only (not in TypeScript types) — vectors never transported as JSON
+- canonicalDishResultSchema uses .nullable() on canonical_name (not .optional()) per OpenAI structured output requirement
 
 ### Pending Todos
 
@@ -60,5 +62,5 @@ Key decisions affecting v1.2:
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: v1.2 roadmap created — 5 phases (10-14), 16/16 requirements mapped
+Stopped at: Phase 10 Plan 01 complete — SQL migration + TypeScript types committed
 Resume file: None
