@@ -83,10 +83,11 @@ Plans:
   1. A DishCard for "Mantı" displays a photo from Unsplash or Pexels with an attribution caption
   2. A DishCard for an obscure dish with no Unsplash/Pexels result displays a gradient+emoji fallback — no broken image
   3. Image source and credit are stored in the database alongside the dish record
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: lib/images.ts + Unsplash → Pexels → gradient fallback + DishCard image display with attribution
+- [ ] 12-01-PLAN.md — SQL migration + lib/images.ts Unsplash→Pexels fetch pipeline + scan route wiring + status endpoint
+- [ ] 12-02-PLAN.md — DishImage/DishImageFallback components + DishCard image zone + DishDetailSheet attribution + polling hook update
 
 ### Phase 13: AI Top 3
 **Goal**: A user on any scanned menu can ask for Top 3 dish recommendations grounded to the actual items present, with a rationale for each pick, limited to 3 requests per day without an account
@@ -131,6 +132,6 @@ Plans:
 | 9. Tech Debt Cleanup | v1.1 | 1/1 | Complete | 2026-02-28 |
 | 10. DB Foundation + Canonical Names | v1.2 | Complete    | 2026-02-28 | - |
 | 11. Dish Enrichment | v1.2 | Complete    | 2026-02-28 | - |
-| 12. Dish Images | v1.2 | 0/1 | Not started | - |
+| 12. Dish Images | v1.2 | 0/2 | Not started | - |
 | 13. AI Top 3 | v1.2 | 0/2 | Not started | - |
 | 14. Reverse Search | v1.2 | 0/1 | Not started | - |
