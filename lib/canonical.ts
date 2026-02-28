@@ -136,6 +136,7 @@ export async function generateCanonicalNames(menuId: string): Promise<void> {
         // Step 5: Process results and build upsert payload
         const updates: Array<{
           id: string;
+          menu_id: string;
           canonical_name: string | null;
           canonical_confidence: number | null;
           canonical_source: string;
@@ -162,6 +163,7 @@ export async function generateCanonicalNames(menuId: string): Promise<void> {
 
           updates.push({
             id: item.id,
+            menu_id: menuId,
             canonical_name: result.canonical_name,
             canonical_confidence: result.confidence,
             canonical_source: 'llm_generated',

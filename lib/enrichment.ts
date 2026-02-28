@@ -107,7 +107,7 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
       const { error: skipError } = await supabaseAdmin
         .from('menu_items')
         .upsert(
-          beverages.map(b => ({ id: b.id, enrichment_status: 'skipped' })),
+          beverages.map(b => ({ id: b.id, menu_id: menuId, enrichment_status: 'skipped' })),
           { onConflict: 'id' }
         );
       if (skipError) {
@@ -166,7 +166,7 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
           await supabaseAdmin
             .from('menu_items')
             .upsert(
-              batch.map(item => ({ id: item.id, enrichment_status: 'failed' })),
+              batch.map(item => ({ id: item.id, menu_id: menuId, enrichment_status: 'failed' })),
               { onConflict: 'id' }
             );
           continue;
@@ -185,6 +185,7 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
 
           updates.push({
             id: item.id,
+            menu_id: menuId,
             enrichment_origin: result.origin,
             enrichment_ingredients: result.typical_ingredients,
             enrichment_cultural_note: result.cultural_note,
@@ -217,7 +218,7 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
           await supabaseAdmin
             .from('menu_items')
             .upsert(
-              missingItems.map(item => ({ id: item.id, enrichment_status: 'failed' })),
+              missingItems.map(item => ({ id: item.id, menu_id: menuId, enrichment_status: 'failed' })),
               { onConflict: 'id' }
             );
           console.warn(`[enrichDishBatch] Batch ${batchIdx + 1}: Marked ${missingItems.length} items as failed (not returned by LLM)`);
@@ -233,7 +234,7 @@ export async function enrichDishBatch(menuId: string): Promise<void> {
           await supabaseAdmin
             .from('menu_items')
             .upsert(
-              batch.map(item => ({ id: item.id, enrichment_status: 'failed' })),
+              batch.map(item => ({ id: item.id, menu_id: menuId, enrichment_status: 'failed' })),
               { onConflict: 'id' }
             );
         } catch {
