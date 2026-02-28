@@ -38,6 +38,30 @@ export function hashUrl(url: string): string {
 }
 
 // =============================================================================
+// hashDishNames — SHA-256 of sorted dish names for content-aware re-scan diff
+// =============================================================================
+
+/**
+ * Produces a deterministic SHA-256 hex hash from a set of dish names.
+ * Names are normalized (trim, lowercase) and sorted before hashing so
+ * that dish reordering does not produce a different hash.
+ *
+ * Used to detect whether menu content has changed between re-scans.
+ * If hash matches the old menu, canonical names are recycled via canonicalCache
+ * and generateCanonicalNames finds 0 rows with canonical_name IS NULL (returns early).
+ *
+ * @param dishes - Array of dish objects with name_original
+ * @returns 64-character lowercase hex SHA-256 hash
+ */
+export function hashDishNames(dishes: { name_original: string }[]): string {
+  const names = dishes
+    .map(d => d.name_original.trim().toLowerCase())
+    .sort()
+    .join('|');
+  return createHash('sha256').update(names).digest('hex');
+}
+
+// =============================================================================
 // getAdminConfig — read LLM model and cache TTL from Supabase admin_config
 // =============================================================================
 
@@ -199,10 +223,18 @@ export async function getOrParseMenu(
     .maybeSingle();
 
   const translationCache = new Map<string, { name_translations: Record<string, string>; description_translations: Record<string, string> | null }>();
+  const canonicalCache = new Map<string, {
+    canonical_name: string | null;
+    canonical_confidence: number | null;
+    canonical_source: string | null;
+    is_beverage: boolean;
+    enrichment_status: string;
+  }>();
+
   if (oldMenu) {
     const { data: oldItems } = await supabaseAdmin
       .from('menu_items')
-      .select('name_original, name_translations, description_translations')
+      .select('name_original, name_translations, description_translations, canonical_name, canonical_confidence, canonical_source, is_beverage, enrichment_status')
       .eq('menu_id', oldMenu.id);
 
     if (oldItems) {
@@ -211,6 +243,16 @@ export async function getOrParseMenu(
           translationCache.set(old.name_original, {
             name_translations: old.name_translations,
             description_translations: old.description_translations,
+          });
+        }
+        // Recycle canonical names — if old item had a canonical name, preserve it
+        if (old.name_original && old.canonical_name !== null) {
+          canonicalCache.set(old.name_original, {
+            canonical_name: old.canonical_name,
+            canonical_confidence: old.canonical_confidence ?? null,
+            canonical_source: old.canonical_source ?? null,
+            is_beverage: old.is_beverage ?? false,
+            enrichment_status: old.enrichment_status ?? 'pending',
           });
         }
       }
@@ -264,19 +306,38 @@ export async function getOrParseMenu(
 
     // If dish has translation fields (DishResponse from eazee-link or legacy), include them
     if ('name_translations' in dish) {
+      const recycledCanonicalForResponse = canonicalCache.get(dish.name_original);
       return {
         ...base,
         name_translations: (dish as DishResponse).name_translations,
         description_translations: (dish as DishResponse).description_translations,
+        // Recycle canonical fields if available (eazee-link re-scan)
+        ...(recycledCanonicalForResponse ? {
+          canonical_name: recycledCanonicalForResponse.canonical_name,
+          canonical_confidence: recycledCanonicalForResponse.canonical_confidence,
+          canonical_source: recycledCanonicalForResponse.canonical_source,
+          is_beverage: recycledCanonicalForResponse.is_beverage,
+          enrichment_status: recycledCanonicalForResponse.enrichment_status,
+        } : {}),
       };
     }
 
     // DishParse (fast parse) — recycle old translations if available, else empty
     const recycled = translationCache.get(dish.name_original);
+    const recycledCanonical = canonicalCache.get(dish.name_original);
     return {
       ...base,
       name_translations: recycled?.name_translations ?? {},
       description_translations: recycled?.description_translations ?? null,
+      // Recycle canonical fields if available — generateCanonicalNames will skip these
+      // items since they already have canonical_name (WHERE canonical_name IS NULL query)
+      ...(recycledCanonical ? {
+        canonical_name: recycledCanonical.canonical_name,
+        canonical_confidence: recycledCanonical.canonical_confidence,
+        canonical_source: recycledCanonical.canonical_source,
+        is_beverage: recycledCanonical.is_beverage,
+        enrichment_status: recycledCanonical.enrichment_status,
+      } : {}),
     };
   });
 
@@ -290,6 +351,15 @@ export async function getOrParseMenu(
       `[getOrParseMenu] Failed to insert menu_items into Supabase: ${itemsError?.message}`
     );
   }
+
+  // Compute dish_names_hash and store on menu row (fire-and-forget)
+  // This enables content-aware re-scan diff in future phases
+  const dishHash = hashDishNames(parsed.dishes);
+  supabaseAdmin
+    .from('menus')
+    .update({ dish_names_hash: dishHash })
+    .eq('id', menuRow.id)
+    .then(() => {});
 
   // Step 7: Return full MenuWithItems
   return {
