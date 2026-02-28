@@ -8,6 +8,7 @@
 // =============================================================================
 
 import 'server-only';
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText, Output, NoObjectGeneratedError } from 'ai';
 import { openai } from '@ai-sdk/openai';
@@ -63,13 +64,14 @@ export async function POST(req: NextRequest) {
         // Backfill restaurant_name + Places data for menus created before this feature
         if (!cachedMenu.restaurant_name || !cachedMenu.google_place_id) {
           const name = cachedMenu.restaurant_name ?? await fetchEazeeLinkPlaceName(eazeeStickerId);
-          if (name && !cachedMenu.restaurant_name) {
-            // Fire-and-forget: patch restaurant_name in DB
-            supabaseAdmin.from('menus').update({ restaurant_name: name }).eq('id', cachedMenu.id).then(() => {});
-          }
-          if (!cachedMenu.google_place_id) {
-            enrichWithGooglePlaces(name, canonicalUrl, cachedMenu.id).catch(() => {});
-          }
+          after(async () => {
+            if (name && !cachedMenu.restaurant_name) {
+              await supabaseAdmin.from('menus').update({ restaurant_name: name }).eq('id', cachedMenu.id);
+            }
+            if (!cachedMenu.google_place_id) {
+              await enrichWithGooglePlaces(name, canonicalUrl, cachedMenu.id);
+            }
+          });
         }
         return NextResponse.json({ menuId: cachedMenu.id });
       }
@@ -80,8 +82,7 @@ export async function POST(req: NextRequest) {
 
       // Step 3: Store in cache and return (no upfront translation — lazy translate handles it)
       const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage, restaurant_name: restaurantName });
-      // Fire-and-forget Places enrichment
-      enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id).catch(() => {});
+      after(() => enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id));
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
     if (result.type === 'text') {
       // Clean markdown → text-based LLM parse
       const menu = await getOrParseMenu(url, 'url', result.content);
-      enrichWithGooglePlaces(menu.restaurant_name, url, menu.id).catch(() => {});
+      after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
     });
 
     const menu = await getOrParseMenu(url, 'url', '[screenshot fallback]', output);
-    enrichWithGooglePlaces(menu.restaurant_name, url, menu.id).catch(() => {});
+    after(() => enrichWithGooglePlaces(menu.restaurant_name, url, menu.id));
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

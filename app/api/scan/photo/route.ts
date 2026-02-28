@@ -7,6 +7,7 @@
 // =============================================================================
 
 import 'server-only';
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText, Output, NoObjectGeneratedError } from 'ai';
 import { openai } from '@ai-sdk/openai';
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
     // so getOrParseMenu skips the redundant text-based LLM call
     const photoUrl = `photo:${Date.now()}`;
     const menu = await getOrParseMenu(photoUrl, 'photo', '[photo upload]', output);
-    enrichWithGooglePlaces(menu.restaurant_name, photoUrl, menu.id).catch(() => {});
+    after(() => enrichWithGooglePlaces(menu.restaurant_name, photoUrl, menu.id));
 
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
