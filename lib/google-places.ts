@@ -126,9 +126,10 @@ async function searchPlace(query: string): Promise<PlacesResult | null> {
     },
     body: JSON.stringify({
       textQuery: query,
+      languageCode: 'fr',
       maxResultCount: 1,
-      // Bias toward France (primary market) — avoids false matches in Canada etc.
-      locationBias: {
+      // Hard restrict to France + neighbors — no results outside this box
+      locationRestriction: {
         rectangle: {
           low: { latitude: 41.3, longitude: -5.2 },
           high: { latitude: 51.1, longitude: 9.6 },
