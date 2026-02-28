@@ -69,7 +69,7 @@ export function useFilteredDishes(items: MenuItem[], filters: FilterState): Menu
       // Dietary filter: item must have every active dietary tag (AND logic)
       if (filters.dietaryTags.length > 0) {
         const hasAll = filters.dietaryTags.every((tag) =>
-          item.dietary_tags.includes(tag)
+          (item.dietary_tags ?? []).includes(tag)
         );
         if (!hasAll) return false;
       }
@@ -77,7 +77,7 @@ export function useFilteredDishes(items: MenuItem[], filters: FilterState): Menu
       // Allergen exclusion: item must not contain any excluded allergen
       if (filters.excludeAllergens.length > 0) {
         const hasExcluded = filters.excludeAllergens.some((allergen) =>
-          item.allergens.includes(allergen)
+          (item.allergens ?? []).includes(allergen)
         );
         if (hasExcluded) return false;
       }

@@ -218,6 +218,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
     if (sourceLangRef.current === targetLang) {
       translatedLangs.current.add(targetLang);
       setCatTranslations({});
+      setIsTranslating(false);
       return;
     }
 
@@ -236,6 +237,7 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
       translatedLangs.current.add(targetLang);
       catTranslationsRef.current[targetLang] = catTransForLang;
       setCatTranslations(catTransForLang);
+      setIsTranslating(false);
       return;
     }
 
