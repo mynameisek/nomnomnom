@@ -4,13 +4,19 @@
 // Uses Google Places API (New) Text Search to find restaurant info.
 // Called after menu parse — updates menus row with place data asynchronously.
 // Gracefully skips if GOOGLE_PLACES_API_KEY is not set or API fails.
-// Only searches when a restaurant name is available — no guessing.
 // =============================================================================
 
 import 'server-only';
 import { supabaseAdmin } from './supabase-admin';
 
 const PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_TRANSLATE_API_KEY;
+
+// Platform/aggregator domains — domain search would find the platform, not the restaurant
+const PLATFORM_DOMAINS = [
+  'eazee-link.com', 'vazeetap.com', 'foodles.co', 'zenchef.com',
+  'thefork.com', 'lafourchette.com', 'ubereats.com', 'deliveroo.com',
+  'justeat.com', 'grubhub.com',
+];
 
 interface PlacesResult {
   place_id: string;
@@ -25,10 +31,11 @@ interface PlacesResult {
 /**
  * Enriches a menu row with Google Places data (address, rating, phone, etc.).
  * Fire-and-forget: does not throw — logs errors and returns silently.
- * Only searches when restaurantName is provided — avoids false positives.
  *
- * @param restaurantName - Restaurant name (from LLM or eazee-link heuristic). Skips if null.
- * @param menuId - Supabase menu row ID to update
+ * Search strategy:
+ * 1. Restaurant name known → search by name (best signal)
+ * 2. No name but real restaurant URL → search by domain (e.g. "lepetitbistrot.fr")
+ * 3. No name + platform URL (eazee-link etc) → skip (would find the platform)
  */
 export async function enrichWithGooglePlaces(
   restaurantName: string | null,
@@ -36,7 +43,6 @@ export async function enrichWithGooglePlaces(
   menuId: string,
 ): Promise<void> {
   if (!PLACES_API_KEY) return;
-  if (!restaurantName) return; // No name = no search. Better than false positives.
 
   try {
     // Skip if already enriched
@@ -48,10 +54,23 @@ export async function enrichWithGooglePlaces(
 
     if (existing?.google_place_id) return;
 
-    const result = await searchPlace(`restaurant ${restaurantName}`);
+    // Build search query
+    let searchQuery: string | null = null;
+    if (restaurantName) {
+      searchQuery = `restaurant ${restaurantName}`;
+    } else {
+      const domain = extractDomain(menuUrl);
+      if (domain && !PLATFORM_DOMAINS.some((p) => domain.includes(p))) {
+        searchQuery = `restaurant ${domain}`;
+      }
+    }
+
+    if (!searchQuery) return;
+
+    const result = await searchPlace(searchQuery);
     if (!result) return;
 
-    // Update menu row with Places data
+    // Update menu row with Places data + backfill restaurant_name if missing
     const { error } = await supabaseAdmin
       .from('menus')
       .update({
@@ -62,6 +81,7 @@ export async function enrichWithGooglePlaces(
         google_rating: result.rating,
         google_photo_ref: result.photo_ref,
         google_url: result.google_url,
+        ...(!restaurantName ? { restaurant_name: result.name } : {}),
       })
       .eq('id', menuId);
 
@@ -122,4 +142,17 @@ async function searchPlace(query: string): Promise<PlacesResult | null> {
     photo_ref: place.photos?.[0]?.name ?? null,
     google_url: place.googleMapsUri ?? null,
   };
+}
+
+/**
+ * Extracts a clean domain from a URL.
+ * e.g. "https://www.lepetitbistrot.fr/menu" → "lepetitbistrot.fr"
+ */
+function extractDomain(url: string): string | null {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname.replace(/^(www|menu|order|app)\./, '');
+  } catch {
+    return null;
+  }
 }
