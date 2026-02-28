@@ -35,9 +35,11 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 
 #### Current Milestone: v1.2 Dish Enrichment
 
-- [ ] Enrichissement plat : explication culturelle, origine, comment ça se mange, ingrédients typiques
-- [ ] Nom canonique : normalisation des noms de plats (Mantı = Manti = Turkish Dumplings) pour matching cross-restaurant
-- [ ] Recherche inversée : "j'ai envie de X" → plats correspondants dans les menus scannés
+- [ ] Base de connaissances culinaire : table `dishes` persistante alimentée par chaque scan, stockant nom canonique, variantes, origine, ingrédients typiques, explication culturelle
+- [ ] Enrichissement plat intelligent : infos agrégées/curées (LLM + sources web), priorité aux plats peu connus ou de cuisine étrangère (Mantı, Lahmacun, Tori Paitan) — les plats évidents (steak frites) reçoivent un enrichissement minimal
+- [ ] Nom canonique : normalisation (Mantı = Manti = Turkish Dumplings) pour matching cross-restaurant et alimentation du graphe
+- [ ] Régénération : possibilité de re-enrichir un plat (nouveau modèle, nouvelles sources, correction)
+- [ ] Recherche inversée : "j'ai envie de X" → plats correspondants dans les menus scannés, basée sur la base de connaissances
 - [ ] Assistant IA Top 3 : recommandation contextuelle basée sur le menu réel (3x/jour gratuit)
 - [ ] ES/IT translation support
 - [ ] Images best-effort par plat (recherche web par nom canonique, gradient+emoji fallback)
@@ -144,12 +146,14 @@ Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, 
 
 ## Current Milestone: v1.2 Dish Enrichment
 
-**Goal:** Transformer les fiches plats de simples traductions en fiches enrichies — explication culturelle, nom canonique, images, et poser les bases de la recherche inversée et de la base de connaissances culinaire.
+**Goal:** Construire la couche intelligence de NŌM — chaque scan alimente une base de connaissances culinaire persistante. Les plats ne sont plus juste traduits, ils sont enrichis (explication culturelle, ingrédients, origine), normalisés (nom canonique pour matching cross-restaurant), et queryables (recherche inversée). Le système priorise les plats peu connus ou de cuisine étrangère. À terme, cette base devient une API/RAG spécialisée cuisine.
 
 **Target features:**
-- Enrichissement par plat : explication culturelle, origine, ingrédients typiques, comment ça se mange
-- Nom canonique normalisé (graphe de connaissances) pour matching cross-restaurant
-- Recherche inversée : "j'ai envie de mantı" → plats correspondants dans les menus scannés
+- Base de connaissances culinaire (table `dishes`) alimentée par chaque scan
+- Enrichissement intelligent : infos agrégées/curées, priorité plats méconnus/étrangers
+- Nom canonique normalisé (graphe) pour matching cross-restaurant
+- Régénération possible (re-enrichir un plat avec de meilleures données)
+- Recherche inversée : "j'ai envie de mantı" → plats dans les menus scannés
 - Assistant IA Top 3 : recommandation contextuelle sur le menu réel
 - ES/IT translation support
 - Images best-effort par plat (recherche web par nom canonique, gradient+emoji fallback)
