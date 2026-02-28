@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Scanner un menu et comprendre chaque plat en moins de 10 secondes, sans compte, dans n'importe quelle langue.
-**Current focus:** v1.2 Dish Enrichment — Phase 11: Dish Enrichment
+**Current focus:** v1.2 Dish Images — Phase 12: Dish Images
 
 ## Current Position
 
-Phase: 11 of 14 (Dish Enrichment)
-Plan: 2 of 2 complete in current phase — Phase 11 COMPLETE
-Status: Phase 11 complete — enrichment UI shipped (polling, bottom sheet, DishCard states, admin regen)
-Last activity: 2026-02-28 — Phase 11 Plan 02 complete: polling hook, DishDetailSheet, enriched DishCard, admin Server Actions
+Phase: 12 of 14 (Dish Images)
+Plan: 1 of 2 complete in current phase
+Status: Phase 12 Plan 01 complete — image fetch pipeline (fetchDishImages, Unsplash/Pexels, SQL migration, scan route wiring, status endpoint image fields)
+Last activity: 2026-02-28 — Phase 12 Plan 01 complete: image backend pipeline complete
 
-Progress: [████░░░░░░░░░░] 25% (v1.2 — 4/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
+Progress: [█████░░░░░░░░░] 31% (v1.2 — 5/16 plans) | [██████████████] 100% (v1.0+v1.1 complete)
 
 ## Performance Metrics
 
@@ -31,6 +31,7 @@ Progress: [████░░░░░░░░░░] 25% (v1.2 — 4/16 plans)
 | 4-9 | v1.1 | 10 |
 | 10 | v1.2 | 2 |
 | 11 | v1.2 | 2 (complete) |
+| 12 | v1.2 | 1/2 in progress |
 
 *v1.2 metrics start fresh from Phase 10*
 
@@ -38,6 +39,7 @@ Progress: [████░░░░░░░░░░] 25% (v1.2 — 4/16 plans)
 |------|----------|-------|-------|
 | Phase 11 P01 | ~5 minutes | 2 | 7 |
 | Phase 11 P02 | ~7 minutes | 2 | 8 |
+| Phase 12-dish-images P01 | 5 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -63,6 +65,9 @@ Key decisions affecting v1.2:
 - [Phase 11]: Named import { Sheet } from react-modal-sheet — v5 uses named export, not default
 - [Phase 11]: Enrichment and translation state merged at render via useMemo — avoids polling restart on lang change
 - [Phase 11]: Confirm swap UX for per-menu bulk regen — one extra click prevents accidental slow ops
+- [Phase 12-dish-images]: hexToDataURL (1x1 BMP) as server-safe blur placeholder for both Unsplash and Pexels — no canvas, no external deps
+- [Phase 12-dish-images]: Only enrichment_depth='full' dishes get images in automatic pipeline — minimal depth dishes skipped to conserve Unsplash demo rate limit (50 req/hr)
+- [Phase 12-dish-images]: Canonical name deduplication before external API calls — copy existing image from sibling dish (same canonical_name, zero API cost)
 
 ### Pending Todos
 
@@ -79,5 +84,5 @@ Key decisions affecting v1.2:
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 11 Plan 02 complete — enrichment UI (useEnrichmentPolling, DishDetailSheet, enriched DishCard, admin regeneration Server Actions). Phase 11 fully complete.
+Stopped at: Phase 12 Plan 01 complete — image fetch pipeline (fetchDishImages, Unsplash/Pexels, canonical dedup, scan route wiring, status endpoint image fields). Phase 12 Plan 02 (UI) is next.
 Resume file: None
