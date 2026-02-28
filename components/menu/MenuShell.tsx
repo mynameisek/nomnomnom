@@ -223,13 +223,17 @@ function MenuShellInner({ menu: initialMenu }: MenuShellProps) {
       items.every((item) => item.name_translations[targetLang]) &&
       !items.every((item) => item.name_translations[targetLang] === item.name_original);
 
-    if (hasTranslation) {
+    if (hasTranslation && catTransForLang) {
+      // Items and categories both translated — nothing to do
       translatedLangs.current.add(targetLang);
-      if (catTransForLang) {
-        catTranslationsRef.current[targetLang] = catTransForLang;
-        setCatTranslations(catTransForLang);
-      }
+      catTranslationsRef.current[targetLang] = catTransForLang;
+      setCatTranslations(catTransForLang);
       return;
+    }
+
+    if (hasTranslation) {
+      // Items translated but categories missing — still need to call API for categories
+      // (e.g. eazee-link menus where items arrive pre-translated but categories don't)
     }
 
     let cancelled = false;

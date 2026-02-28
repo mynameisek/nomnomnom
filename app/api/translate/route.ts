@@ -15,6 +15,49 @@ import { translateBatch } from '@/lib/translate';
 
 export const maxDuration = 60;
 
+/** Translate unique category/subcategory labels for a given lang, persist to DB */
+async function translateCategories(
+  items: Array<{ category: string | null; subcategory: string | null }>,
+  menu: { category_translations: unknown },
+  menuId: string,
+  lang: string,
+  sourceLang: string,
+  llmModel: string,
+): Promise<Record<string, string>> {
+  const existingCatTranslations = (menu.category_translations ?? {}) as Record<string, Record<string, string>>;
+  const existingForLang = existingCatTranslations[lang] ?? {};
+
+  const uniqueLabels = new Set<string>();
+  for (const item of items) {
+    if (item.category) uniqueLabels.add(item.category);
+    if (item.subcategory) uniqueLabels.add(item.subcategory);
+  }
+  const labelsToTranslate = [...uniqueLabels].filter((l) => !existingForLang[l]);
+
+  if (labelsToTranslate.length === 0) return existingForLang;
+
+  const translatedLabels = await translateBatch(
+    labelsToTranslate.map((label) => ({ name: label, description: null })),
+    sourceLang,
+    lang,
+    llmModel,
+  );
+
+  const newMap: Record<string, string> = { ...existingForLang };
+  for (let i = 0; i < labelsToTranslate.length; i++) {
+    newMap[labelsToTranslate[i]] = translatedLabels[i].name;
+  }
+
+  await supabaseAdmin
+    .from('menus')
+    .update({
+      category_translations: { ...existingCatTranslations, [lang]: newMap },
+    })
+    .eq('id', menuId);
+
+  return newMap;
+}
+
 export async function POST(req: NextRequest) {
   let menuId: unknown;
   let lang: unknown;
@@ -62,14 +105,15 @@ export async function POST(req: NextRequest) {
       return !nameTranslations[lang as string];
     });
 
-    if (needsTranslation.length === 0) {
-      // All items already have this translation — return current items
-      return NextResponse.json({ items, alreadyTranslated: true });
-    }
-
     // Step 3: Translate via provider cascade (free APIs → LLM fallback)
     const sourceLang = menu.source_language ?? 'unknown';
     const config = await getAdminConfig();
+
+    if (needsTranslation.length === 0) {
+      // All items already have this translation — but categories may still need it
+      const catResult = await translateCategories(items, menu, menuId as string, lang as string, sourceLang, config.llm_model);
+      return NextResponse.json({ items, alreadyTranslated: true, categoryTranslations: catResult });
+    }
 
     const translated = await translateBatch(
       needsTranslation.map((item) => ({
@@ -112,44 +156,7 @@ export async function POST(req: NextRequest) {
     await Promise.all(updatePromises);
 
     // Step 4b: Translate unique category/subcategory labels
-    const existingCatTranslations = (menu.category_translations ?? {}) as Record<string, Record<string, string>>;
-    const existingForLang = existingCatTranslations[lang as string] ?? {};
-
-    // Collect unique category labels from ALL items (not just needsTranslation)
-    const uniqueLabels = new Set<string>();
-    for (const item of items) {
-      if (item.category) uniqueLabels.add(item.category);
-      if (item.subcategory) uniqueLabels.add(item.subcategory);
-    }
-    // Filter out already-translated labels
-    const labelsToTranslate = [...uniqueLabels].filter((l) => !existingForLang[l]);
-
-    let categoryTranslations = existingForLang;
-    if (labelsToTranslate.length > 0) {
-      const translatedLabels = await translateBatch(
-        labelsToTranslate.map((label) => ({ name: label, description: null })),
-        sourceLang,
-        lang as string,
-        config.llm_model,
-      );
-
-      const newMap: Record<string, string> = { ...existingForLang };
-      for (let i = 0; i < labelsToTranslate.length; i++) {
-        newMap[labelsToTranslate[i]] = translatedLabels[i].name;
-      }
-      categoryTranslations = newMap;
-
-      // Persist to menus table
-      await supabaseAdmin
-        .from('menus')
-        .update({
-          category_translations: {
-            ...existingCatTranslations,
-            [lang as string]: newMap,
-          },
-        })
-        .eq('id', menuId);
-    }
+    const categoryTranslations = await translateCategories(items, menu, menuId as string, lang as string, sourceLang, config.llm_model);
 
     // Step 5: Fetch updated items to return
     const { data: updatedItems } = await supabaseAdmin
