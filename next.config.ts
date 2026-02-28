@@ -9,13 +9,13 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
+        hostname: "encrypted-tbn0.gstatic.com",
+        pathname: "/images/**",
       },
       {
         protocol: "https",
-        hostname: "images.pexels.com",
-        pathname: "/photos/**",
+        hostname: "*.googleusercontent.com",
+        pathname: "/**",
       },
     ],
   },
