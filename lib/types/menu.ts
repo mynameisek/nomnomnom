@@ -110,6 +110,12 @@ export interface MenuItem {
   enrichment_model: string | null;
   enriched_at: string | null;             // ISO string
   embedding_model: string | null;
+  enrichment_translations: Record<string, {
+    origin?: string | null;
+    cultural_note?: string | null;
+    eating_tips?: string | null;
+    ingredients?: string[] | null;
+  }>;
   image_url: string | null;
   image_source: string | null;       // 'unsplash' | 'pexels'
   image_credit: string | null;

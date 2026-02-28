@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'motion/react';
+import { useLanguage } from '@/lib/i18n';
 import type { MenuItem } from '@/lib/types/menu';
 
 interface DishDetailSheetProps {
@@ -13,6 +14,14 @@ interface DishDetailSheetProps {
 
 export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { lang, t } = useLanguage();
+
+  // Resolve enrichment fields: use translated version if available, else original (French)
+  const enrichTrans = item?.enrichment_translations?.[lang];
+  const origin = enrichTrans?.origin ?? item?.enrichment_origin;
+  const culturalNote = enrichTrans?.cultural_note ?? item?.enrichment_cultural_note;
+  const eatingTips = enrichTrans?.eating_tips ?? item?.enrichment_eating_tips;
+  const ingredients = enrichTrans?.ingredients ?? item?.enrichment_ingredients;
 
   // Close on Escape
   useEffect(() => {
@@ -31,6 +40,17 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
       return () => { document.body.style.overflow = ''; };
     }
   }, [isOpen]);
+
+  // Translated name for display
+  const displayName = item
+    ? (item.name_translations[lang] ?? item.canonical_name ?? item.name_original)
+    : '';
+  const originalName = item?.name_original ?? '';
+  const showOriginal = displayName.toLowerCase().trim() !== originalName.toLowerCase().trim();
+
+  const translatedDescription = item
+    ? (item.description_translations?.[lang] ?? item.description_original)
+    : null;
 
   return (
     <AnimatePresence>
@@ -83,14 +103,13 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
                   <div className="relative w-full aspect-[2/1] md:aspect-[5/2]">
                     <Image
                       src={item.image_url}
-                      alt={item.canonical_name ?? item.name_original}
+                      alt={displayName}
                       fill
                       className="object-cover"
                       placeholder={item.image_placeholder ? 'blur' : 'empty'}
                       blurDataURL={item.image_placeholder ?? undefined}
                       sizes="(max-width: 768px) 100vw, 448px"
                     />
-                    {/* Gradient overlay for text readability */}
                     <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-brand-bg to-transparent" />
                   </div>
                 )}
@@ -100,7 +119,7 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
                   {/* Name + price row */}
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="text-brand-white font-bold text-lg leading-snug">
-                      {item.canonical_name ?? item.name_original}
+                      {displayName}
                     </h2>
                     {item.price && (
                       <span className="text-brand-orange font-bold text-base flex-shrink-0 mt-0.5">
@@ -110,34 +129,41 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
                   </div>
 
                   {/* Original name if different */}
-                  {item.canonical_name && item.canonical_name !== item.name_original && (
-                    <p className="text-brand-muted/60 text-xs -mt-2">{item.name_original}</p>
+                  {showOriginal && (
+                    <p className="text-brand-muted/60 text-xs -mt-2">{originalName}</p>
+                  )}
+
+                  {/* Description */}
+                  {translatedDescription && (
+                    <p className="text-brand-muted text-sm leading-relaxed">
+                      {translatedDescription}
+                    </p>
                   )}
 
                   {/* Origin pill */}
-                  {item.enrichment_origin && (
+                  {origin && (
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 rounded-full bg-brand-orange/10 border border-brand-orange/20 text-brand-orange/80 text-xs font-medium">
-                        {item.enrichment_origin}
+                        {origin}
                       </span>
                     </div>
                   )}
 
                   {/* Cultural note */}
-                  {item.enrichment_cultural_note && (
+                  {culturalNote && (
                     <p className="text-brand-muted text-sm leading-relaxed">
-                      {item.enrichment_cultural_note}
+                      {culturalNote}
                     </p>
                   )}
 
                   {/* Key ingredients */}
-                  {item.enrichment_ingredients && item.enrichment_ingredients.length > 0 && (
+                  {ingredients && ingredients.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-brand-white/50 text-[11px] uppercase tracking-wider font-medium">
-                        Ingrédients typiques
+                        {t('detail_ingredients')}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {item.enrichment_ingredients.map((ingredient, idx) => (
+                        {ingredients.map((ingredient, idx) => (
                           <span
                             key={idx}
                             className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-brand-muted text-xs"
@@ -150,9 +176,9 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
                   )}
 
                   {/* Eating tips */}
-                  {item.enrichment_eating_tips && (
+                  {eatingTips && (
                     <p className="text-brand-muted/70 text-xs italic leading-relaxed">
-                      {item.enrichment_eating_tips}
+                      {eatingTips}
                     </p>
                   )}
 
@@ -160,7 +186,7 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
                   {item.allergens && item.allergens.length > 0 && (
                     <div className="space-y-1.5 pt-1">
                       <p className="text-brand-white/50 text-[11px] uppercase tracking-wider font-medium">
-                        Allergènes
+                        {t('detail_allergens')}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {item.allergens.map((allergen) => (
@@ -168,7 +194,7 @@ export default function DishDetailSheet({ item, isOpen, onClose }: DishDetailShe
                             key={allergen}
                             className="px-2 py-0.5 rounded-full bg-red-500/8 border border-red-500/15 text-red-400/80 text-xs"
                           >
-                            {allergen}
+                            {t(`allergen_${allergen}`)}
                           </span>
                         ))}
                       </div>

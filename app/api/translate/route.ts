@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     const { data: items, error: itemsError } = await supabaseAdmin
       .from('menu_items')
-      .select('id, name_original, name_translations, description_original, description_translations, category, subcategory, sort_order')
+      .select('id, name_original, name_translations, description_original, description_translations, category, subcategory, sort_order, enrichment_cultural_note, enrichment_eating_tips, enrichment_ingredients, enrichment_origin, enrichment_translations')
       .eq('menu_id', menuId)
       .order('sort_order', { ascending: true });
 
@@ -163,7 +163,91 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(updatePromises);
 
-    // Step 4b: Translate unique category/subcategory labels
+    // Step 4b: Translate enrichment fields for items that have them
+    const enrichmentItems = items.filter(
+      (item) => {
+        const existing = (item.enrichment_translations ?? {}) as Record<string, unknown>;
+        return !existing[lang as string] && (
+          item.enrichment_cultural_note || item.enrichment_eating_tips ||
+          (item.enrichment_ingredients && item.enrichment_ingredients.length > 0) ||
+          item.enrichment_origin
+        );
+      }
+    );
+
+    if (enrichmentItems.length > 0) {
+      // Collect all enrichment texts into a flat batch for translation
+      const enrichTexts: string[] = [];
+      const enrichMap: Array<{ itemId: string; fields: Array<{ key: string; startIdx: number; count: number }> }> = [];
+
+      for (const item of enrichmentItems) {
+        const fields: Array<{ key: string; startIdx: number; count: number }> = [];
+
+        if (item.enrichment_origin) {
+          fields.push({ key: 'origin', startIdx: enrichTexts.length, count: 1 });
+          enrichTexts.push(item.enrichment_origin);
+        }
+        if (item.enrichment_cultural_note) {
+          fields.push({ key: 'cultural_note', startIdx: enrichTexts.length, count: 1 });
+          enrichTexts.push(item.enrichment_cultural_note);
+        }
+        if (item.enrichment_eating_tips) {
+          fields.push({ key: 'eating_tips', startIdx: enrichTexts.length, count: 1 });
+          enrichTexts.push(item.enrichment_eating_tips);
+        }
+        if (item.enrichment_ingredients && item.enrichment_ingredients.length > 0) {
+          fields.push({ key: 'ingredients', startIdx: enrichTexts.length, count: item.enrichment_ingredients.length });
+          enrichTexts.push(...item.enrichment_ingredients);
+        }
+
+        enrichMap.push({ itemId: item.id, fields });
+      }
+
+      if (enrichTexts.length > 0) {
+        try {
+          // Translate all enrichment texts as a flat batch using the same cascade
+          const enrichTranslated = await translateBatch(
+            enrichTexts.map(t => ({ name: t, description: null })),
+            sourceLang,
+            lang as string,
+            config.llm_model,
+            'menu_items',
+          );
+
+          // Reconstruct per-item enrichment translations and persist
+          for (const entry of enrichMap) {
+            const langData: Record<string, string | string[] | null> = {};
+
+            for (const field of entry.fields) {
+              if (field.key === 'ingredients') {
+                langData[field.key] = enrichTranslated
+                  .slice(field.startIdx, field.startIdx + field.count)
+                  .map(t => t.name);
+              } else {
+                langData[field.key] = enrichTranslated[field.startIdx]?.name ?? null;
+              }
+            }
+
+            // Merge with existing translations
+            const item = items.find(i => i.id === entry.itemId);
+            const existing = ((item as Record<string, unknown>)?.enrichment_translations ?? {}) as Record<string, unknown>;
+            const merged = { ...existing, [lang as string]: langData };
+
+            await supabaseAdmin
+              .from('menu_items')
+              .update({ enrichment_translations: merged })
+              .eq('id', entry.itemId);
+          }
+
+          console.log(`[translate] Enrichment: translated ${enrichTexts.length} texts for ${enrichmentItems.length} items`);
+        } catch (enrichError) {
+          // Non-fatal — enrichment translation failure shouldn't block the response
+          console.error('[translate] Enrichment translation failed:', enrichError instanceof Error ? enrichError.message : enrichError);
+        }
+      }
+    }
+
+    // Step 4c: Translate unique category/subcategory labels
     const categoryTranslations = await translateCategories(items, menu, menuId as string, lang as string, sourceLang, config.llm_model);
 
     // Step 5: Fetch updated items to return
