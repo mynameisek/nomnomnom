@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
       // Step 1: Check cache BEFORE translation — avoid LLM cost on cache hits
       const cachedMenu = await getCachedMenu(canonicalUrl);
       if (cachedMenu) {
+        // Enrich with Places if not yet done (e.g. menu created before this feature)
+        if (!cachedMenu.google_place_id) {
+          enrichWithGooglePlaces(cachedMenu.restaurant_name, canonicalUrl, cachedMenu.id).catch(() => {});
+        }
         return NextResponse.json({ menuId: cachedMenu.id });
       }
 
