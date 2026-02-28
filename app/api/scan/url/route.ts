@@ -16,6 +16,7 @@ import { getOrParseMenu, getAdminConfig, getCachedMenu } from '@/lib/cache';
 import { extractMenuContent } from '@/lib/screenshotone';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
 import { getEazeeLinkStickerId, fetchEazeeLinkMenu } from '@/lib/menu-providers/eazee-link';
+import { enrichWithGooglePlaces } from '@/lib/google-places';
 
 // Vercel Pro plan: pipeline can take 6–15s total
 export const maxDuration = 120;
@@ -67,6 +68,8 @@ export async function POST(req: NextRequest) {
 
       // Step 3: Store in cache and return (no upfront translation — lazy translate handles it)
       const menu = await getOrParseMenu(canonicalUrl, 'url', rawText, { dishes, source_language: sourceLanguage });
+      // Fire-and-forget Places enrichment
+      enrichWithGooglePlaces(menu.restaurant_name, canonicalUrl, menu.id).catch(() => {});
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -76,6 +79,7 @@ export async function POST(req: NextRequest) {
     if (result.type === 'text') {
       // Clean markdown → text-based LLM parse
       const menu = await getOrParseMenu(url, 'url', result.content);
+      enrichWithGooglePlaces(menu.restaurant_name, url, menu.id).catch(() => {});
       return NextResponse.json({ menuId: menu.id });
     }
 
@@ -107,6 +111,7 @@ export async function POST(req: NextRequest) {
     });
 
     const menu = await getOrParseMenu(url, 'url', '[screenshot fallback]', output);
+    enrichWithGooglePlaces(menu.restaurant_name, url, menu.id).catch(() => {});
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -12,6 +12,7 @@ import FilterBar from '@/components/menu/FilterBar';
 import DishCard from '@/components/menu/DishCard';
 import LangSwitcher from '@/components/menu/LangSwitcher';
 import MenuAccordion from '@/components/menu/MenuAccordion';
+import RestaurantCard from '@/components/menu/RestaurantCard';
 
 function SourceBadge({ sourceType }: { sourceType: string | null }) {
   const labels: Record<string, string> = {
@@ -68,7 +69,6 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTr
     return cats;
   }, [menu.menu_items]);
 
-  const restaurantName = menu.restaurant_name ?? 'Menu';
   const headerText = t('menu_header').replace('{count}', String(menu.menu_items.length));
 
   return (
@@ -86,10 +86,8 @@ function MenuContent({ menu, filters, onFiltersChange, isTranslating, categoryTr
                 + {t('scan_another')}
               </a>
             </div>
-            <h1 className="text-2xl font-bold text-brand-white mb-1 truncate">
-              {restaurantName}
-            </h1>
-            <p className="text-brand-muted text-sm">{headerText}</p>
+            <RestaurantCard menu={menu} />
+            <p className="text-brand-muted text-sm mt-1">{headerText}</p>
           </div>
           <div className="flex-shrink-0 mt-1">
             <LangSwitcher />

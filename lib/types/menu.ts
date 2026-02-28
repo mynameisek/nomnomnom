@@ -66,6 +66,13 @@ export interface Menu {
   parse_time_ms: number | null;   // LLM parse duration in ms (null for cache hits)
   hit_count: number;              // number of cache hits since first parse (default 0)
   category_translations: Record<string, Record<string, string>> | null; // {"de":{"A BOIRE":"GETRÄNKE",...},...}
+  google_place_id: string | null;
+  google_place_name: string | null;
+  google_address: string | null;
+  google_phone: string | null;
+  google_rating: number | null;
+  google_photo_ref: string | null;
+  google_url: string | null;
   parsed_at: string;          // timestamptz as ISO string
   expires_at: string;         // timestamptz as ISO string
   created_at: string;         // timestamptz as ISO string

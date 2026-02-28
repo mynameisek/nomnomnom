@@ -42,6 +42,13 @@ create table menus (
   parse_time_ms   integer,                          -- LLM parse duration in ms (null for cache hits / pre-parsed)
   hit_count       integer     not null default 0,   -- incremented on each cache hit
   category_translations jsonb  default '{}',       -- {"de":{"A BOIRE":"GETRÄNKE",...},...}
+  google_place_id  text,                             -- Google Places ID for deduplication
+  google_place_name text,                            -- display name from Google Places
+  google_address   text,                             -- formatted address
+  google_phone     text,                             -- national phone number
+  google_rating    numeric(2,1),                     -- e.g. 4.3
+  google_photo_ref text,                             -- Google Places photo resource name
+  google_url       text,                             -- Google Maps URL
   parsed_at       timestamptz default now(),
   expires_at      timestamptz not null,             -- parsed_at + cache_ttl_hours from admin_config
   created_at      timestamptz default now()

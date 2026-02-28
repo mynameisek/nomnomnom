@@ -97,6 +97,7 @@ export const dishParseSchema = z.object({
  */
 export const menuParseSchema = z.object({
   source_language: z.string(),  // 2-letter code: fr, en, tr, de, etc.
+  restaurant_name: z.string().nullable(), // extracted from menu header/footer/watermark, null if not visible
   dishes: z.array(dishParseSchema),
 });
 

@@ -181,8 +181,9 @@ export async function getOrParseMenu(
     throw new Error('NO_DISHES');
   }
 
-  // Detect source language from fast parse result
+  // Detect source language and restaurant name from fast parse result
   const sourceLanguage = 'source_language' in parsed ? parsed.source_language : null;
+  const restaurantName = 'restaurant_name' in parsed ? parsed.restaurant_name : null;
 
   // Step 5: Compute expiry
   const expiresAt = new Date(
@@ -229,6 +230,7 @@ export async function getOrParseMenu(
     .insert({
       url,
       url_hash: urlHash,
+      restaurant_name: restaurantName,
       source_type: sourceType,
       raw_text: rawText,
       expires_at: expiresAt,

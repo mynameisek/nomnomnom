@@ -13,6 +13,7 @@ import { openai } from '@ai-sdk/openai';
 import { menuParseSchema } from '@/lib/types/llm';
 import { getOrParseMenu, getAdminConfig } from '@/lib/cache';
 import { MENU_PARSE_FAST_PROMPT } from '@/lib/openai';
+import { enrichWithGooglePlaces } from '@/lib/google-places';
 
 // Vercel Pro plan: Vision OCR can take 6–15s total
 export const maxDuration = 60;
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
     // so getOrParseMenu skips the redundant text-based LLM call
     const photoUrl = `photo:${Date.now()}`;
     const menu = await getOrParseMenu(photoUrl, 'photo', '[photo upload]', output);
+    enrichWithGooglePlaces(menu.restaurant_name, photoUrl, menu.id).catch(() => {});
 
     return NextResponse.json({ menuId: menu.id });
   } catch (error) {

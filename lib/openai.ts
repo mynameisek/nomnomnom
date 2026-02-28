@@ -135,6 +135,8 @@ For each dish found in the menu text, you must:
 
 7. CATEGORY: If the menu is organized into sections, set the category field. If there are sub-sections, set subcategory. If no clear sections, set both to null.
 
+8. RESTAURANT NAME: If a restaurant or establishment name is visible in the menu text (header, footer, watermark), extract it. If not visible, return null.
+
 Parse every dish you can identify in the menu. Do not omit dishes.`;
 
 // =============================================================================
