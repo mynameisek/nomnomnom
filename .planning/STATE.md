@@ -84,8 +84,14 @@ Key decisions affecting v1.2:
 - Canonical name seed table RESOLVED — 124 entries seeded across 7 cuisines in Phase 10 Plan 02
 - Reverse search (Phase 14) requires 50+ canonical records in the database before results are meaningful; promote UI only after data threshold is met
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | DishCard CTA visibility + Serper.dev Google Image search | 2026-02-28 | 213e5fc | [1-improve-dishcard-cta](./quick/1-improve-dishcard-cta-visibility-replace-/) |
+
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 12 Plan 02 — Task 3 checkpoint:human-verify (visual verification of dish images in browser). Tasks 1 and 2 committed (cc47bac, e91c2ca). Resume after visual approval.
+Last activity: 2026-02-28 - Completed quick task 1: DishCard CTA + Serper image search
 Resume file: None
